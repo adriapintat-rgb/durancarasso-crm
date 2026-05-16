@@ -1,0 +1,1822 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>DC · Panel Comercial</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0D3550;--accent:#1A8FBF;--gold:#B8922A;
+  --bg:#F5F4F1;--card:#FFF;--text:#111;--sub:#6B6B6B;
+  --border:#E2E0DB;--green:#1E6B3A;--red:#B03020;--orange:#C45E0A;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:'Inter',sans-serif;background:var(--navy);color:var(--text);font-size:14px}
+.screen{position:fixed;inset:0;overflow-y:auto;transition:opacity .2s,transform .2s}
+.screen.off{opacity:0;pointer-events:none;transform:translateX(16px)}
+
+/* ── SELECT ── */
+#s0{background:var(--navy);display:flex;flex-direction:column;align-items:center}
+.hero{padding:52px 24px 28px;text-align:center;width:100%}
+.hero-brand{font-size:10px;letter-spacing:4px;color:rgba(255,255,255,.28);text-transform:uppercase;margin-bottom:16px}
+.hero-title{font-family:'Playfair Display',serif;font-size:34px;color:#fff;line-height:1.2;margin-bottom:6px}
+.hero-hint{font-size:12px;color:rgba(255,255,255,.32);margin-top:8px}
+.sel-wrap{width:100%;max-width:420px;padding:0 18px 60px}
+.sel-trigger{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:15px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;-webkit-user-select:none;user-select:none;transition:.15s}
+.sel-trigger:active{background:rgba(255,255,255,.14)}
+.sel-trigger.open{border-radius:14px 14px 0 0;border-color:rgba(255,255,255,.28)}
+.sel-label{flex:1;font-size:14px;color:rgba(255,255,255,.6)}
+.sel-arrow{color:rgba(255,255,255,.3);font-size:13px;transition:transform .2s}
+.sel-trigger.open .sel-arrow{transform:rotate(180deg)}
+.sel-drop{display:none;background:#0F3D5E;border:1px solid rgba(255,255,255,.14);border-top:none;border-radius:0 0 14px 14px;overflow:hidden}
+.sel-drop.open{display:block}
+.sel-search{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.07)}
+.sel-search input{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;font-size:13px;color:#fff;font-family:'Inter',sans-serif;outline:none}
+.sel-search input::placeholder{color:rgba(255,255,255,.3)}
+.sel-list{max-height:300px;overflow-y:auto}
+.sel-item{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);transition:.12s}
+.sel-item:last-child{border:none}
+.sel-item:active{background:rgba(255,255,255,.09)}
+.sel-ava{width:35px;height:35px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#0D3550);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;flex-shrink:0}
+.sel-name{font-size:14px;color:#fff}
+.sel-cnt{font-size:11px;color:rgba(255,255,255,.35);margin-top:1px}
+
+/* ── SPINNER ── */
+.spin-w{display:flex;align-items:center;gap:10px;padding:20px 16px;color:rgba(255,255,255,.4)}
+.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.12);border-top-color:rgba(255,255,255,.5);border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0}
+.spinner.dark{border-color:rgba(0,0,0,.1);border-top-color:var(--accent)}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ── APP ── */
+#s1{background:var(--bg);display:flex;flex-direction:column}
+.app-hdr{background:var(--navy);padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:50;flex-shrink:0}
+.btn-back{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.09);border:none;color:rgba(255,255,255,.8);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hdr-info{flex:1;min-width:0}
+.hdr-name{font-size:14px;font-weight:500;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-sub{font-size:10px;color:rgba(255,255,255,.35);margin-top:1px}
+/* Refresh button */
+.btn-refresh{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.09);border:none;color:rgba(255,255,255,.7);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.3s}
+.btn-refresh.spin{animation:sp .7s linear infinite}
+.hdr-dc{font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.2);text-transform:uppercase;flex-shrink:0}
+.tabs{display:flex;background:var(--navy);border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
+.tab{flex:1;padding:11px 8px 12px;font-size:11px;font-weight:500;color:rgba(255,255,255,.38);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:.3px;text-transform:uppercase;transition:.15s}
+.tab.on{color:#fff;border-bottom-color:var(--gold)}
+.page{display:none;padding:14px 13px 50px;background:var(--bg)}
+.page.on{display:block}
+
+/* ── KPI ── */
+.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px}
+.kpi{background:var(--card);border-radius:11px;padding:11px 8px;text-align:center;border:1px solid var(--border)}
+.kpi-n{font-family:'Playfair Display',serif;font-size:23px;color:var(--navy);line-height:1}
+.kpi-l{font-size:10px;color:var(--sub);margin-top:3px;letter-spacing:.3px;text-transform:uppercase}
+.sec{font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--sub);margin:13px 0 7px}
+
+/* ── LEAD CARD ── */
+.lc{background:var(--card);border-radius:12px;margin-bottom:7px;border:1px solid var(--border);overflow:hidden}
+.lc.done{opacity:.42}
+.lc-hdr{display:flex;align-items:center;gap:9px;padding:10px 12px 6px}
+.lc-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#D8EAF5,#B8D4EC);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--navy);flex-shrink:0}
+.lc-nm{font-size:13px;font-weight:500;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lc-badge{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;flex-shrink:0;white-space:nowrap}
+.badge-pend{background:#EAF4FB;color:var(--accent)}
+.badge-done{background:#EEFAE8;color:var(--green)}
+/* Days badge */
+.lc-days{font-size:10px;padding:2px 6px;border-radius:20px;font-weight:500;flex-shrink:0;margin-left:4px}
+.days-ok{background:#EAF4FB;color:var(--accent)}
+.days-warn{background:#FEF3E2;color:var(--orange)}
+.days-hot{background:#FDECEA;color:var(--red)}
+/* Message bubble */
+.lc-msg-wrap{margin:0 12px 6px}
+.lc-msg{background:#F8F7F4;border-radius:7px;padding:7px 10px;font-size:12px;color:#333;line-height:1.5;border-left:3px solid var(--accent);word-break:break-word}
+.lc-msg.done-m{border-left-color:var(--green)}
+/* Meta row */
+.lc-meta{padding:0 12px 6px;font-size:10px;color:var(--sub);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+/* Note preview */
+.lc-note-prev{margin:0 12px 6px;background:#FEFAE8;border-left:3px solid var(--gold);border-radius:0 6px 6px 0;padding:5px 8px;font-size:11px;color:#7A5F00;line-height:1.4}
+/* Contact date */
+.lc-cdate{margin:0 12px 6px;font-size:10px;color:var(--green);font-style:italic}
+/* Actions */
+.lc-act{display:flex;gap:5px;padding:0 12px 10px;flex-wrap:wrap}
+.btn-ok{flex:1;border:none;border-radius:8px;padding:8px 8px;font-size:12px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:.12s;white-space:nowrap}
+.btn-ok:active{opacity:.8}
+.btn-mark{background:var(--navy);color:#fff}
+.btn-undo{background:#E8E6E1;color:var(--sub)}
+.btn-call{background:#EEFAE8;color:var(--green);border:1px solid #C8EAD0;flex:none;padding:8px 12px}
+.btn-tog{background:transparent;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;color:var(--sub);white-space:nowrap;flex:none}
+.lc-note-area{padding:0 12px 10px}
+.lc-note-area textarea{width:100%;background:#FAFAF8;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;resize:none;min-height:64px;font-family:'Inter',sans-serif;line-height:1.5;color:var(--text);outline:none;transition:border-color .15s}
+.lc-note-area textarea:focus{border-color:var(--accent);background:#fff}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:48px 20px;color:var(--sub)}
+.empty-ico{font-size:30px;margin-bottom:8px;opacity:.4}
+
+/* ── LOADING INLINE ── */
+.loading-inline{display:flex;align-items:center;gap:8px;padding:24px 0;color:var(--sub);justify-content:center;font-size:13px}
+
+/* ── HIST ── */
+.hc{background:var(--card);border-radius:11px;margin-bottom:7px;padding:10px 13px;border:1px solid var(--border)}
+.hc-camp{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.hc-nm{font-size:13px;font-weight:500}
+.hc-msg{font-size:12px;color:#555;margin-top:5px;line-height:1.4;background:#F8F7F4;border-radius:6px;padding:6px 9px;border-left:2px solid var(--accent);word-break:break-word}
+.hc-dt{font-size:10px;color:var(--sub);margin-top:4px}
+
+/* ── STATS ── */
+.sc{background:var(--card);border-radius:12px;padding:13px;margin-bottom:10px;border:1px solid var(--border)}
+.sc-t{font-size:10px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--sub);margin-bottom:12px}
+.mk{display:flex}
+.mk-i{flex:1;text-align:center;padding:0 4px;border-right:1px solid var(--border)}
+.mk-i:last-child{border:none}
+.mk-n{font-family:'Playfair Display',serif;font-size:24px;line-height:1}
+.mk-l{font-size:10px;color:var(--sub);margin-top:3px;text-transform:uppercase;letter-spacing:.3px}
+.n-b{color:var(--navy)}.n-r{color:var(--red)}.n-g{color:var(--green)}
+.cr{display:flex;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
+.cr:last-child{border:none}
+.cr-l{flex:1;min-width:0;margin-right:10px}
+.cr-nm{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr-bar{height:3px;background:var(--bg);border-radius:2px;margin-top:4px}
+.cr-bf{height:100%;background:var(--accent);border-radius:2px}
+.cr-s{font-size:12px;font-weight:500;color:var(--accent);white-space:nowrap}
+
+
+.pin-btn{width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:22px;font-family:'Inter',sans-serif;cursor:pointer;transition:.12s;display:flex;align-items:center;justify-content:center;}
+.pin-btn:active{background:rgba(255,255,255,.22);}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;opacity:0;transition:.3s;z-index:200;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- ── PANTALLA SELECCIÓN ── -->
+<div class="screen" id="s0">
+  <div class="hero">
+    <div class="hero-brand">Duran Carasso</div>
+    <div class="hero-title">Panel<br>Comercial</div>
+    <div class="hero-hint">Selecciona tu nombre para acceder</div>
+  </div>
+  <div class="sel-wrap">
+    <div class="sel-trigger" id="selTrig">
+      <span style="font-size:15px;opacity:.45">👤</span>
+      <span class="sel-label" id="selLabel">Seleccionar comercial...</span>
+      <span class="sel-arrow">▾</span>
+    </div>
+    <div class="sel-drop" id="selDrop">
+      <div class="sel-search">
+        <input type="text" id="searchInp" placeholder="Buscar nombre..." autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="sel-list" id="selList">
+        <div class="spin-w"><div class="spinner"></div><span style="font-size:12px">Cargando datos...</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PANTALLA APP ── -->
+<div class="screen off" id="s1">
+  <div class="app-hdr">
+    <button class="btn-back" id="btnBack">←</button>
+    <div class="hdr-info">
+      <div class="hdr-name" id="hdrName"></div>
+      <div class="hdr-sub" id="hdrSub"></div>
+    </div>
+    <button class="btn-refresh" id="btnRefresh" title="Actualizar datos">↺</button>
+    <div class="hdr-dc">DC</div>
+  </div>
+  <div class="tabs">
+    <button class="tab on" id="tb0">Campaña actual</button>
+    <button class="tab" id="tb1">Histórico</button>
+    <button class="tab" id="tb2" style="position:relative">Admin <span id="msg_badge" style="display:none;position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#B03020"></span></button>
+  </div>
+  <div class="page on" id="p0"></div>
+  <div class="page" id="p1"></div>
+  <div class="page" id="p2"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- DIRECTOR SCREEN -->
+<div class="screen off" id="s_dir">
+  <div style="background:#F7F6F3;min-height:100vh;display:flex;flex-direction:column">
+    <!-- Header -->
+    <div style="background:#fff;padding:16px 18px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E8E6E1;position:sticky;top:0;z-index:10">
+      <div>
+        <div style="font-size:9px;letter-spacing:3px;color:#B0A99A;text-transform:uppercase;margin-bottom:2px">Duran Carasso</div>
+        <div style="font-size:17px;font-weight:600;color:#0D3550">Vista Director</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="dir_live" style="display:flex;align-items:center;gap:5px;font-size:11px;color:#888">
+          <span id="dir_dot" style="width:7px;height:7px;border-radius:50%;background:#ccc;display:inline-block"></span>
+          <span id="dir_live_txt">Cargando...</span>
+        </div>
+        <button onclick="refreshDirector()" id="btn_dir_refresh" style="background:#F0EEE9;border:none;color:#6B6B6B;width:32px;height:32px;border-radius:50%;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center">↺</button>
+        <button onclick="exitDirector()" style="background:#F0EEE9;border:none;color:#6B6B6B;padding:7px 13px;border-radius:8px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif">← Salir</button>
+      </div>
+    </div>
+    <!-- KPI Strip -->
+    <div style="padding:14px 16px 0">
+      <div id="dir_stats" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:6px"></div>
+      <div id="dir_alert" style="display:none;background:#FEF3E2;border:1px solid #F5C97A;border-radius:9px;padding:9px 13px;font-size:12px;color:#7A4F00;margin-bottom:6px"></div>
+      <div style="font-size:9px;letter-spacing:2px;color:#B0A99A;text-transform:uppercase;margin:10px 0 8px;font-weight:600">Ranking comerciales</div>
+    </div>
+    <!-- Dir Tabs -->
+    <div style="display:flex;border-bottom:1px solid #E8E6E1;background:#fff;flex-shrink:0;padding:0 16px">
+      <button id="dtb0" onclick="switchDirTab(0)" style="flex:1;padding:10px 8px;font-size:11px;font-weight:600;color:#0D3550;background:none;border:none;border-bottom:2px solid #0D3550;cursor:pointer;font-family:Inter,sans-serif;letter-spacing:.3px;text-transform:uppercase">Comerciales</button>
+      <button id="dtb1" onclick="switchDirTab(1)" style="flex:1;padding:10px 8px;font-size:11px;font-weight:500;color:#B0A99A;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:Inter,sans-serif;letter-spacing:.3px;text-transform:uppercase;position:relative">Mensajes <span id="dir_msg_badge" style="display:none;position:absolute;top:8px;width:7px;height:7px;border-radius:50%;background:#B03020"></span></button>
+    </div>
+    <!-- List -->
+    <div id="dir_list" style="overflow-y:auto;padding:0 16px 32px;flex:1"></div>
+    <div id="dir_msgs" style="display:none;overflow-y:auto;padding:16px;flex:1"></div>
+  </div>
+</div>
+
+
+<!-- PIN SCREEN -->
+<div class="screen off" id="s_pin">
+  <div style="background:var(--navy);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px">
+    <div style="font-size:10px;letter-spacing:4px;color:rgba(255,255,255,.28);text-transform:uppercase;margin-bottom:12px">Duran Carasso</div>
+    <div style="font-family:'Playfair Display',serif;font-size:28px;color:#fff;margin-bottom:6px" id="pin_name_show"></div>
+    <div style="font-size:13px;color:rgba(255,255,255,.35);margin-bottom:32px">Introduce tu PIN de 4 dígitos</div>
+    <div style="display:flex;gap:12px;margin-bottom:24px" id="pin_dots">
+      <div style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:transparent" id="pd0"></div>
+      <div style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:transparent" id="pd1"></div>
+      <div style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:transparent" id="pd2"></div>
+      <div style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:transparent" id="pd3"></div>
+    </div>
+    <div id="pin_error" style="color:#ff6b6b;font-size:12px;min-height:18px;margin-bottom:16px;text-align:center"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,72px);gap:12px">
+      <button class="pin-btn" data-n="1">1</button>
+      <button class="pin-btn" data-n="2">2</button>
+      <button class="pin-btn" data-n="3">3</button>
+      <button class="pin-btn" data-n="4">4</button>
+      <button class="pin-btn" data-n="5">5</button>
+      <button class="pin-btn" data-n="6">6</button>
+      <button class="pin-btn" data-n="7">7</button>
+      <button class="pin-btn" data-n="8">8</button>
+      <button class="pin-btn" data-n="9">9</button>
+      <button class="pin-btn" data-n="back" style="font-size:18px">⌫</button>
+      <button class="pin-btn" data-n="0">0</button>
+      <button class="pin-btn" data-n="cancel" style="font-size:11px;color:rgba(255,255,255,.4)">✕</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+var SHEET_ID = '1QtAQ_RbGwsJ18jZeTinkKJfAHl7oYodusJ7xjHKXTa0';
+
+
+var EMAILS_COMERCIALES = {
+  "Alex Sellés":"aselles@durancarasso.com","Anna Pallarés":"apallares@durancarasso.com",
+  "Antxon Iriondo":"airiondo@durancarasso.com","Bruno Clarasó":"bclaraso@durancarasso.com",
+  "Carles García":"cgarcia@durancarasso.com","Carlos Durán":"carlos@durancarasso.com",
+  "Eva Gimenez":"habitatferrerdeblanes@habitat.es","Fraldy Aguilera":"faguilera@durancarasso.com",
+  "Genaro Insua Venturini":"ginsua@durancarasso.com","Ion Pananides":"ipananides@durancarasso.com",
+  "Isabel Encabo":"iencabo@durancarasso.com","Javier Carasso":"jcarasso@durancarasso.com",
+  "Jazmina Jiménez":"jjimenez@durancarasso.com","Jessica Cosme":"jcosme@durancarasso.com",
+  "Joan Carles Rueda":"jrueda@durancarasso.com","Jordi Otal":"jotal@durancarasso.com",
+  "Judit Martí":"jmarti@durancarasso.com","Mario Abad":"mabad@durancarasso.com",
+  "Marisol Mañà":"mmana@durancarasso.com","Marta Seró":"msero@durancarasso.com",
+  "Mónica Abad":"monica@durancarasso.com","Nabila Bakhat":"nbakhat@durancarasso.com",
+  "Natalia Merino":"nmerino@durancarasso.com","Robert Nichols":"rnichols@durancarasso.com",
+  "Rosa López":"rlopez@durancarasso.com","Sandra Carbonell":"scarbonell@durancarasso.com",
+  "Sunsi Guitart":"sguitart@durancarasso.com","Susana Font":"sfont@durancarasso.com",
+  "Txus Dueñas":"tduenas@durancarasso.com","Victoria González":"vgonzalez@durancarasso.com",
+  "Yolanda Ramírez":"yramirez@durancarasso.com","Sergi Foix":"sfoix@durancarasso.com"
+};
+
+var DIRECTOR_PINS = {"Adrià":"6921","Toni":"3434"};
+var PINS = {
+  "Alex Sellés":"4821","Anna Pallarés":"7364","Antxon Iriondo":"2947",
+  "Bruno Clarasó":"6183","Carles García":"3856","Carlos Durán":"9274",
+  "Eva Gimenez":"5139","Fraldy Aguilera":"8462","Genaro Insua Venturini":"1738",
+  "Ion Pananides":"6025","Isabel Encabo":"4917","Javier Carasso":"3582",
+  "Jazmina Jiménez":"7841","Jessica Cosme":"2463","Joan Carles Rueda":"9157",
+  "Jordi Otal":"5394","Judit Martí":"8726","Mario Abad":"1483",
+  "Marisol Mañà":"6319","Marta Seró":"4072","Mónica Abad":"7635",
+  "Nabila Bakhat":"3281","Natalia Merino":"8954","Robert Nichols":"2617",
+  "Rosa López":"5748","Sandra Carbonell":"9031","Sunsi Guitart":"4296",
+  "Susana Font":"7513","Txus Dueñas":"6847","Victoria González":"3162",
+  "Yolanda Ramírez":"8429","Sergi Foix":"5073"
+};
+
+var SEGUIMIENTO_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRWYM1hRWDzyfK1x_WR23hzRhdktuNROhynRgKGZ7Kd4ILspWMCMn2ICCR0IoO1tnWZDRxMqLoZ2h2a/pub?gid=389961794&single=true&output=csv';
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFal98PmDQqgWTmKTtyillEArywpNZtK98DkAgeamGiJdqlj5JWcJ3KJqvLKU4wTIC/exec';
+
+// Cache de leads — ADITIVO: nunca elimina, solo añade nuevos por teléfono
+function cacheLeads(newLeads){
+  try{
+    var existing = getCachedLeads();
+    var byTel = {};
+    existing.forEach(function(r){ if(r['Teléfono']) byTel[r['Teléfono']] = r; });
+    // Añadir/actualizar con los nuevos (Sheet 1 tiene datos más frescos)
+    newLeads.forEach(function(r){ if(r['Teléfono']) byTel[r['Teléfono']] = r; });
+    localStorage.setItem('dc_cache_leads', JSON.stringify(Object.values(byTel)));
+  }catch(e){}
+}
+function getCachedLeads(){try{var v=localStorage.getItem('dc_cache_leads');return v?JSON.parse(v):[];}catch(e){return[];}}
+
+
+function fetchAllSeguimiento(callback) {
+  var url = 'https://docs.google.com/spreadsheets/d/'+SHEET_ID+
+    '/gviz/tq?tqx=out:json&sheet=Seguimiento&cb='+Date.now();
+  fetch(url)
+    .then(function(r){return r.text();})
+    .then(function(t){
+      var i=t.indexOf('{'), j=t.lastIndexOf('}');
+      if(i===-1){callback({});return;}
+      var json=JSON.parse(t.slice(i,j+1));
+      var cols=json.table.cols.map(function(c){return c.label.trim();});
+      var iCom=cols.indexOf('Comercial');
+      var iTel=cols.indexOf('Teléfono');
+      var iAcc=cols.indexOf('Acción');
+      // FIX: orden cronológico. Deshacer resetea. Cerrado_CRM permanente.
+      var lastAction={};
+      (json.table.rows||[]).forEach(function(row){
+        var c=row.c&&row.c[iCom]&&row.c[iCom].v?String(row.c[iCom].v).trim():'';
+        var tel=row.c&&row.c[iTel]&&row.c[iTel].v?String(row.c[iTel].v).trim():'';
+        var acc=row.c&&row.c[iAcc]&&row.c[iAcc].v?String(row.c[iAcc].v).trim():'';
+        if(c&&tel){
+          if(!lastAction[c])lastAction[c]={};
+          if(lastAction[c][tel]==='Cerrado_CRM') return;
+          if(acc==='Deshacer'){lastAction[c][tel]='Nuevo';return;}
+          if(acc==='Nota') return;
+          lastAction[c][tel]=acc;
+        }
+      });
+      // Keep only Contactado
+      var result={};
+      Object.keys(lastAction).forEach(function(c){
+        result[c]={};
+        Object.keys(lastAction[c]).forEach(function(tel){
+          if(lastAction[c][tel]==='Contactado') result[c][tel]=true;
+        });
+      });
+      callback(result);
+    })
+    .catch(function(){callback({});});
+}
+
+function fetchSeguimiento(comName, callback) {
+  var url = 'https://docs.google.com/spreadsheets/d/'+SHEET_ID+
+    '/gviz/tq?tqx=out:json&sheet=Seguimiento&cb='+Date.now();
+  fetch(url)
+    .then(function(r){return r.text();})
+    .then(function(t){
+      var i=t.indexOf('{'), j=t.lastIndexOf('}');
+      if(i===-1){callback({},{},{});return;}
+      var json=JSON.parse(t.slice(i,j+1));
+      var cols=json.table.cols.map(function(c){return c.label.trim();});
+      var iCom=cols.indexOf('Comercial');
+      var iTel=cols.indexOf('Teléfono');
+      var iAcc=cols.indexOf('Acción');
+      var iNota=cols.indexOf('Nota');
+      // FIX: leer en orden cronológico. Deshacer SIEMPRE resetea el estado anterior.
+      // Cerrado_CRM es permanente — no se puede deshacer.
+      var lastAction={}, lastNota={};
+      (json.table.rows||[]).forEach(function(row){
+        var c=row.c;
+        var rc=c&&c[iCom]&&c[iCom].v?String(c[iCom].v).trim():'';
+        var tel=c&&c[iTel]&&c[iTel].v?String(c[iTel].v).trim():'';
+        var acc=c&&c[iAcc]&&c[iAcc].v?String(c[iAcc].v).trim():'';
+        var nota=iNota>=0&&c&&c[iNota]&&c[iNota].v?String(c[iNota].v).trim():'';
+        if(rc!==comName||!tel) return;
+        // Cerrado_CRM es permanente
+        if(lastAction[tel]==='Cerrado_CRM') return;
+        // Deshacer resetea a Nuevo (vuelve a pendiente)
+        if(acc==='Deshacer'){ lastAction[tel]='Nuevo'; return; }
+        // Nota no cambia el estado
+        if(acc==='Nota'){ if(nota) lastNota[tel]=nota; return; }
+        // El resto: Contactado, Cerrado_CRM, Nuevo — siempre sobreescribe
+        lastAction[tel]=acc;
+        if(nota) lastNota[tel]=nota;
+      });
+      // contacted = Contactado o Cerrado_CRM
+      var contacted={};
+      Object.keys(lastAction).forEach(function(tel){
+        if(lastAction[tel]==='Contactado'||lastAction[tel]==='Cerrado_CRM'){
+          contacted[tel]=true;
+        }
+      });
+      // closed = Cerrado_CRM
+      var closed={};
+      Object.keys(lastAction).forEach(function(tel){
+        if(lastAction[tel]==='Cerrado_CRM') closed[tel]=true;
+      });
+      callback(contacted, closed, lastNota);
+    })
+    .catch(function(){callback({},{},{});});
+}
+
+// ── AUTO-REGISTRO EN SEGUIMIENTO ─────────────────────────────────────────────
+// Registra leads positivos nuevos en Sheet Seguimiento como fuente permanente.
+// Solo escribe si el teléfono no existe ya en Seguimiento para este comercial.
+// Así los leads son accesibles desde cualquier dispositivo, sin depender del cache.
+var _autoRegBusy = false;
+
+function autoRegistrarEnSeguimiento(leadsPositivos, comercialName){
+  if(!leadsPositivos||!leadsPositivos.length||_autoRegBusy) return;
+  _autoRegBusy = true;
+
+  // Primero leer Seguimiento para saber qué tels ya están registrados
+  var url='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:json&sheet=Seguimiento&cb='+Date.now();
+  fetch(url).then(function(r){return r.text();}).then(function(t){
+    var registered={};
+    try{
+      var i=t.indexOf('{'),j=t.lastIndexOf('}');
+      if(i!==-1){
+        var json=JSON.parse(t.slice(i,j+1));
+        var cols=json.table.cols.map(function(c){return c.label.trim();});
+        var iCom=cols.indexOf('Comercial'),iTel=cols.indexOf('Teléfono');
+        (json.table.rows||[]).forEach(function(row){
+          var c=row.c;
+          var rc=c&&c[iCom]&&c[iCom].v?String(c[iCom].v).trim():'';
+          var rt=c&&c[iTel]&&c[iTel].v?String(c[iTel].v).trim():'';
+          if(rc&&rt) registered[rc+'||'+rt]=true;
+        });
+      }
+    }catch(e){}
+
+    // Filtrar solo los que NO están ya en Seguimiento
+    var nuevos=leadsPositivos.filter(function(r){
+      var tel=String(r['Teléfono']||'').trim();
+      var name=String(r['Comercial']||comercialName||'').trim();
+      return tel&&!registered[name+'||'+tel];
+    });
+
+    // Registrar uno a uno con pequeño delay para no saturar Apps Script
+    var idx=0;
+    function next(){
+      if(idx>=nuevos.length){_autoRegBusy=false;return;}
+      var r=nuevos[idx++];
+      enviarSeguimiento(r,'Nuevo','');
+      setTimeout(next,300);
+    }
+    next();
+  }).catch(function(){_autoRegBusy=false;});
+}
+
+function enviarSeguimiento(lead, accion, nota) {
+  try {
+    var tel = '';
+    var nombre = lead['Nombre'] || '';
+    var campana = '';
+    Object.keys(lead).forEach(function(k) {
+      if (k.toLowerCase().replace(/[^a-z]/g,'').indexOf('tel') === 0) tel = lead[k] || '';
+      if (k.toLowerCase().replace(/[^a-z]/g,'').indexOf('camp') !== -1) campana = lead[k] || '';
+    });
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        comercial: com,
+        telefono: tel,
+        nombre: nombre,
+        campana: campana,
+        accion: accion,
+        nota: nota || ''
+      })
+    });
+  } catch(e) {}
+}
+
+function gviz(sheet){
+  return 'https://docs.google.com/spreadsheets/d/'+SHEET_ID+
+    '/gviz/tq?tqx=out:json&sheet='+encodeURIComponent(sheet)+'&cb='+Date.now();
+}
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+var s1=[],s2=[],allComs=[],com='',openNotes={},dropOpen=false,activeTab=0;
+
+// ── STORAGE ──────────────────────────────────────────────────────────────────
+function lsG(k){try{return JSON.parse(localStorage.getItem(k));}catch(e){return null;}}
+function lsS(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function getC(){return lsG('dc_c_'+com)||{};}
+function setC(tel,v){var c=getC();if(v)c[tel]={ts:Date.now()};else delete c[tel];lsS('dc_c_'+com,c);}
+function getN(tel){return(lsG('dc_n_'+com)||{})[tel]||'';}
+function setN(tel,v){var n=lsG('dc_n_'+com)||{};n[tel]=v;lsS('dc_n_'+com,n);}
+function getContactDate(tel){var c=getC();return c[tel]?c[tel].ts:null;}
+// Intentados — contador local por comercial
+function getIntentados(){return lsG("dc_int_"+com)||{};}
+function getIntentado(tel){return(getIntentados()[tel]||0);}
+function setIntentado(tel){var d=getIntentados();d[tel]=(d[tel]||0)+1;lsS("dc_int_"+com,d);}
+// Leads cerrados (añadidos al CRM) — persistentes globales, no por comercial
+function getClosed(){return lsG('dc_closed')||{};}
+function setClosed(tel){var c=getClosed();c[tel]={ts:Date.now(),com:com};lsS('dc_closed',c);}
+function isClosed(tel){return !!getClosed()[tel];}
+
+// ── FETCH ────────────────────────────────────────────────────────────────────
+function fetchSheet(name){
+  return fetch(gviz(name)).then(function(r){return r.text();}).then(function(t){
+    var i=t.indexOf('{'),j=t.lastIndexOf('}');
+    var json=JSON.parse(t.slice(i,j+1));
+    var cols=json.table.cols.map(function(c){return c.label.trim();});
+    return (json.table.rows||[]).map(function(row){
+      var o={};
+      cols.forEach(function(col,ci){
+        var cell=row.c&&row.c[ci];
+        o[col]=(cell&&cell.v!=null)?String(cell.v).trim():'';
+      });
+      return o;
+    }).filter(function(r){return r['Comercial']&&r['Comercial'].length>0;});
+  });
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+function init(){
+  Promise.all([fetchSheet('Hoja 1 leads'),fetchSheet('Leads (totes campañes )')]).then(function(res){
+    s1=res[0];s2=res[1];
+    cacheLeads(s1.filter(function(r){return r['Clasificacion']==='POSITIVO';}));
+    buildComs();
+    // No auto-login — always show selector first
+  }).catch(function(e){
+    document.getElementById('selList').innerHTML=
+      '<div style="padding:16px;color:rgba(255,255,255,.4);font-size:12px;text-align:center">Error cargando datos.<br>Verifica que el Sheet es público.</div>';
+  });
+}
+
+// ── REFRESH ──────────────────────────────────────────────────────────────────
+function refreshData(){
+  var btn=document.getElementById('btnRefresh');
+  btn.classList.add('spin');
+  Promise.all([fetchSheet('Hoja 1 leads'),fetchSheet('Leads (totes campañes )')]).then(function(res){
+    s1=res[0];s2=res[1];
+    var positivos=s1.filter(function(r){return r['Clasificacion']==='POSITIVO';});
+    cacheLeads(positivos);
+    // Auto-registrar nuevos en Seguimiento
+    if(com){
+      var misLeads=positivos.filter(function(r){return r['Comercial']===com&&!isClosed(r['Teléfono']);});
+      autoRegistrarEnSeguimiento(misLeads, com);
+    }
+    btn.classList.remove('spin');
+    if(activeTab===0) renderLeads(); else renderHist();
+    var cached=getCachedLeads().filter(function(r){return r['Comercial']===com&&!isClosed(r['Teléfono']);});
+    document.getElementById('hdrSub').textContent=cached.length+' leads activos';
+    showToast('✓ Datos actualizados');
+  }).catch(function(){
+    btn.classList.remove('spin');
+    showToast('⚠ Error al actualizar');
+  });
+}
+document.getElementById('btnRefresh').addEventListener('click',refreshData);
+
+// ── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');},2200);
+}
+
+// ── SELECT SCREEN ─────────────────────────────────────────────────────────────
+function buildComs(){
+  var seen={};
+  Object.keys(DIRECTOR_PINS).forEach(function(n){seen[n]=true;});
+  Object.keys(PINS).forEach(function(n){seen[n]=true;});
+  s1.concat(s2).forEach(function(r){if(r['Comercial'])seen[r['Comercial']]=true;});
+  allComs=Object.keys(seen).sort();
+  renderList('');
+}
+
+function renderList(q){
+  var filtered=q?allComs.filter(function(n){return n.toLowerCase().indexOf(q.toLowerCase())!==-1;}):allComs;
+  if(filtered.length===0){
+    document.getElementById('selList').innerHTML='<div style="padding:14px;text-align:center;color:rgba(255,255,255,.3);font-size:12px">Sin resultados</div>';
+    return;
+  }
+  var html='';
+  filtered.forEach(function(n){
+    var p=n.trim().split(/\s+/);
+    var av=(((p[0]||'')[0]||'')+((p[1]||'')[0]||'')).toUpperCase();
+    var isDir=!!DIRECTOR_PINS[n];
+    var pos=isDir?0:s1.filter(function(r){return r['Comercial']===n&&r['Clasificacion']==='POSITIVO';}).length;
+    var ri=allComs.indexOf(n);
+    var badge=isDir?'<span style="font-size:9px;background:rgba(255,200,0,.15);color:#ffd700;padding:2px 7px;border-radius:4px;margin-left:6px;font-weight:600;letter-spacing:.5px">ADMIN DC</span>':'';
+    var sub=isDir?'Panel administrador':(pos+' leads positivos activos');
+    html+='<div class="sel-item" data-ri="'+ri+'">'+
+      '<div class="sel-ava" style="'+(isDir?'background:rgba(255,200,0,.15);color:#ffd700':'')+'">'+esc(av)+'</div>'+
+      '<div><div class="sel-name">'+esc(n)+badge+'</div>'+
+      '<div class="sel-cnt">'+sub+'</div></div></div>';
+  });
+  document.getElementById('selList').innerHTML=html;
+  var items=document.querySelectorAll('.sel-item');
+  for(var i=0;i<items.length;i++){
+    (function(el){
+      el.addEventListener('click',function(){
+        var name=allComs[parseInt(el.getAttribute('data-ri'),10)];
+        if(DIRECTOR_PINS[name]){ showPin(name); }
+        else if(PINS[name]){ showPin(name); }
+        else { enter(name); }
+      });
+    })(items[i]);
+  }
+}
+
+// Dropdown
+document.getElementById('selTrig').addEventListener('click',function(){
+  dropOpen=!dropOpen;
+  this.classList.toggle('open',dropOpen);
+  var drop=document.getElementById('selDrop');
+  drop.style.display=dropOpen?'block':'none';
+  drop.classList.toggle('open',dropOpen);
+  if(dropOpen) setTimeout(function(){document.getElementById('searchInp').focus();},80);
+});
+document.getElementById('searchInp').addEventListener('input',function(){renderList(this.value);});
+
+function closeDropdown(){
+  dropOpen=false;
+  document.getElementById('selTrig').classList.remove('open');
+  var drop=document.getElementById('selDrop');
+  drop.style.display='none';
+  drop.classList.remove('open');
+}
+
+// ── ENTER / BACK ──────────────────────────────────────────────────────────────
+function enter(name){
+  com=name; lsS('dc_lastCom',name); openNotes={};
+  window._campFilter='todas'; // reset filtro campaña
+  closeDropdown();
+  document.getElementById('selLabel').textContent=name;
+  document.getElementById('hdrName').textContent=name;
+  var cached=getCachedLeads().filter(function(r){return r['Comercial']===name&&!isClosed(r['Teléfono']);});
+  document.getElementById('hdrSub').textContent=cached.length+' leads activos';
+  switchTab(0);
+  document.getElementById('s0').classList.add('off');
+  document.getElementById('s1').classList.remove('off');
+  document.getElementById('s1').scrollTop=0;
+
+  // Auto-registrar leads positivos de este comercial en Seguimiento
+  var misLeads=getCachedLeads().filter(function(r){
+    return r['Comercial']===name&&r['Clasificacion']==='POSITIVO'&&!isClosed(r['Teléfono']);
+  });
+  autoRegistrarEnSeguimiento(misLeads, name);
+
+  renderLeads();
+}
+
+document.getElementById('btnBack').addEventListener('click',function(){
+  document.getElementById('s1').classList.add('off');
+  document.getElementById('s0').classList.remove('off');
+  com='';
+});
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+document.getElementById('tb0').addEventListener('click',function(){switchTab(0);});
+document.getElementById('tb1').addEventListener('click',function(){switchTab(1);});
+document.getElementById('tb2').addEventListener('click',function(){switchTab(2);clearMsgBadge();});
+function switchTab(idx){
+  activeTab=idx;
+  document.getElementById('tb0').classList.toggle('on',idx===0);
+  document.getElementById('tb1').classList.toggle('on',idx===1);
+  document.getElementById('tb2').classList.toggle('on',idx===2);
+  document.getElementById('p0').classList.toggle('on',idx===0);
+  document.getElementById('p1').classList.toggle('on',idx===1);
+  document.getElementById('p2').classList.toggle('on',idx===2);
+  if(idx===0) renderLeads(); else if(idx===1) renderHist(); else renderMensajes();
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function ini(name){var p=(name||'?').trim().split(/\s+/);return(((p[0]||'')[0]||'')+((p[1]||'')[0]||'')).toUpperCase();}
+
+// Parsea cualquier formato de fecha que devuelve Google Sheets
+function parseFecha(val){
+  if(!val) return null;
+  if(typeof val==='number') return new Date(val);
+  var s=String(val).trim();
+  // Formato Google Sheets: Date(2026,4,8,9,48,0) — mes es 0-based
+  var gd=s.match(/Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?\)/);
+  if(gd) return new Date(parseInt(gd[1]),parseInt(gd[2]),parseInt(gd[3]),parseInt(gd[4]||0),parseInt(gd[5]||0),parseInt(gd[6]||0));
+  // DD/MM/YYYY HH:MM
+  var p1=s.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
+  if(p1) return new Date(parseInt(p1[3]),parseInt(p1[2])-1,parseInt(p1[1]),parseInt(p1[4]||0),parseInt(p1[5]||0));
+  // Serial numérico Excel/Sheets (ej: 46141,6125 o 46141.6125)
+  var numStr=s.replace(',','.');
+  var num=parseFloat(numStr);
+  if(!isNaN(num)&&num>40000&&num<60000){
+    var msPerDay=86400000;
+    var base=new Date(1899,11,30).getTime();
+    return new Date(base+num*msPerDay);
+  }
+  return new Date(val);
+}
+
+function fmtFecha(val){
+  var d=parseFecha(val);
+  if(!d||isNaN(d.getTime())) return '';
+  return String(d.getDate()).padStart(2,'0')+'/'+(String(d.getMonth()+1).padStart(2,'0'))+'/'+d.getFullYear()+
+    ' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+
+function fmtFechaCorta(val){
+  var d=parseFecha(val);
+  if(!d||isNaN(d.getTime())) return '';
+  return String(d.getDate()).padStart(2,'0')+'/'+(String(d.getMonth()+1).padStart(2,'0'))+'/'+d.getFullYear();
+}
+
+// Days since a date string or timestamp
+function daysSince(val){
+  if(!val) return null;
+  var d=parseFecha(val);
+  if(!d||isNaN(d.getTime())) return null;
+  return Math.floor((Date.now()-d.getTime())/(1000*60*60*24));
+}
+
+function daysBadge(dias){
+  if(dias===null) return '';
+  if(dias===0) return '<span class="lc-days days-ok">Hoy</span>';
+  if(dias===1) return '<span class="lc-days days-ok">Ayer</span>';
+  if(dias<=3) return '<span class="lc-days days-ok">Hace '+dias+' días</span>';
+  if(dias<=7) return '<span class="lc-days days-warn">Hace '+dias+' días</span>';
+  return '<span class="lc-days days-hot">Hace '+dias+' días ⚠</span>';
+}
+
+function fmtDate(ts){
+  var d=new Date(ts);
+  return d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+
+// ── PAGE 0: LEADS ACTIVOS ─────────────────────────────────────────────────────
+function renderLeads(){
+  var cmap = getC();
+  var closed = getClosed();
+
+  // Fuente de leads: Sheet 1 activa + cache persistente
+  var sheetLeads = s1.filter(function(r){ return r['Comercial']===com && r['Clasificacion']==='POSITIVO'; });
+  var cached = getCachedLeads().filter(function(r){ return r['Comercial']===com; });
+
+  // Merge: cache + Sheet 1 (Sheet 1 tiene prioridad)
+  var byTel = {};
+  cached.forEach(function(r){ if(r['Teléfono']) byTel[r['Teléfono']] = r; });
+  sheetLeads.forEach(function(r){ if(r['Teléfono']) byTel[r['Teléfono']] = r; });
+
+  var todosLocal = Object.values(byTel).filter(function(r){ return !isClosed(r['Teléfono']); });
+
+  // Si no hay leads en local (nuevo dispositivo), cargar desde Seguimiento primero
+  if(todosLocal.length === 0){
+    document.getElementById('p0').innerHTML = '<div style="text-align:center;padding:40px;color:#B0A99A"><div class="spinner dark" style="margin:0 auto 10px"></div>Sincronizando leads...</div>';
+    _cargarLeadsDesdeSeguimiento(com, function(leadsRemotos){
+      if(leadsRemotos.length > 0) cacheLeads(leadsRemotos);
+      _renderLeadsConDatos(com);
+    });
+  } else {
+    _renderLeadsConDatos(com);
+  }
+}
+
+function _cargarLeadsDesdeSeguimiento(comercialName, callback){
+  var url='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:json&sheet=Seguimiento&cb='+Date.now();
+  fetch(url).then(function(r){return r.text();}).then(function(t){
+    var leads=[];
+    try{
+      var i=t.indexOf('{'),j=t.lastIndexOf('}');
+      if(i===-1){callback([]);return;}
+      var json=JSON.parse(t.slice(i,j+1));
+      var cols=json.table.cols.map(function(c){return c.label.trim();});
+      var iCom=cols.indexOf('Comercial'),iTel=cols.indexOf('Teléfono'),
+          iNom=cols.indexOf('Nombre'),iCamp=cols.indexOf('Campaña'),
+          iAcc=cols.indexOf('Acción'),iNota=cols.indexOf('Nota'),
+          iFecha=cols.indexOf('Fecha');
+      (json.table.rows||[]).forEach(function(row){
+        var c=row.c;
+        var rc=c&&c[iCom]&&c[iCom].v?String(c[iCom].v).trim():'';
+        if(rc!==comercialName) return;
+        var tel=c&&c[iTel]&&c[iTel].v?String(c[iTel].v).trim():'';
+        var nom=c&&c[iNom]&&c[iNom].v?String(c[iNom].v).trim():'';
+        var camp=iCamp>=0&&c&&c[iCamp]&&c[iCamp].v?String(c[iCamp].v).trim():'';
+        var acc=c&&c[iAcc]&&c[iAcc].v?String(c[iAcc].v).trim():'';
+        var nota=iNota>=0&&c&&c[iNota]&&c[iNota].v?String(c[iNota].v).trim():'';
+        var fecha=iFecha>=0&&c&&c[iFecha]&&c[iFecha].v?String(c[iFecha].v).trim():'';
+        if(!tel) return;
+        // Restaurar nota en localStorage
+        if(nota) setN(tel, nota);
+        // Restaurar estado contactado
+        if(acc==='Contactado'||acc==='Cerrado_CRM'){
+          var local=getC(); 
+          if(!local[tel]){local[tel]={ts:Date.now(),synced:true};lsS('dc_c_'+com,local);}
+        }
+        if(acc==='Cerrado_CRM') setClosed(tel);
+        // Reconstruir lead mínimo para el cache
+        leads.push({
+          'Teléfono':tel,'Nombre':nom,'Comercial':comercialName,
+          'Campaña':camp,'Clasificacion':'POSITIVO','Fecha_Hora':fecha
+        });
+      });
+    }catch(e){}
+    callback(leads);
+  }).catch(function(){callback([]);});
+}
+
+function _renderLeadsConDatos(comercialName){
+  var sheetLeads = s1.filter(function(r){ return r['Comercial']===comercialName && r['Clasificacion']==='POSITIVO'; });
+  var cached = getCachedLeads().filter(function(r){ return r['Comercial']===comercialName; });
+  var byTel = {};
+  cached.forEach(function(r){ if(r['Teléfono']) byTel[r['Teléfono']] = r; });
+  sheetLeads.forEach(function(r){ if(r['Teléfono']) byTel[r['Teléfono']] = r; });
+
+  // Seguimiento es la ÚNICA fuente de verdad para estado, notas y cerrados
+  fetchSeguimiento(comercialName, function(remoteContacted, remoteClosed, remoteNotas){
+
+    // Sincronizar estado contactado en localStorage
+    var localC = {};
+    Object.keys(remoteContacted).forEach(function(tel){
+      localC[tel] = {ts: Date.now(), synced: true};
+    });
+    lsS('dc_c_'+comercialName, localC);
+
+    // Sincronizar cerrados en localStorage
+    var localClosed = getClosed();
+    Object.keys(remoteClosed).forEach(function(tel){
+      if(!localClosed[tel]) localClosed[tel] = {ts: Date.now(), com: comercialName};
+    });
+    lsS('dc_closed', localClosed);
+
+    // Sincronizar notas en localStorage
+    var localNotas = lsG('dc_n_'+comercialName) || {};
+    Object.keys(remoteNotas).forEach(function(tel){
+      localNotas[tel] = remoteNotas[tel];
+    });
+    lsS('dc_n_'+comercialName, localNotas);
+
+    // Añadir leads de Seguimiento que no estén en cache (nuevo dispositivo)
+    Object.keys(remoteContacted).forEach(function(tel){
+      if(!byTel[tel]) byTel[tel]={
+        'Teléfono':tel,'Nombre':localNotas[tel]?'':tel,
+        'Comercial':comercialName,'Clasificacion':'POSITIVO','Campaña':'','Fecha_Hora':''
+      };
+    });
+    Object.keys(remoteClosed).forEach(function(tel){
+      if(!byTel[tel]) byTel[tel]={
+        'Teléfono':tel,'Nombre':'','Comercial':comercialName,
+        'Clasificacion':'POSITIVO','Campaña':'','Fecha_Hora':''
+      };
+    });
+
+    var cmap = localC;
+    var closedMap = getClosed();
+
+    var todos = Object.values(byTel).filter(function(r){ return !closedMap[r['Teléfono']]; });
+    // FIX: deduplicar por teléfono — mismo número puede tener 2 filas POSITIVO (2 mensajes)
+    var todosDedup = {};
+    todos.forEach(function(r){
+      var t=r['Teléfono'];
+      if(!todosDedup[t]) todosDedup[t]=r;
+      else {
+        // Quedarse con el más reciente
+        var da=parseFecha(todosDedup[t]['Fecha_Hora']),db=parseFecha(r['Fecha_Hora']);
+        if(db&&(!da||db.getTime()>da.getTime())) todosDedup[t]=r;
+      }
+    });
+    todos = Object.values(todosDedup);
+    var activos = todos.filter(function(r){ return !cmap[r['Teléfono']]; });
+    var hechos  = todos.filter(function(r){ return !!cmap[r['Teléfono']]; });
+    var conv = todos.length ? Math.round((hechos.length/todos.length)*100) : 0;
+
+    // Campañas únicas
+    var camps = {};
+    todos.forEach(function(r){ var c=r['Campaña']||'Sin campaña'; camps[c]=(camps[c]||0)+1; });
+    var campList = Object.keys(camps).filter(function(c){return c&&c!=='Sin campaña';}).sort();
+    var activoFilter = window._campFilter || 'todas';
+
+    var activosFilt = activos, hechosFilt = hechos;
+    if(activoFilter !== 'todas'){
+      activosFilt = activos.filter(function(r){ return (r['Campaña']||'Sin campaña')===activoFilter; });
+      hechosFilt  = hechos.filter(function(r){ return (r['Campaña']||'Sin campaña')===activoFilter; });
+    }
+
+    var statusFilter = window._statusFilter || 'todos';
+    var statusFilter = window._statusFilter || 'todos';
+    var html = '<div class="kpi-row">'+
+      '<div class="kpi"><div class="kpi-n">'+activos.length+'</div><div class="kpi-l">Pendientes</div></div>'+
+      '<div class="kpi"><div class="kpi-n">'+hechos.length+'</div><div class="kpi-l">Contactados</div></div>'+
+      '<div class="kpi"><div class="kpi-n">'+conv+'%</div><div class="kpi-l">Contactados</div></div>'+
+      '</div>';
+    // Filtro estado
+    html += '<div style="display:flex;gap:6px;padding:4px 14px 6px;overflow-x:auto">' +
+      '<button onclick="window._statusFilter=\'todos\';renderLeads()" style="flex-shrink:0;padding:5px 14px;border-radius:20px;border:none;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;background:'+(statusFilter==='todos'?'#0D3550':'#F0EEE9')+';color:'+(statusFilter==='todos'?'#fff':'#666')+'">Todos</button>' +
+      '<button onclick="window._statusFilter=\'pendientes\';renderLeads()" style="flex-shrink:0;padding:5px 14px;border-radius:20px;border:none;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;background:'+(statusFilter==='pendientes'?'#B03020':'#F0EEE9')+';color:'+(statusFilter==='pendientes'?'#fff':'#666')+'">⏳ Pendientes ('+activos.length+')</button>' +
+      '<button onclick="window._statusFilter=\'contactados\';renderLeads()" style="flex-shrink:0;padding:5px 14px;border-radius:20px;border:none;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;background:'+(statusFilter==='contactados'?'#1E6B3A':'#F0EEE9')+';color:'+(statusFilter==='contactados'?'#fff':'#666')+'">✓ Contactados ('+hechos.length+')</button>' +
+    '</div>';
+
+    if(campList.length > 1){
+      html += '<div style="display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px 4px;overflow-x:auto">';
+      html += '<button onclick="window._campFilter=\'todas\';renderLeads()" style="flex-shrink:0;padding:5px 12px;border-radius:20px;border:none;font-size:11px;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;background:'+(activoFilter==='todas'?'#0D3550':'#F0EEE9')+';color:'+(activoFilter==='todas'?'#fff':'#666')+'">Todas ('+todos.length+')</button>';
+      campList.forEach(function(c){
+        var label=c.replace(/_/g,' ');
+        var cnt=camps[c];
+        var active=activoFilter===c;
+        html+='<button onclick="window._campFilter=\''+c+'\';renderLeads()" style="flex-shrink:0;padding:5px 12px;border-radius:20px;border:none;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;background:'+(active?'#0D3550':'#F0EEE9')+';color:'+(active?'#fff':'#555')+'">'+esc(label)+' ('+cnt+')</button>';
+      });
+      html += '</div>';
+    }
+
+    if(todos.length===0){
+      html+='<div class="empty"><div class="empty-ico">📭</div><div>Sin leads positivos activos.<br><span style="font-size:12px;margin-top:6px;display:block">Pulsa ↺ para actualizar.</span></div></div>';
+    } else {
+      var showActivos = statusFilter !== 'contactados';
+      var showHechos  = statusFilter !== 'pendientes';
+      if(showActivos && activosFilt.length>0){
+        // Ordenar por urgencia: más días sin contactar primero
+        activosFilt.sort(function(a,b){
+          var da=daysSince(a['Fecha_Hora'])||0, db=daysSince(b['Fecha_Hora'])||0;
+          return db-da;
+        });
+        html+='<div class="sec">Por contactar — '+activosFilt.length+'</div>';
+        activosFilt.forEach(function(r){ html+=buildCard(r,false); });
+      }
+      if(showHechos && hechosFilt.length>0){
+        hechosFilt.sort(function(a,b){
+          var da=parseFecha(a['Fecha_Hora']),db=parseFecha(b['Fecha_Hora']);
+          return (da?da.getTime():0)-(db?db.getTime():0);
+        });
+        html+='<div class="sec" style="margin-top:16px">Ya contactados — '+hechosFilt.length+'</div>';
+        hechosFilt.forEach(function(r){ html+=buildCard(r,true); });
+      }
+      if((!showActivos||activosFilt.length===0)&&(!showHechos||hechosFilt.length===0)){
+        html+='<div class="empty"><div class="empty-ico">🔍</div><div>Sin leads para este filtro.</div></div>';
+      }
+    }
+    document.getElementById('p0').innerHTML = html;
+    attachEvents();
+  });
+}
+
+function buildCard(r,done){
+  var tel=r['Teléfono'];
+  var nota=getN(tel);
+  var open=!!openNotes[tel];
+  var msg=r['Mensaje_Recibido']||'';
+  var camp=r['Campaña']||r['Promoción']||'';
+  var fecha=r['Fecha_Hora']||'';
+  var dias=daysSince(fecha);
+  var contactDate=getContactDate(tel);
+  var intentados=getIntentado(tel);
+  var telClean=tel.replace(/\s/g,'');
+  var telCall=telClean.startsWith('+')?telClean:'+'+telClean;
+
+  // Urgencia: +7 días sin contactar = borde rojo fuerte
+  var urgente = !done && dias!==null && dias>=7;
+
+  // Campaña: limpiar underscores para mostrar
+  var campLabel=camp.replace(/_/g,' ');
+
+  // Fecha corta formateada correctamente
+  var fechaCorta = fmtFechaCorta(fecha);
+
+  // Color etiqueta campaña — cada campaña tiene su color basado en hash
+  function campColor(s){
+    var colors=['#1A5F8A','#1E6B3A','#7A4F1E','#6B1A5F','#1A4F6B','#5F1A1A'];
+    var h=0; for(var i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))&0xffff;
+    return colors[h%colors.length];
+  }
+  var cc=campColor(camp);
+
+  return '<div class="lc'+(done?' done':'')+(urgente?' style="border:2px solid #B03020;border-radius:12px"':'')+'">'+
+    (urgente?'<div style="background:#B03020;color:#fff;font-size:10px;font-weight:700;padding:4px 12px;letter-spacing:.5px">⚠ URGENTE — '+dias+' días sin contactar</div>':'')+
+    '<div class="lc-hdr">'+
+      '<div class="lc-av" style="'+(urgente?'background:linear-gradient(135deg,#B03020,#7A1A10)':'')+'">'+esc(ini(r['Nombre']))+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="lc-nm">'+esc(r['Nombre']||'Sin nombre')+'</div>'+
+        '<div style="display:flex;align-items:center;gap:5px;margin-top:3px;flex-wrap:wrap">'+
+          (camp?'<span style="background:'+cc+';color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.4px;white-space:nowrap">'+esc(campLabel)+'</span>':'')+
+          (fechaCorta?'<span style="font-size:10px;color:#B0A99A;white-space:nowrap">📅 '+esc(fechaCorta)+'</span>':'')+
+          (r['Sede']?'<span style="font-size:10px;color:#B0A99A">· '+esc(r['Sede'])+'</span>':'')+
+        '</div>'+
+      '</div>'+
+      (!done?daysBadge(dias):'')+
+      (intentados>0?'<span style="background:#FEF3E2;color:#C45E0A;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;flex-shrink:0;white-space:nowrap">📞×'+intentados+'</span>':'')+
+      '<span class="lc-badge '+(done?'badge-done':'badge-pend')+'">'+(done?'✓':'Activo')+'</span>'+
+    '</div>'+
+    (msg?'<div class="lc-msg-wrap"><div class="lc-msg'+(done?' done-m':'')+'">'+esc(msg)+'</div></div>':'')+
+    (nota?'<div class="lc-note-prev">📝 '+esc(nota)+'</div>':'')+
+    (done&&contactDate?'<div class="lc-cdate">Contactado el '+esc(fmtDate(contactDate))+'</div>':'')+
+    '<div class="lc-act">'+
+      (done
+        ?'<button class="btn-ok btn-undo" data-a="undo" data-tel="'+esc(tel)+'">↩ Deshacer</button>'
+        :'<button class="btn-ok btn-mark" data-a="mark" data-tel="'+esc(tel)+'">✓ Contactado</button>'
+      )+
+      '<a href="tel:'+esc(telCall)+'" class="btn-ok btn-call">📞 Llamar</a>'+
+      '<button class="btn-tog" data-a="note" data-tel="'+esc(tel)+'" title="'+(nota?'Ver nota':'Añadir nota')+'">'+(nota?'📝✓':(open?'✕':'📝'))+'</button>'+
+      (done?'<button class="btn-ok" data-a="crm" data-tel="'+esc(tel)+'" style="background:#0D3550;color:#B8922A;border:1px solid #B8922A;font-size:11px;flex:none;padding:8px 10px;white-space:nowrap">★ CRM</button>':'')+
+    '</div>'+
+    (open?'<div class="lc-note-area"><textarea data-a="savenote" data-tel="'+esc(tel)+'" placeholder="Escribe una nota (motivo, estado, próximos pasos…)">'+esc(nota)+'</textarea></div>':'')+
+  '</div>';
+}
+
+function attachEvents(){
+  var els=document.getElementById('p0').querySelectorAll('[data-a]');
+  for(var i=0;i<els.length;i++){
+    (function(el){
+      var a=el.getAttribute('data-a'),tel=el.getAttribute('data-tel');
+      if(a==='mark') el.addEventListener('click',function(){
+        setC(tel,true);
+        openNotes[tel]=false;
+        var allLeads=s1.concat(getCachedLeads());
+        var lead=allLeads.find(function(r){return r['Teléfono']===tel;})||{'Nombre':'','Teléfono':tel,'Campaña':''};
+        var nota=getN(tel);
+        enviarSeguimiento(lead,'Contactado',nota);
+        renderLeads();
+        showToast('✓ Marcado como contactado');
+      });
+      else if(a==='undo') el.addEventListener('click',function(){
+        setC(tel,false);
+        var allLeads=s1.concat(getCachedLeads());
+        var lead=allLeads.find(function(r){return r['Teléfono']===tel;})||{'Nombre':'','Teléfono':tel,'Campaña':''};
+        enviarSeguimiento(lead,'Deshacer','');
+        renderLeads();
+        showToast('↩ Deshecho');
+      });
+      else if(a==='crm') el.addEventListener('click',function(){
+        if(!confirm('¿Confirmas que este cliente se añade al CRM y se cierra?')) return;
+        setClosed(tel);
+        var allLeads=s1.concat(getCachedLeads());
+        var lead=allLeads.find(function(r){return r['Teléfono']===tel;})||{'Nombre':'','Teléfono':tel,'Campaña':''};
+        enviarSeguimiento(lead,'Cerrado_CRM',getN(tel));
+        renderLeads();
+        showToast('★ Añadido al CRM — lead cerrado');
+      });
+      else if(a==='intentado') el.addEventListener('click',function(){
+        setIntentado(tel);
+        var allLeads=s1.concat(getCachedLeads());
+        var lead=allLeads.find(function(r){return r['Teléfono']===tel;})||{'Nombre':'','Teléfono':tel,'Campaña':''};
+        var cnt=getIntentado(tel);
+        enviarSeguimiento(lead,'Nota','📞 Intento '+cnt+' — sin respuesta');
+        renderLeads();
+        showToast('📞 Intento '+cnt+' registrado');
+      });
+      else if(a==='note') el.addEventListener('click',function(){openNotes[tel]=!openNotes[tel];renderLeads();});
+      else if(a==='savenote') el.addEventListener('blur',function(){
+        var val=el.value.trim();
+        setN(tel,val);
+        if(val){
+          var allLeads=s1.concat(getCachedLeads());
+          var lead=allLeads.find(function(r){return r['Teléfono']===tel;})||{'Nombre':'','Teléfono':tel,'Campaña':''};
+          enviarSeguimiento(lead,'Nota',val);
+        }
+        renderLeads();
+      });
+    })(els[i]);
+  }
+}
+
+// ── PAGE 1: HISTÓRICO + MÉTRICAS ──────────────────────────────────────────────
+function renderHist(){
+  document.getElementById('p1').innerHTML='<div style="text-align:center;padding:40px;color:#B0A99A"><div class="spinner dark" style="margin:0 auto 10px"></div>Cargando historial...</div>';
+
+  var url='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:json&sheet=Seguimiento&cb='+Date.now();
+  fetch(url).then(function(r){return r.text();}).then(function(t){
+    var byTel={}, telOrder=[];
+    try{
+      var i=t.indexOf('{'),j=t.lastIndexOf('}');
+      if(i===-1) throw new Error('no data');
+      var json=JSON.parse(t.slice(i,j+1));
+      var cols=json.table.cols.map(function(c){return c.label.trim();});
+      var iCom=cols.indexOf('Comercial'),iTel=cols.indexOf('Teléfono'),
+          iNom=cols.indexOf('Nombre'),iCamp=cols.indexOf('Campaña'),
+          iAcc=cols.indexOf('Acción'),iNota=cols.indexOf('Nota'),
+          iFecha=cols.indexOf('Fecha');
+      (json.table.rows||[]).forEach(function(row){
+        var c=row.c;
+        var rc=c&&c[iCom]&&c[iCom].v?String(c[iCom].v).trim():'';
+        if(rc!==com) return;
+        var tel=c&&c[iTel]&&c[iTel].v?String(c[iTel].v).trim():'';
+        var nom=c&&c[iNom]&&c[iNom].v?String(c[iNom].v).trim():'';
+        var camp=iCamp>=0&&c&&c[iCamp]&&c[iCamp].v?String(c[iCamp].v).trim():'';
+        var acc=c&&c[iAcc]&&c[iAcc].v?String(c[iAcc].v).trim():'';
+        var nota=iNota>=0&&c&&c[iNota]&&c[iNota].v?String(c[iNota].v).trim():'';
+        var fecha=iFecha>=0&&c&&c[iFecha]&&c[iFecha].v?String(c[iFecha].v).trim():'';
+        if(!tel) return;
+        // FIX: orden cronológico. Deshacer resetea. Cerrado_CRM es permanente.
+        if(!byTel[tel]){
+          byTel[tel]={tel:tel,nom:nom,camp:camp,acc:acc,nota:nota,fecha:fecha};
+          telOrder.push(tel);
+        } else {
+          if(byTel[tel].acc==='Cerrado_CRM'){
+            // permanente — solo actualizar nota/nom
+            if(nota) byTel[tel].nota=nota;
+          } else if(acc==='Deshacer'){
+            byTel[tel].acc='Nuevo'; // resetear a pendiente
+          } else if(acc!=='Nota'){
+            byTel[tel].acc=acc; // Contactado, Cerrado_CRM, Nuevo
+            if(nota) byTel[tel].nota=nota;
+          } else {
+            if(nota) byTel[tel].nota=nota; // solo nota, no cambia estado
+          }
+          if(nom&&!byTel[tel].nom) byTel[tel].nom=nom;
+          if(camp&&!byTel[tel].camp) byTel[tel].camp=camp;
+        }
+      });
+    }catch(e){}
+
+    var leads=telOrder.map(function(t){return byTel[t];});
+    var total=leads.length;
+    // CRM cuenta como contactado para el %
+    var gestionados=leads.filter(function(r){return r.acc==='Contactado'||r.acc==='Cerrado_CRM';}).length;
+    var cerrados=leads.filter(function(r){return r.acc==='Cerrado_CRM';}).length;
+    var conv=total?Math.round((gestionados/total)*100):0;
+
+    // Agrupar por campaña
+    var byCamp={}, campOrder=[];
+    leads.forEach(function(r){
+      var c=r.camp||'Sin campaña';
+      if(!byCamp[c]){byCamp[c]=[];campOrder.push(c);}
+      byCamp[c].push(r);
+    });
+
+    var html='<div class="sc"><div class="sc-t">Métricas globales</div><div class="mk">'+
+      '<div class="mk-i"><div class="mk-n n-b">'+total+'</div><div class="mk-l">Leads totales</div></div>'+
+      '<div class="mk-i"><div class="mk-n n-g">'+conv+'%</div><div class="mk-l">Gestionados</div></div>'+
+      '<div class="mk-i"><div class="mk-n" style="color:#B8922A">'+cerrados+'</div><div class="mk-l">En CRM</div></div>'+
+      '</div></div>';
+
+    // Rendimiento por campaña
+    if(campOrder.length>0){
+      html+='<div class="sc"><div class="sc-t">Rendimiento por campaña</div>';
+      campOrder.forEach(function(c){
+        var ls=byCamp[c];
+        var gest=ls.filter(function(r){return r.acc==='Contactado'||r.acc==='Cerrado_CRM';}).length;
+        var cerr=ls.filter(function(r){return r.acc==='Cerrado_CRM';}).length;
+        var pct=ls.length?Math.round((gest/ls.length)*100):0;
+        var campLabel=c.replace(/_/g,' ');
+        html+='<div class="cr"><div class="cr-l">'+
+          '<div class="cr-nm">'+esc(campLabel)+'</div>'+
+          '<div class="cr-bar"><div class="cr-bf" style="width:'+pct+'%"></div></div></div>'+
+          '<div class="cr-s">'+gest+'/'+ls.length+' · '+cerr+' CRM · '+pct+'%</div></div>';
+      });
+      html+='</div>';
+    } else {
+      html+='<div class="sc"><div style="color:var(--sub);font-size:12px">Sin historial registrado</div></div>';
+    }
+
+    // Lista — secciones desplegables por estado
+    if(leads.length>0){
+      var pendientes=leads.filter(function(r){return r.acc!=='Contactado'&&r.acc!=='Cerrado_CRM';});
+      var contactados=leads.filter(function(r){return r.acc==='Contactado';});
+      var enCrm=leads.filter(function(r){return r.acc==='Cerrado_CRM';});
+
+      function leadCard(r){
+        var accColor='#B03020', accLabel='⏳ Pendiente';
+        if(r.acc==='Contactado'){accColor='#1A5F8A';accLabel='✓ Contactado';}
+        if(r.acc==='Cerrado_CRM'){accColor='#B8922A';accLabel='★ En CRM';}
+        var campLabel=(r.camp||'').replace(/_/g,' ');
+        var fechaFmt=fmtFechaCorta(r.fecha)||r.fecha||'';
+        return '<div class="hc">'+
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'+
+            (campLabel?'<span style="background:#0D3550;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px">'+esc(campLabel)+'</span>':'')+
+            '<span style="font-size:10px;font-weight:700;color:'+accColor+'">'+accLabel+'</span>'+
+          '</div>'+
+          '<div class="hc-nm">'+esc(r.nom||r.tel)+'</div>'+
+          '<div style="font-size:10px;color:#B0A99A;margin-top:2px">'+esc(r.tel)+(fechaFmt?' · '+esc(fechaFmt):'')+'</div>'+
+          (r.nota?'<div style="margin-top:5px;font-size:11px;color:#444;background:#F9F8F5;border-radius:5px;padding:5px 8px;border-left:3px solid #B8922A">📝 '+esc(r.nota)+'</div>':'')+
+        '</div>';
+      }
+
+      function acordeon(id, label, count, color, bg, items){
+        if(!items.length) return '';
+        var cards=items.map(leadCard).join('');
+        return '<div style="margin-bottom:8px;border:1px solid #E8E6E1;border-radius:10px;overflow:hidden">'+
+          '<div onclick="(function(el){var p=el.nextElementSibling;var open=p.style.display!==\'none\';p.style.display=open?\'none\':\'block\';el.querySelector(\'.hist-arr\').style.transform=open?\'rotate(0deg)\':\'rotate(180deg)\'})(this)" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:'+bg+';cursor:pointer;-webkit-tap-highlight-color:transparent">'+
+            '<div style="display:flex;align-items:center;gap:8px">'+
+              '<span style="font-size:11px;font-weight:700;color:'+color+'">'+label+'</span>'+
+              '<span style="background:'+color+';color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px">'+count+'</span>'+
+            '</div>'+
+            '<span class="hist-arr" style="color:'+color+';font-size:12px;transition:transform .2s">▼</span>'+
+          '</div>'+
+          '<div style="display:none;padding:8px">'+cards+'</div>'+
+        '</div>';
+      }
+
+      html += acordeon('pend','⏳ Pendientes', pendientes.length,'#B03020','#FEF8F7', pendientes);
+      html += acordeon('cont','✓ Contactados', contactados.length,'#1A5F8A','#F0F7FD', contactados);
+      html += acordeon('crm','★ En CRM', enCrm.length,'#B8922A','#FDF8EC', enCrm);
+    }
+
+    document.getElementById('p1').innerHTML=html;
+  }).catch(function(){
+    document.getElementById('p1').innerHTML='<div style="text-align:center;padding:40px;color:#B03020;font-size:13px">Error cargando historial</div>';
+  });
+}
+
+
+// ── PIN ──────────────────────────────────────────────────────────────────────
+var pinBuffer = '';
+var pinTarget = '';
+
+function showPin(name) {
+  pinTarget = name;
+  pinBuffer = '';
+  document.getElementById('pin_name_show').textContent = name.split(' ')[0];
+  document.getElementById('pin_error').textContent = '';
+  updatePinDots();
+  document.getElementById('s0').classList.add('off');
+  document.getElementById('s_pin').classList.remove('off');
+}
+
+function isDirector(name) {
+  return !!DIRECTOR_PINS[name];
+}
+
+function updatePinDots() {
+  for(var i=0;i<4;i++){
+    var dot = document.getElementById('pd'+i);
+    dot.style.background = i < pinBuffer.length ? '#fff' : 'transparent';
+    dot.style.borderColor = i < pinBuffer.length ? '#fff' : 'rgba(255,255,255,.3)';
+  }
+}
+
+document.querySelectorAll('.pin-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var n = this.getAttribute('data-n');
+    if(n === 'back'){
+      pinBuffer = pinBuffer.slice(0,-1);
+      updatePinDots();
+    } else if(n === 'cancel'){
+      pinBuffer = '';
+      document.getElementById('s_pin').classList.add('off');
+      document.getElementById('s0').classList.remove('off');
+    } else {
+      if(pinBuffer.length >= 4) return;
+      pinBuffer += n;
+      updatePinDots();
+      if(pinBuffer.length === 4){
+        var correct = DIRECTOR_PINS[pinTarget] || PINS[pinTarget];
+        if(pinBuffer === correct){
+          document.getElementById('s_pin').classList.add('off');
+          if(isDirector(pinTarget)){ enterDirector(); } else { enter(pinTarget); }
+        } else {
+          document.getElementById('pin_error').textContent = 'PIN incorrecto. Inténtalo de nuevo.';
+          pinBuffer = '';
+          setTimeout(function(){ updatePinDots(); }, 100);
+        }
+      }
+    }
+  });
+});
+
+
+
+
+// ── MENSAJES A ADMIN ──────────────────────────────────────────────────────────
+var MSG_SCRIPT_URL = SCRIPT_URL;
+var lastMsgCount = 0;
+
+function sendMensaje(texto) {
+  if(!texto || !texto.trim()) return;
+  fetch(MSG_SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      tipo: 'mensaje',
+      comercial: com,
+      mensaje: texto.trim(),
+      hora: new Date().toLocaleString('es-ES')
+    })
+  });
+}
+
+function doSendMsg(){
+  var inp = document.getElementById('msg_input');
+  if(!inp||!inp.value.trim()) return;
+  var txt = inp.value.trim();
+  inp.value='';
+  inp.disabled=true;
+  sendMensaje(txt);
+  showToast('✓ Mensaje enviado al Admin');
+  setTimeout(function(){
+    inp.disabled=false;
+    renderMensajes();
+  }, 1800);
+}
+
+function renderMensajes() {
+  var p2 = document.getElementById('p2');
+  var composeHtml = '<div style="background:#fff;border:1px solid #E8E6E1;border-radius:12px;padding:13px;margin-bottom:14px">'+
+    '<div class="sec" style="margin-top:0">Enviar mensaje al Admin</div>'+
+    '<textarea id="msg_input" placeholder="Escribe tu mensaje..." style="width:100%;background:#FAFAF8;border:1px solid #E8E6E1;border-radius:8px;padding:8px 10px;font-size:13px;resize:none;min-height:72px;font-family:Inter,sans-serif;line-height:1.5;color:#111;outline:none;margin-bottom:8px"></textarea>'+
+    '<button onclick="doSendMsg()" style="width:100%;background:#0D3550;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:500;cursor:pointer;font-family:Inter,sans-serif">Enviar al Admin</button></div>';
+  p2.innerHTML = composeHtml + '<div id="msg_list_inner"><div class="loading-inline"><div class="spinner dark"></div>Cargando mensajes...</div></div>';
+  var url = 'https://docs.google.com/spreadsheets/d/'+SHEET_ID+
+    '/gviz/tq?tqx=out:json&sheet=Mensajes&cb='+Date.now();
+  fetch(url).then(function(r){return r.text();}).then(function(t){
+    var i=t.indexOf('{'),j=t.lastIndexOf('}');
+    if(i===-1){p2.innerHTML='<div class="empty"><div class="empty-ico">💬</div>Aún no hay mensajes</div>';return;}
+    var json=JSON.parse(t.slice(i,j+1));
+    var cols=json.table.cols.map(function(c){return c.label.trim();});
+    var rows=(json.table.rows||[]).map(function(row){
+      var o={};
+      cols.forEach(function(col,ci){
+        var cell=row.c&&row.c[ci];
+        o[col]=(cell&&cell.v!=null)?String(cell.v).trim():'';
+      });
+      return o;
+    }).filter(function(r){return r['Comercial']===com;});
+    var inner = document.getElementById('msg_list_inner');
+    if(!inner) return;
+    if(rows.length===0){
+      inner.innerHTML='<div class="empty"><div class="empty-ico">💬</div>Aún no tienes mensajes del admin</div>';
+      return;
+    }
+    var html='<div class="sec">Mensajes del Admin</div>';
+    rows.slice().reverse().forEach(function(r){
+      var esAdmin = r['De']==='Admin';
+      html+='<div style="margin-bottom:8px;padding:10px 13px;background:'+(esAdmin?'#EAF4FB':'#fff')+';border-radius:11px;border:1px solid '+(esAdmin?'#C5DDEF':'#E8E6E1')+'">';
+      html+='<div style="font-size:10px;color:#888;margin-bottom:4px">'+(esAdmin?'<strong style="color:#1A5F8A">Admin DC</strong>':'ℹ Tu mensaje')+' · '+(r['Hora']||'')+'</div>';
+      html+='<div style="font-size:13px;color:#111;line-height:1.5">'+esc(r['Mensaje']||'')+'</div></div>';
+    });
+    inner.innerHTML = html;
+  }).catch(function(){
+    var inner2=document.getElementById('msg_list_inner');
+    if(inner2) inner2.innerHTML='<div class="empty"><div class="empty-ico">⚠</div>No se pudo cargar</div>';
+  });
+}
+
+function clearMsgBadge(){
+  var b=document.getElementById('msg_badge');
+  if(b) b.style.display='none';
+  lastMsgCount=0;
+}
+
+// Poll for new admin replies every 2 min
+setInterval(function(){
+  if(!com || isDirector(com)) return;
+  var url='https://docs.google.com/spreadsheets/d/'+SHEET_ID+
+    '/gviz/tq?tqx=out:json&sheet=Mensajes&cb='+Date.now();
+  fetch(url).then(function(r){return r.text();}).then(function(t){
+    var i=t.indexOf('{'),j=t.lastIndexOf('}');
+    if(i===-1) return;
+    var json=JSON.parse(t.slice(i,j+1));
+    var cols=json.table.cols.map(function(c){return c.label.trim();});
+    var rows=(json.table.rows||[]).filter(function(row){
+      var cells=row.c||[];
+      var iCom=cols.indexOf('Comercial'),iDe=cols.indexOf('De');
+      var c=cells[iCom]&&cells[iCom].v?String(cells[iCom].v).trim():'';
+      var de=cells[iDe]&&cells[iDe].v?String(cells[iDe].v).trim():'';
+      return c===com && de==='Admin';
+    });
+    if(rows.length>lastMsgCount && lastMsgCount>0){
+      var b=document.getElementById('msg_badge');
+      if(b&&activeTab!==2) b.style.display='block';
+    }
+    lastMsgCount=rows.length;
+  }).catch(function(){});
+}, 120000);
+
+// ── DIRECTOR VIEW ─────────────────────────────────────────────────────────────
+function enterDirector(){
+  document.getElementById('s0').classList.add('off');
+  document.getElementById('s_dir').classList.remove('off');
+  renderDirector();
+}
+
+function exitDirector(){
+  document.getElementById('s_dir').classList.add('off');
+  document.getElementById('s0').classList.remove('off');
+}
+
+function refreshDirector(){
+  var btn = document.getElementById('btn_dir_refresh');
+  if(btn) btn.style.animation = 'sp .7s linear infinite';
+  Promise.all([fetchSheet('Hoja 1 leads'),fetchSheet('Leads (totes campañes )')]).then(function(res){
+    s1=res[0]; s2=res[1];
+    if(btn) btn.style.animation = '';
+    renderDirector();
+  }).catch(function(){
+    if(btn) btn.style.animation = '';
+  });
+}
+
+function renderDirector(){
+  var el = document.getElementById('dir_list');
+  el.innerHTML='<div style="text-align:center;padding:30px;color:#B0A99A;font-size:13px"><div class="spinner dark" style="margin:0 auto 8px"></div>Cargando...</div>';
+
+  // Fuente de verdad: Sheet Seguimiento (sobrevive resets de Sheet 1)
+  var url='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:json&sheet=Seguimiento&cb='+Date.now();
+  fetch(url).then(function(r){return r.text();}).then(function(t){
+    var i=t.indexOf('{'),j=t.lastIndexOf('}');
+    var segData={};  // {comercial: {tel: {nom,acc,nota,camp,hora}}}
+    if(i!==-1){
+      var json=JSON.parse(t.slice(i,j+1));
+      var cols=json.table.cols.map(function(c){return c.label.trim();});
+      var iCom=cols.indexOf('Comercial'),iTel=cols.indexOf('Teléfono'),
+          iNom=cols.indexOf('Nombre'),iAcc=cols.indexOf('Acción'),
+          iNota=cols.indexOf('Nota'),iCamp=cols.indexOf('Campaña'),iHora=cols.indexOf('Hora');
+      (json.table.rows||[]).forEach(function(row){
+        var c=row.c;
+        var com_r=c&&c[iCom]&&c[iCom].v?String(c[iCom].v).trim():'';
+        var tel=c&&c[iTel]&&c[iTel].v?String(c[iTel].v).trim():'';
+        var acc=c&&c[iAcc]&&c[iAcc].v?String(c[iAcc].v).trim():'';
+        var nom=c&&c[iNom]&&c[iNom].v?String(c[iNom].v).trim():'';
+        var nota=iNota>=0&&c&&c[iNota]&&c[iNota].v?String(c[iNota].v).trim():'';
+        var camp=iCamp>=0&&c&&c[iCamp]&&c[iCamp].v?String(c[iCamp].v).trim():'';
+        var hora=iHora>=0&&c&&c[iHora]&&c[iHora].v?String(c[iHora].v).trim():'';
+        if(!com_r||!tel) return;
+        if(!segData[com_r]) segData[com_r]={};
+        // FIX: orden cronológico. Deshacer resetea. Cerrado_CRM es permanente.
+        if(!segData[com_r][tel]){
+          segData[com_r][tel]={nom:nom||tel,acc:acc,nota:nota,camp:camp,hora:hora};
+        } else if(segData[com_r][tel].acc==='Cerrado_CRM'){
+          if(nota) segData[com_r][tel].nota=nota; // permanente, solo nota
+        } else if(acc==='Deshacer'){
+          segData[com_r][tel].acc='Nuevo'; // resetear a pendiente
+        } else if(acc!=='Nota'){
+          segData[com_r][tel]={nom:nom||tel,acc:acc,nota:nota,camp:camp,hora:hora};
+        } else if(nota){
+          segData[com_r][tel].nota=nota; // solo nota
+        }
+      });
+    }
+
+    // Enriquecer con leads activos de Sheet 1 que no estén en Seguimiento
+    s1.filter(function(r){return r['Clasificacion']==='POSITIVO';}).forEach(function(r){
+      var name=r['Comercial'],tel=r['Teléfono'];
+      if(!name||!tel) return;
+      if(!segData[name]) segData[name]={};
+      if(!segData[name][tel]) segData[name][tel]={nom:r['Nombre']||tel,acc:'Pendiente',nota:'',camp:r['Campaña']||'',hora:r['Fecha_Hora']||''};
+    });
+
+    var coms=Object.keys(PINS);
+    var totalPos=0,totalCont=0,totalPend=0,totalLeads=s1.length;
+
+    var comData=coms.map(function(name){
+      var leads=segData[name]||{};
+      var items=Object.values(leads);
+      var posLeads=items.filter(function(x){return x.acc!=='Cerrado_CRM';});
+      var contactados=items.filter(function(x){return x.acc==='Contactado';}).length;
+      var cerrados=items.filter(function(x){return x.acc==='Cerrado_CRM';}).length;
+      var pendientes=posLeads.filter(function(x){return x.acc!=='Contactado';}).length;
+      var pos=posLeads.length;
+      var neg=s1.filter(function(r){return r['Comercial']===name&&r['Clasificacion']==='NEGATIVO';}).length;
+      var pct=pos>0?Math.round((contactados/pos)*100):0;
+      var myLeads=s1.filter(function(r){return r['Comercial']===name;});
+      var lastFecha=myLeads.length?(myLeads[myLeads.length-1]['Fecha_Hora']||''):'';
+      totalPos+=pos; totalCont+=contactados; totalPend+=pendientes;
+      return {name:name,pos:pos,neg:neg,contactados:contactados,cerrados:cerrados,pend:pendientes,pct:pct,lastFecha:lastFecha,total:pos+neg};
+    });
+
+    comData=comData.filter(function(d){return d.total>0||d.contactados>0||d.cerrados>0;});
+    comData.sort(function(a,b){return b.pct-a.pct||b.pos-a.pos;});
+
+    document.getElementById('dir_stats').innerHTML =
+      dirStat(totalLeads||s1.length,'Total leads','#0D3550','#F0EEE9') +
+      dirStat(totalPend,'Sin contactar',totalPend>0?'#B03020':'#1E6B3A',totalPend>0?'#FDECEA':'#EEFAE8') +
+      dirStat(totalCont,'Contactados','#1A5F8A','#EAF4FB') +
+      dirStat(totalPos-totalCont,'Por gestionar','#1E6B3A',(totalPos-totalCont)>0?'#EEFAE8':'#F0F9F4');
+
+    var sinContactar = comData.filter(function(d){return d.pend>0&&d.contactados===0;});
+    var alertEl = document.getElementById('dir_alert');
+    if(sinContactar.length>0){
+      alertEl.style.display='block';
+      alertEl.innerHTML = '⚠ '+sinContactar.length+' comercial'+(sinContactar.length>1?'es':'')
+        +' con positivos sin contactar: <strong>'+sinContactar.map(function(d){return d.name.split(' ')[0];}).join(', ')+'</strong>';
+    } else { alertEl.style.display='none'; }
+
+    var dotEl = document.getElementById('dir_dot');
+    var liveTxt = document.getElementById('dir_live_txt');
+    if(dotEl) dotEl.style.background = '#1E6B3A';
+    if(liveTxt) liveTxt.textContent = 'En vivo · '+new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+
+    var html = '';
+    var rankColors = ['#B8922A','#8A8A8A','#9E6B3A'];
+    comData.forEach(function(d, idx){
+      var ini2 = (((d.name.trim().split(/\s+/)[0]||'')[0]||'') + ((d.name.trim().split(/\s+/)[1]||'')[0]||'')).toUpperCase();
+      var pctBar = Math.min(d.pct,100);
+      var semColor = d.pct>=80?'#1E6B3A':d.pct>=40?'#C45E0A':'#B03020';
+      var semBg    = d.pct>=80?'#EEFAE8':d.pct>=40?'#FEF3E2':'#FDECEA';
+      var barColor = d.pct>=80?'#1E6B3A':d.pct>=40?'#C45E0A':'#B03020';
+      var rankColor = idx<3?rankColors[idx]:'#C4C0B8';
+      var lastStr = '';
+      if(d.lastFecha){
+        var lpd=parseFecha(d.lastFecha);
+        if(lpd&&!isNaN(lpd.getTime())){
+          var ldd=String(lpd.getDate()).padStart(2,'0');
+          var lmm=String(lpd.getMonth()+1).padStart(2,'0');
+          var lyy=lpd.getFullYear();
+          var lhh=String(lpd.getHours()).padStart(2,'0');
+          var lmi=String(lpd.getMinutes()).padStart(2,'0');
+          lastStr='Último lead: '+ldd+'/'+lmm+'/'+lyy+' '+lhh+':'+lmi;
+        } else { lastStr=d.lastFecha; }
+      }
+
+      html += '<div style="background:#fff;border:1px solid #E8E6E1;border-radius:12px;padding:13px 14px;margin-bottom:8px">';
+      html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">';
+      html += '<div style="width:36px;height:36px;border-radius:50%;background:#EAF0F5;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#0D3550;flex-shrink:0;position:relative">';
+      html += esc(ini2);
+      html += '<span style="position:absolute;bottom:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:'+rankColor+';display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;border:1.5px solid #fff">'+(idx+1)+'</span>';
+      html += '</div>';
+      html += '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(d.name)+'</div>';
+      if(lastStr) html += '<div style="font-size:10px;color:#B0A99A;margin-top:1px">'+lastStr+'</div>';
+      html += '</div>';
+      html += '<button onclick="toggleDirInsights(\''+esc(d.name)+'\')" style="background:#F0EEE9;border:1px solid #E0DDD8;color:#0D3550;border-radius:7px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;flex-shrink:0">Insights ▾</button>';
+      html += '<div style="background:'+semBg+';color:'+semColor+';border-radius:7px;padding:4px 10px;text-align:center;flex-shrink:0">';
+      html += '<div style="font-size:16px;font-weight:700">'+d.pct+'%</div>';
+      html += '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;margin-top:1px">contactado</div>';
+      html += '</div></div>';
+      html += '<div style="height:3px;background:#F0EEE9;border-radius:2px;margin-bottom:10px">';
+      html += '<div style="height:100%;width:'+pctBar+'%;background:'+barColor+';border-radius:2px;transition:.4s"></div></div>';
+      html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">';
+      html += dirMini(d.pos,'Positivos','#1E6B3A','#F0F9F4');
+      html += dirMini(d.contactados,'Contact.','#1A5F8A','#EAF4FB');
+      html += dirMini(d.pend,'Pendientes',d.pend>0?'#B03020':'#1E6B3A',d.pend>0?'#FEF0EE':'#F0F9F4');
+      html += dirMini(d.neg,'Negativos','#8A7060','#F5F2EF');
+      html += '</div>';
+      // Insights panel (hidden by default)
+      html += '<div id="ins_'+idx+'" data-name="'+esc(d.name)+'" style="display:none;margin-top:12px;border-top:1px solid #F0EEE9;padding-top:12px">';
+      html += '<div style="text-align:center;font-size:12px;color:#B0A99A;padding:8px 0">Cargando insights...</div>';
+      html += '</div>';
+      html += '</div>';
+    });
+
+    document.getElementById('dir_list').innerHTML = html || '<div style="text-align:center;padding:40px;color:#B0A99A;font-size:13px">Sin comerciales activos</div>';
+
+    // FIX: auto-refresh director cada 60s (antes 90s)
+    if(!window._dirTimer) window._dirTimer = setInterval(function(){
+      if(!document.getElementById('s_dir').classList.contains('off')) renderDirector();
+    }, 60000);
+  }).catch(function(){
+    document.getElementById('dir_list').innerHTML='<div style="text-align:center;padding:40px;color:#B03020;font-size:13px">Error cargando datos</div>';
+  });
+}
+
+// ── DIRECTOR INSIGHTS POR COMERCIAL ──────────────────────────────────────────
+var _insightsOpen = {};
+
+function toggleDirInsights(name){
+  // Find panel by data-name
+  var panels = document.querySelectorAll('[id^="ins_"]');
+  var panel = null;
+  for(var i=0;i<panels.length;i++){
+    if(panels[i].getAttribute('data-name')===name){ panel=panels[i]; break; }
+  }
+  if(!panel) return;
+  var isOpen = _insightsOpen[name];
+  if(isOpen){
+    panel.style.display='none';
+    _insightsOpen[name]=false;
+  } else {
+    panel.style.display='block';
+    _insightsOpen[name]=true;
+    loadDirInsights(name, panel);
+  }
+}
+
+function loadDirInsights(name, panel){
+  panel.innerHTML='<div style="text-align:center;font-size:12px;color:#B0A99A;padding:8px 0">Cargando...</div>';
+  var url='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:json&sheet=Seguimiento&cb='+Date.now();
+  fetch(url).then(function(r){return r.text();}).then(function(t){
+    var i=t.indexOf('{'),j=t.lastIndexOf('}');
+    if(i===-1){panel.innerHTML='<div style="font-size:12px;color:#B0A99A;padding:8px 0">Sin datos de seguimiento</div>';return;}
+    var json=JSON.parse(t.slice(i,j+1));
+    var cols=json.table.cols.map(function(c){return c.label.trim();});
+    var iCom=cols.indexOf('Comercial'),iTel=cols.indexOf('Teléfono'),
+        iNom=cols.indexOf('Nombre'),iAcc=cols.indexOf('Acción'),
+        iNota=cols.indexOf('Nota'),iCamp=cols.indexOf('Campaña'),iHora=cols.indexOf('Hora');
+
+    // Mapa nombre por teléfono desde sheets (fuente más fiable)
+    var telToName={};
+    s1.concat(s2).forEach(function(r){
+      if(r['Teléfono']&&r['Nombre']) telToName[r['Teléfono'].trim()]=r['Nombre'].trim();
+    });
+
+    var byTel={};
+    (json.table.rows||[]).forEach(function(row){
+      var c=row.c;
+      var com_r=c&&c[iCom]&&c[iCom].v?String(c[iCom].v).trim():'';
+      if(com_r!==name) return;
+      var tel=c&&c[iTel]&&c[iTel].v?String(c[iTel].v).trim():'';
+      var acc=c&&c[iAcc]&&c[iAcc].v?String(c[iAcc].v).trim():'';
+      var nota=iNota>=0&&c&&c[iNota]&&c[iNota].v?String(c[iNota].v).trim():'';
+      var nom=iNom>=0&&c&&c[iNom]&&c[iNom].v?String(c[iNom].v).trim():'';
+      var camp=iCamp>=0&&c&&c[iCamp]&&c[iCamp].v?String(c[iCamp].v).trim():'';
+      var hora=iHora>=0&&c&&c[iHora]&&c[iHora].v?String(c[iHora].v).trim():'';
+      if(!tel) return;
+      // Nombre: Seguimiento → s1/s2 → teléfono
+      var displayName = nom || telToName[tel] || tel;
+      // FIX: prioridad — no sobreescribir Contactado/CRM con Nuevo
+    var _ip={'Cerrado_CRM':4,'Contactado':3,'Nota':2,'Deshacer':1,'Nuevo':0};
+    var _cp=byTel[tel]?(_ip[byTel[tel].acc]||0):-1;
+    var _np=_ip[acc]||0;
+    if(!byTel[tel]||_np>=_cp){byTel[tel]={tel:tel,nom:displayName,acc:acc,nota:nota,camp:camp,hora:hora};}
+    else if(nota&&!byTel[tel].nota){byTel[tel].nota=nota;}
+    });
+
+    // Añadir leads de Sheet 1 pendientes (sin entrada en Seguimiento)
+    s1.filter(function(r){return r['Comercial']===name&&r['Clasificacion']==='POSITIVO';}).forEach(function(r){
+      var t2=r['Teléfono'];
+      if(!t2) return;
+      if(!byTel[t2]) byTel[t2]={tel:t2,nom:r['Nombre']||telToName[t2]||t2,acc:'Pendiente',nota:'',camp:r['Campaña']||'',hora:r['Fecha_Hora']||''};
+    });
+
+    var items=Object.values(byTel);
+    var contactados=items.filter(function(x){return x.acc==='Contactado';});
+    var cerrados=items.filter(function(x){return x.acc==='Cerrado_CRM';});
+    var pendientes=items.filter(function(x){return x.acc!=='Contactado'&&x.acc!=='Cerrado_CRM';});
+
+    var html='';
+
+    function insAcordeon(id, label, count, color, bg, cardsBg, cardsBorder, items, buildCard){
+      if(!items.length) return '';
+      var cards = items.map(buildCard).join('');
+      // Pendientes abiertos por defecto, el resto cerrados
+      var openByDefault = (id==='pend');
+      return '<div style="margin-bottom:6px;border:1px solid '+cardsBorder+';border-radius:9px;overflow:hidden">'+
+        '<div onclick="(function(el){var p=el.nextElementSibling;var open=p.style.display!==\'none\';p.style.display=open?\'none\':\'block\';el.querySelector(\'.ins-arr\').style.transform=open?\'rotate(0deg)\':\'rotate(180deg)\'})(this)" '+
+        'style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:'+bg+';cursor:pointer;-webkit-tap-highlight-color:transparent">'+
+          '<div style="display:flex;align-items:center;gap:7px">'+
+            '<span style="font-size:10px;font-weight:700;color:'+color+'">'+label+'</span>'+
+            '<span style="background:'+color+';color:#fff;font-size:9px;font-weight:700;padding:1px 7px;border-radius:10px">'+count+'</span>'+
+          '</div>'+
+          '<span class="ins-arr" style="color:'+color+';font-size:11px;transition:transform .2s;transform:'+(openByDefault?'rotate(180deg)':'rotate(0deg)')+'">▼</span>'+
+        '</div>'+
+        '<div style="display:'+(openByDefault?'block':'none')+';padding:8px">'+cards+'</div>'+
+      '</div>';
+    }
+
+    html += insAcordeon('pend','⏳ Sin contactar', pendientes.length,'#B03020','#FEF8F7','#F5DADA', pendientes, function(x){
+      return '<div style="background:#fff;border:1px solid #F5DADA;border-radius:8px;padding:8px 10px;margin-bottom:5px">'+
+        '<div style="font-size:12px;font-weight:600;color:#111">'+esc(x.nom)+'</div>'+
+        '<div style="font-size:10px;color:#B0A99A;margin-top:2px">'+esc(x.tel)+(x.camp?' · '+esc(x.camp):'')+(x.hora?' · '+esc(x.hora):'')+'</div>'+
+      '</div>';
+    });
+
+    html += insAcordeon('cont','✓ Contactados', contactados.length,'#1A5F8A','#EAF4FB','#C5DDEF', contactados, function(x){
+      return '<div style="background:#fff;border:1px solid #C5DDEF;border-radius:8px;padding:8px 10px;margin-bottom:5px">'+
+        '<div style="font-size:12px;font-weight:600;color:#111">'+esc(x.nom)+'</div>'+
+        '<div style="font-size:10px;color:#B0A99A;margin-top:2px">'+esc(x.tel)+(x.camp?' · '+esc(x.camp):'')+'</div>'+
+        (x.nota?'<div style="margin-top:5px;font-size:11px;color:#444;background:#F8F7F4;border-radius:5px;padding:5px 8px;border-left:3px solid #B8922A">📝 '+esc(x.nota)+'</div>':'')+
+      '</div>';
+    });
+
+    html += insAcordeon('crm','★ En CRM', cerrados.length,'#1E6B3A','#F0F9F4','#B8D4C0', cerrados, function(x){
+      return '<div style="background:#fff;border:1px solid #B8D4C0;border-radius:8px;padding:8px 10px;margin-bottom:5px">'+
+        '<div style="font-size:12px;font-weight:600;color:#1E6B3A">'+esc(x.nom)+'</div>'+
+        '<div style="font-size:10px;color:#B0A99A;margin-top:2px">'+esc(x.tel)+(x.camp?' · '+esc(x.camp):'')+'</div>'+
+        (x.nota?'<div style="margin-top:5px;font-size:11px;color:#444;background:#F8F7F4;border-radius:5px;padding:5px 8px;border-left:3px solid #1E6B3A">📝 '+esc(x.nota)+'</div>':'')+
+      '</div>';
+    });
+
+    if(!html) html='<div style="font-size:12px;color:#B0A99A;text-align:center;padding:8px 0">Sin actividad registrada</div>';
+    panel.innerHTML=html;
+  }).catch(function(e){
+    // Si falla Seguimiento, mostrar leads de Sheet 1 como pendientes
+    var telToName2={};
+    s1.concat(s2).forEach(function(r){ if(r['Teléfono']&&r['Nombre']) telToName2[r['Teléfono'].trim()]=r['Nombre'].trim(); });
+    var fallbackLeads = s1.filter(function(r){return r['Comercial']===name&&r['Clasificacion']==='POSITIVO';});
+    if(fallbackLeads.length===0){
+      panel.innerHTML='<div style="font-size:12px;color:#B0A99A;text-align:center;padding:8px 0">Sin actividad registrada</div>';
+      return;
+    }
+    var html2='<div style="margin-bottom:6px;border:1px solid #F5DADA;border-radius:9px;overflow:hidden">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:#FEF8F7">'+
+        '<div style="display:flex;align-items:center;gap:7px">'+
+          '<span style="font-size:10px;font-weight:700;color:#B03020">⏳ Sin contactar</span>'+
+          '<span style="background:#B03020;color:#fff;font-size:9px;font-weight:700;padding:1px 7px;border-radius:10px">'+fallbackLeads.length+'</span>'+
+        '</div></div>'+
+      '<div style="padding:8px">';
+    fallbackLeads.forEach(function(r){
+      html2+='<div style="background:#fff;border:1px solid #F5DADA;border-radius:8px;padding:8px 10px;margin-bottom:5px">'+
+        '<div style="font-size:12px;font-weight:600;color:#111">'+esc(r['Nombre']||r['Teléfono'])+'</div>'+
+        '<div style="font-size:10px;color:#B0A99A;margin-top:2px">'+esc(r['Teléfono'])+(r['Campaña']?' · '+esc(r['Campaña']):'')+'</div>'+
+      '</div>';
+    });
+    html2+='</div></div>';
+    panel.innerHTML=html2;
+  });
+}
+
+function dirStat(val, label, color, bg){
+  bg = bg||'#F7F6F3';
+  return '<div style="background:'+bg+';border-radius:10px;padding:12px 10px;text-align:center">'+
+    '<div style="font-size:22px;font-weight:700;color:'+color+';line-height:1">'+val+'</div>'+
+    '<div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-top:3px">'+label+'</div></div>';
+}
+
+function dirMini(val, label, color, bg){
+  bg = bg||'#F7F6F3';
+  return '<div style="background:'+bg+';border-radius:7px;padding:7px 4px;text-align:center">'+
+    '<div style="font-size:16px;font-weight:700;color:'+color+'">'+val+'</div>'+
+    '<div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-top:2px">'+label+'</div></div>';
+}
+
+
+// ── DIRECTOR MENSAJES ─────────────────────────────────────────────────────────
+var dirMsgLastCount = 0;
+
+function switchDirTab(idx){
+  document.getElementById('dir_list').style.display = idx===0?'block':'none';
+  document.getElementById('dir_msgs').style.display = idx===1?'block':'none';
+  document.getElementById('dtb0').style.cssText = idx===0?
+    'flex:1;padding:10px 8px;font-size:11px;font-weight:600;color:#0D3550;background:none;border:none;border-bottom:2px solid #0D3550;cursor:pointer;font-family:Inter,sans-serif;letter-spacing:.3px;text-transform:uppercase':
+    'flex:1;padding:10px 8px;font-size:11px;font-weight:500;color:#B0A99A;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:Inter,sans-serif;letter-spacing:.3px;text-transform:uppercase';
+  document.getElementById('dtb1').style.cssText = idx===1?
+    'flex:1;padding:10px 8px;font-size:11px;font-weight:600;color:#0D3550;background:none;border:none;border-bottom:2px solid #0D3550;cursor:pointer;font-family:Inter,sans-serif;letter-spacing:.3px;text-transform:uppercase;position:relative':
+    'flex:1;padding:10px 8px;font-size:11px;font-weight:500;color:#B0A99A;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:Inter,sans-serif;letter-spacing:.3px;text-transform:uppercase;position:relative';
+  if(idx===1){ loadDirMensajes(); hideDirMsgBadge(); }
+}
+
+function hideDirMsgBadge(){
+  var b=document.getElementById('dir_msg_badge');
+  if(b) b.style.display='none';
+  dirMsgLastCount=0;
+}
+
+function loadDirMensajes(){
+  var el=document.getElementById('dir_msgs');
+  el.innerHTML='<div class="loading-inline"><div class="spinner dark"></div>Cargando mensajes...</div>';
+  var url='https://docs.google.com/spreadsheets/d/'+SHEET_ID+
+    '/gviz/tq?tqx=out:json&sheet=Mensajes&cb='+Date.now();
+  fetch(url).then(function(r){return r.text();}).then(function(t){
+    var i=t.indexOf('{'),j=t.lastIndexOf('}');
+    if(i===-1){el.innerHTML='<div class="empty"><div class="empty-ico">💬</div>Sin mensajes</div>';return;}
+    var json=JSON.parse(t.slice(i,j+1));
+    var cols=json.table.cols.map(function(c){return c.label.trim();});
+    var rows=(json.table.rows||[]).map(function(row){
+      var o={};
+      cols.forEach(function(col,ci){
+        var cell=row.c&&row.c[ci];
+        o[col]=(cell&&cell.v!=null)?String(cell.v).trim():'';
+      });
+      return o;
+    }).filter(function(r){return r['Comercial']&&r['Mensaje'];});
+    dirMsgLastCount=rows.length;
+    if(rows.length===0){el.innerHTML='<div class="empty"><div class="empty-ico">💬</div>Sin mensajes de comerciales</div>';return;}
+    // Group by comercial
+    var byC={};
+    rows.forEach(function(r){
+      if(!byC[r['Comercial']]) byC[r['Comercial']]=[];
+      byC[r['Comercial']].push(r);
+    });
+    var html='';
+    Object.keys(byC).sort().forEach(function(nombre){
+      var msgs=byC[nombre];
+      var ini2=(((nombre.trim().split(/\s+/)[0]||'')[0]||'')+(( nombre.trim().split(/\s+/)[1]||'')[0]||'')).toUpperCase();
+      html+='<div style="background:#fff;border:1px solid #E8E6E1;border-radius:12px;margin-bottom:10px;overflow:hidden">';
+      html+='<div style="padding:10px 14px;border-bottom:1px solid #F0EEE9;display:flex;align-items:center;gap:9px;background:#F7F6F3">';
+      html+='<div style="width:30px;height:30px;border-radius:50%;background:#EAF0F5;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#0D3550">'+esc(ini2)+'</div>';
+      html+='<div style="font-size:13px;font-weight:600;color:#0D3550;flex:1">'+esc(nombre)+'</div>';
+      html+='<span style="font-size:11px;color:#888">'+msgs.length+' mensaje'+(msgs.length>1?'s':'')+'</span></div>';
+      msgs.slice().reverse().forEach(function(r){
+        var esAdmin=r['De']==='Admin';
+        html+='<div style="padding:9px 14px;border-bottom:1px solid #F7F6F3;background:'+(esAdmin?'#EAF4FB':'#fff')+'">';
+        html+='<div style="font-size:10px;color:#888;margin-bottom:3px">'+(esAdmin?'<strong style="color:#1A5F8A">Tú →</strong> ':'📨 ')+esc(r['Hora']||'')+'</div>';
+        html+='<div style="font-size:13px;color:#111;line-height:1.4">'+esc(r['Mensaje']||'')+'</div>';
+        if(!esAdmin){
+          html+='<div style="margin-top:6px"><button onclick="replyMsg(this)" data-nom="'+esc(nombre)+'" style="font-size:11px;background:#0D3550;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-family:Inter,sans-serif">Responder</button></div>';
+        }
+        html+='</div>';
+      });
+      html+='</div>';
+    });
+    el.innerHTML=html;
+  }).catch(function(){
+    el.innerHTML='<div class="empty"><div class="empty-ico">⚠</div>Error cargando mensajes</div>';
+  });
+}
+
+function replyMsg(btn){
+  var nombreCom = btn.getAttribute('data-nom');
+  var txt=prompt('Responder a '+nombreCom+':');
+  if(!txt||!txt.trim()) return;
+  fetch(SCRIPT_URL,{
+    method:'POST',
+    mode:'no-cors',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      tipo:'mensaje',
+      comercial:nombreCom,
+      de:'Admin',
+      mensaje:txt.trim(),
+      hora:new Date().toLocaleString('es-ES')
+    })
+  });
+  showToast('✓ Respuesta enviada a '+nombreCom.split(' ')[0]);
+  setTimeout(loadDirMensajes, 1500);
+}
+
+// Poll new messages every 2min when director is open
+setInterval(function(){
+  var dirScreen=document.getElementById('s_dir');
+  if(!dirScreen||dirScreen.classList.contains('off')) return;
+  var url='https://docs.google.com/spreadsheets/d/'+SHEET_ID+
+    '/gviz/tq?tqx=out:json&sheet=Mensajes&cb='+Date.now();
+  fetch(url).then(function(r){return r.text();}).then(function(t){
+    var i=t.indexOf('{'),j=t.lastIndexOf('}');
+    if(i===-1) return;
+    var json=JSON.parse(t.slice(i,j+1));
+    var total=(json.table&&json.table.rows)?json.table.rows.length:0;
+    if(total>dirMsgLastCount && dirMsgLastCount>=0){
+      var b=document.getElementById('dir_msg_badge');
+      if(b) b.style.display='inline-block';
+    }
+    if(document.getElementById('dir_msgs').style.display==='block') loadDirMensajes();
+  }).catch(function(){});
+}, 120000);
+
+init();
+</script>
+</body>
+</html>
