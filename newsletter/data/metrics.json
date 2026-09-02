@@ -1,0 +1,465 @@
+{
+  "generado": "2026-09-02",
+  "campanas": 5,
+  "provisional": false,
+  "curva_posicion": {
+    "1": 0.3463,
+    "2": 0.2807,
+    "3": 0.2314,
+    "4": 0.1416
+  },
+  "ultima_campana": {
+    "subject": "Seleccion 2026-08-19",
+    "send_time": "2026-08-19T08:00:00+00:00",
+    "emails_sent": 4200,
+    "open_rate": 0.281,
+    "unique_subscriber_clicks": 349
+  },
+  "propiedades": [
+    {
+      "key": "durancarasso.es/barcelona/lantiga-esquerra-de-leixample/piso-de-lujo-de-90-m2-con-vistas-en-venta-en-lantiga-esquerra-de-leixample-barcelona",
+      "url": "https://www.durancarasso.es/barcelona/lantiga-esquerra-de-leixample/piso-de-lujo-de-90-m2-con-vistas-en-venta-en-lantiga-esquerra-de-leixample-barcelona?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+      "nombre": "Piso 90 m2 — Lantiga Esquerra De Leixample · Barcelona",
+      "zona": "Barcelona",
+      "barrio": "Lantiga Esquerra De Leixample",
+      "tipo": "Piso",
+      "m2": 90,
+      "habitaciones": null,
+      "slug": "piso-de-lujo-de-90-m2-con-vistas-en-venta-en-lantiga-esquerra-de-leixample-barcelona",
+      "apariciones": 5,
+      "ultima_aparicion": "2026-08-19",
+      "ultimo_slot": 2,
+      "clics_unicos_total": 557,
+      "score": 1.362,
+      "tendencia": 0.132,
+      "estado": "estrella",
+      "historial": [
+        {
+          "fecha": "2026-07-08",
+          "slot": 3,
+          "clics": 95,
+          "share": 0.2754,
+          "lift": 1.19
+        },
+        {
+          "fecha": "2026-07-15",
+          "slot": 3,
+          "clics": 100,
+          "share": 0.2985,
+          "lift": 1.29
+        },
+        {
+          "fecha": "2026-07-22",
+          "slot": 3,
+          "clics": 92,
+          "share": 0.3286,
+          "lift": 1.42
+        },
+        {
+          "fecha": "2026-08-05",
+          "slot": 2,
+          "clics": 130,
+          "share": 0.3641,
+          "lift": 1.297
+        },
+        {
+          "fecha": "2026-08-19",
+          "slot": 2,
+          "clics": 140,
+          "share": 0.4011,
+          "lift": 1.429
+        }
+      ]
+    },
+    {
+      "key": "durancarasso.es/sitges/quintmar/villa-de-354-m2-con-piscina-en-venta-en-quintmar-sitges",
+      "url": "https://www.durancarasso.es/sitges/quintmar/villa-de-354-m2-con-piscina-en-venta-en-quintmar-sitges?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+      "nombre": "Villa 354 m2 — Quintmar · Sitges",
+      "zona": "Sitges",
+      "barrio": "Quintmar",
+      "tipo": "Villa",
+      "m2": 354,
+      "habitaciones": null,
+      "slug": "villa-de-354-m2-con-piscina-en-venta-en-quintmar-sitges",
+      "apariciones": 3,
+      "ultima_aparicion": "2026-08-19",
+      "ultimo_slot": 1,
+      "clics_unicos_total": 267,
+      "score": 1.057,
+      "tendencia": -0.193,
+      "estado": "solida",
+      "historial": [
+        {
+          "fecha": "2026-07-15",
+          "slot": 2,
+          "clics": 80,
+          "share": 0.2388,
+          "lift": 0.851
+        },
+        {
+          "fecha": "2026-08-05",
+          "slot": 4,
+          "clics": 62,
+          "share": 0.1737,
+          "lift": 1.227
+        },
+        {
+          "fecha": "2026-08-19",
+          "slot": 1,
+          "clics": 125,
+          "share": 0.3582,
+          "lift": 1.034
+        }
+      ]
+    },
+    {
+      "key": "durancarasso.es/barcelona/lantiga-esquerra-de-leixample/piso-de-88-m2-en-venta-en-lantiga-esquerra-de-leixample-barcelona",
+      "url": "https://www.durancarasso.es/barcelona/lantiga-esquerra-de-leixample/piso-de-88-m2-en-venta-en-lantiga-esquerra-de-leixample-barcelona?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+      "nombre": "Piso 88 m2 — Lantiga Esquerra De Leixample · Barcelona",
+      "zona": "Barcelona",
+      "barrio": "Lantiga Esquerra De Leixample",
+      "tipo": "Piso",
+      "m2": 88,
+      "habitaciones": null,
+      "slug": "piso-de-88-m2-en-venta-en-lantiga-esquerra-de-leixample-barcelona",
+      "apariciones": 3,
+      "ultima_aparicion": "2026-07-22",
+      "ultimo_slot": 4,
+      "clics_unicos_total": 133,
+      "score": 0.889,
+      "tendencia": -0.243,
+      "estado": "quemada",
+      "historial": [
+        {
+          "fecha": "2026-07-08",
+          "slot": 4,
+          "clics": 60,
+          "share": 0.1739,
+          "lift": 1.228
+        },
+        {
+          "fecha": "2026-07-15",
+          "slot": 4,
+          "clics": 45,
+          "share": 0.1343,
+          "lift": 0.949
+        },
+        {
+          "fecha": "2026-07-22",
+          "slot": 4,
+          "clics": 28,
+          "share": 0.1,
+          "lift": 0.706
+        }
+      ]
+    },
+    {
+      "key": "durancarasso.es/barcelona/dreta-de-leixample/piso-de-lujo-de-142-m2-con-vistas-en-venta-en-la-dreta-de-l-eixample-barcelona",
+      "url": "https://www.durancarasso.es/barcelona/dreta-de-leixample/piso-de-lujo-de-142-m2-con-vistas-en-venta-en-la-dreta-de-l-eixample-barcelona?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+      "nombre": "Piso 142 m2 — Dreta De Leixample · Barcelona",
+      "zona": "Barcelona",
+      "barrio": "Dreta De Leixample",
+      "tipo": "Piso",
+      "m2": 142,
+      "habitaciones": null,
+      "slug": "piso-de-lujo-de-142-m2-con-vistas-en-venta-en-la-dreta-de-l-eixample-barcelona",
+      "apariciones": 4,
+      "ultima_aparicion": "2026-08-19",
+      "ultimo_slot": 4,
+      "clics_unicos_total": 269,
+      "score": 0.826,
+      "tendencia": 0.285,
+      "estado": "floja",
+      "historial": [
+        {
+          "fecha": "2026-07-08",
+          "slot": 2,
+          "clics": 70,
+          "share": 0.2029,
+          "lift": 0.723
+        },
+        {
+          "fecha": "2026-07-22",
+          "slot": 1,
+          "clics": 105,
+          "share": 0.375,
+          "lift": 1.083
+        },
+        {
+          "fecha": "2026-08-05",
+          "slot": 3,
+          "clics": 50,
+          "share": 0.1401,
+          "lift": 0.605
+        },
+        {
+          "fecha": "2026-08-19",
+          "slot": 4,
+          "clics": 44,
+          "share": 0.1261,
+          "lift": 0.89
+        }
+      ]
+    },
+    {
+      "key": "durancarasso.es/barcelona/les-tres-torres/piso-de-lujo-de-214-m2-con-terraza-en-venta-en-les-tres-torres-barcelona",
+      "url": "https://www.durancarasso.es/barcelona/les-tres-torres/piso-de-lujo-de-214-m2-con-terraza-en-venta-en-les-tres-torres-barcelona?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+      "nombre": "Piso 214 m2 — Les Tres Torres · Barcelona",
+      "zona": "Barcelona",
+      "barrio": "Les Tres Torres",
+      "tipo": "Piso",
+      "m2": 214,
+      "habitaciones": null,
+      "slug": "piso-de-lujo-de-214-m2-con-terraza-en-venta-en-les-tres-torres-barcelona",
+      "apariciones": 5,
+      "ultima_aparicion": "2026-08-19",
+      "ultimo_slot": 3,
+      "clics_unicos_total": 440,
+      "score": 0.726,
+      "tendencia": -0.435,
+      "estado": "floja",
+      "historial": [
+        {
+          "fecha": "2026-07-08",
+          "slot": 1,
+          "clics": 120,
+          "share": 0.3478,
+          "lift": 1.004
+        },
+        {
+          "fecha": "2026-07-15",
+          "slot": 1,
+          "clics": 110,
+          "share": 0.3284,
+          "lift": 0.948
+        },
+        {
+          "fecha": "2026-07-22",
+          "slot": 2,
+          "clics": 55,
+          "share": 0.1964,
+          "lift": 0.7
+        },
+        {
+          "fecha": "2026-08-05",
+          "slot": 1,
+          "clics": 115,
+          "share": 0.3221,
+          "lift": 0.93
+        },
+        {
+          "fecha": "2026-08-19",
+          "slot": 3,
+          "clics": 40,
+          "share": 0.1146,
+          "lift": 0.495
+        }
+      ]
+    }
+  ],
+  "recomendacion": [
+    {
+      "key": "durancarasso.es/barcelona/lantiga-esquerra-de-leixample/piso-de-lujo-de-90-m2-con-vistas-en-venta-en-lantiga-esquerra-de-leixample-barcelona",
+      "url": "https://www.durancarasso.es/barcelona/lantiga-esquerra-de-leixample/piso-de-lujo-de-90-m2-con-vistas-en-venta-en-lantiga-esquerra-de-leixample-barcelona?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+      "nombre": "Piso 90 m2 — Lantiga Esquerra De Leixample · Barcelona",
+      "zona": "Barcelona",
+      "barrio": "Lantiga Esquerra De Leixample",
+      "tipo": "Piso",
+      "m2": 90,
+      "habitaciones": null,
+      "slug": "piso-de-lujo-de-90-m2-con-vistas-en-venta-en-lantiga-esquerra-de-leixample-barcelona",
+      "apariciones": 5,
+      "ultima_aparicion": "2026-08-19",
+      "ultimo_slot": 2,
+      "clics_unicos_total": 557,
+      "score": 1.362,
+      "tendencia": 0.132,
+      "estado": "estrella",
+      "historial": [
+        {
+          "fecha": "2026-07-08",
+          "slot": 3,
+          "clics": 95,
+          "share": 0.2754,
+          "lift": 1.19
+        },
+        {
+          "fecha": "2026-07-15",
+          "slot": 3,
+          "clics": 100,
+          "share": 0.2985,
+          "lift": 1.29
+        },
+        {
+          "fecha": "2026-07-22",
+          "slot": 3,
+          "clics": 92,
+          "share": 0.3286,
+          "lift": 1.42
+        },
+        {
+          "fecha": "2026-08-05",
+          "slot": 2,
+          "clics": 130,
+          "share": 0.3641,
+          "lift": 1.297
+        },
+        {
+          "fecha": "2026-08-19",
+          "slot": 2,
+          "clics": 140,
+          "share": 0.4011,
+          "lift": 1.429
+        }
+      ],
+      "motivo": "Mejor lift historico: rinde por encima de su posicion"
+    },
+    {
+      "key": "durancarasso.es/sitges/quintmar/villa-de-354-m2-con-piscina-en-venta-en-quintmar-sitges",
+      "url": "https://www.durancarasso.es/sitges/quintmar/villa-de-354-m2-con-piscina-en-venta-en-quintmar-sitges?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+      "nombre": "Villa 354 m2 — Quintmar · Sitges",
+      "zona": "Sitges",
+      "barrio": "Quintmar",
+      "tipo": "Villa",
+      "m2": 354,
+      "habitaciones": null,
+      "slug": "villa-de-354-m2-con-piscina-en-venta-en-quintmar-sitges",
+      "apariciones": 3,
+      "ultima_aparicion": "2026-08-19",
+      "ultimo_slot": 1,
+      "clics_unicos_total": 267,
+      "score": 1.057,
+      "tendencia": -0.193,
+      "estado": "solida",
+      "historial": [
+        {
+          "fecha": "2026-07-15",
+          "slot": 2,
+          "clics": 80,
+          "share": 0.2388,
+          "lift": 0.851
+        },
+        {
+          "fecha": "2026-08-05",
+          "slot": 4,
+          "clics": 62,
+          "share": 0.1737,
+          "lift": 1.227
+        },
+        {
+          "fecha": "2026-08-19",
+          "slot": 1,
+          "clics": 125,
+          "share": 0.3582,
+          "lift": 1.034
+        }
+      ],
+      "motivo": "Rota para refrescar la seleccion"
+    },
+    {
+      "key": "durancarasso.es/barcelona/dreta-de-leixample/piso-de-lujo-de-142-m2-con-vistas-en-venta-en-la-dreta-de-l-eixample-barcelona",
+      "url": "https://www.durancarasso.es/barcelona/dreta-de-leixample/piso-de-lujo-de-142-m2-con-vistas-en-venta-en-la-dreta-de-l-eixample-barcelona?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+      "nombre": "Piso 142 m2 — Dreta De Leixample · Barcelona",
+      "zona": "Barcelona",
+      "barrio": "Dreta De Leixample",
+      "tipo": "Piso",
+      "m2": 142,
+      "habitaciones": null,
+      "slug": "piso-de-lujo-de-142-m2-con-vistas-en-venta-en-la-dreta-de-l-eixample-barcelona",
+      "apariciones": 4,
+      "ultima_aparicion": "2026-08-19",
+      "ultimo_slot": 4,
+      "clics_unicos_total": 269,
+      "score": 0.826,
+      "tendencia": 0.285,
+      "estado": "floja",
+      "historial": [
+        {
+          "fecha": "2026-07-08",
+          "slot": 2,
+          "clics": 70,
+          "share": 0.2029,
+          "lift": 0.723
+        },
+        {
+          "fecha": "2026-07-22",
+          "slot": 1,
+          "clics": 105,
+          "share": 0.375,
+          "lift": 1.083
+        },
+        {
+          "fecha": "2026-08-05",
+          "slot": 3,
+          "clics": 50,
+          "share": 0.1401,
+          "lift": 0.605
+        },
+        {
+          "fecha": "2026-08-19",
+          "slot": 4,
+          "clics": 44,
+          "share": 0.1261,
+          "lift": 0.89
+        }
+      ],
+      "motivo": "Rota para refrescar la seleccion"
+    },
+    {
+      "key": "durancarasso.es/barcelona/les-tres-torres/piso-de-lujo-de-214-m2-con-terraza-en-venta-en-les-tres-torres-barcelona",
+      "url": "https://www.durancarasso.es/barcelona/les-tres-torres/piso-de-lujo-de-214-m2-con-terraza-en-venta-en-les-tres-torres-barcelona?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+      "nombre": "Piso 214 m2 — Les Tres Torres · Barcelona",
+      "zona": "Barcelona",
+      "barrio": "Les Tres Torres",
+      "tipo": "Piso",
+      "m2": 214,
+      "habitaciones": null,
+      "slug": "piso-de-lujo-de-214-m2-con-terraza-en-venta-en-les-tres-torres-barcelona",
+      "apariciones": 5,
+      "ultima_aparicion": "2026-08-19",
+      "ultimo_slot": 3,
+      "clics_unicos_total": 440,
+      "score": 0.726,
+      "tendencia": -0.435,
+      "estado": "floja",
+      "historial": [
+        {
+          "fecha": "2026-07-08",
+          "slot": 1,
+          "clics": 120,
+          "share": 0.3478,
+          "lift": 1.004
+        },
+        {
+          "fecha": "2026-07-15",
+          "slot": 1,
+          "clics": 110,
+          "share": 0.3284,
+          "lift": 0.948
+        },
+        {
+          "fecha": "2026-07-22",
+          "slot": 2,
+          "clics": 55,
+          "share": 0.1964,
+          "lift": 0.7
+        },
+        {
+          "fecha": "2026-08-05",
+          "slot": 1,
+          "clics": 115,
+          "share": 0.3221,
+          "lift": 0.93
+        },
+        {
+          "fecha": "2026-08-19",
+          "slot": 3,
+          "clics": 40,
+          "share": 0.1146,
+          "lift": 0.495
+        }
+      ],
+      "motivo": "Rota para refrescar la seleccion"
+    }
+  ]
+}

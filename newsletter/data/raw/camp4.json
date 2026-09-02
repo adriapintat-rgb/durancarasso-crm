@@ -1,0 +1,43 @@
+{
+ "id": "camp4",
+ "title": "Test 2026-08-19",
+ "subject": "Seleccion 2026-08-19",
+ "send_time": "2026-08-19T08:00:00+00:00",
+ "emails_sent": 4200,
+ "unique_opens": 1180,
+ "open_rate": 0.281,
+ "clicks_total": 453,
+ "unique_subscriber_clicks": 349,
+ "slots_detected": 4,
+ "links": [
+  {
+   "url": "https://www.durancarasso.es/sitges/quintmar/villa-de-354-m2-con-piscina-en-venta-en-quintmar-sitges?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+   "key": "durancarasso.es/sitges/quintmar/villa-de-354-m2-con-piscina-en-venta-en-quintmar-sitges",
+   "slot": 1,
+   "clicks": 162,
+   "unique_clicks": 125
+  },
+  {
+   "url": "https://www.durancarasso.es/barcelona/lantiga-esquerra-de-leixample/piso-de-lujo-de-90-m2-con-vistas-en-venta-en-lantiga-esquerra-de-leixample-barcelona?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+   "key": "durancarasso.es/barcelona/lantiga-esquerra-de-leixample/piso-de-lujo-de-90-m2-con-vistas-en-venta-en-lantiga-esquerra-de-leixample-barcelona",
+   "slot": 2,
+   "clicks": 182,
+   "unique_clicks": 140
+  },
+  {
+   "url": "https://www.durancarasso.es/barcelona/les-tres-torres/piso-de-lujo-de-214-m2-con-terraza-en-venta-en-les-tres-torres-barcelona?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+   "key": "durancarasso.es/barcelona/les-tres-torres/piso-de-lujo-de-214-m2-con-terraza-en-venta-en-les-tres-torres-barcelona",
+   "slot": 3,
+   "clicks": 52,
+   "unique_clicks": 40
+  },
+  {
+   "url": "https://www.durancarasso.es/barcelona/dreta-de-leixample/piso-de-lujo-de-142-m2-con-vistas-en-venta-en-la-dreta-de-l-eixample-barcelona?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+   "key": "durancarasso.es/barcelona/dreta-de-leixample/piso-de-lujo-de-142-m2-con-vistas-en-venta-en-la-dreta-de-l-eixample-barcelona",
+   "slot": 4,
+   "clicks": 57,
+   "unique_clicks": 44
+  }
+ ],
+ "fetched_at": "2026-09-02T00:00:00+00:00"
+}

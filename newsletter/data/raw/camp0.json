@@ -1,0 +1,43 @@
+{
+ "id": "camp0",
+ "title": "Test 2026-07-08",
+ "subject": "Seleccion 2026-07-08",
+ "send_time": "2026-07-08T08:00:00+00:00",
+ "emails_sent": 4200,
+ "unique_opens": 1180,
+ "open_rate": 0.281,
+ "clicks_total": 448,
+ "unique_subscriber_clicks": 345,
+ "slots_detected": 4,
+ "links": [
+  {
+   "url": "https://www.durancarasso.es/barcelona/les-tres-torres/piso-de-lujo-de-214-m2-con-terraza-en-venta-en-les-tres-torres-barcelona?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+   "key": "durancarasso.es/barcelona/les-tres-torres/piso-de-lujo-de-214-m2-con-terraza-en-venta-en-les-tres-torres-barcelona",
+   "slot": 1,
+   "clicks": 156,
+   "unique_clicks": 120
+  },
+  {
+   "url": "https://www.durancarasso.es/barcelona/dreta-de-leixample/piso-de-lujo-de-142-m2-con-vistas-en-venta-en-la-dreta-de-l-eixample-barcelona?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+   "key": "durancarasso.es/barcelona/dreta-de-leixample/piso-de-lujo-de-142-m2-con-vistas-en-venta-en-la-dreta-de-l-eixample-barcelona",
+   "slot": 2,
+   "clicks": 91,
+   "unique_clicks": 70
+  },
+  {
+   "url": "https://www.durancarasso.es/barcelona/lantiga-esquerra-de-leixample/piso-de-lujo-de-90-m2-con-vistas-en-venta-en-lantiga-esquerra-de-leixample-barcelona?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+   "key": "durancarasso.es/barcelona/lantiga-esquerra-de-leixample/piso-de-lujo-de-90-m2-con-vistas-en-venta-en-lantiga-esquerra-de-leixample-barcelona",
+   "slot": 3,
+   "clicks": 123,
+   "unique_clicks": 95
+  },
+  {
+   "url": "https://www.durancarasso.es/barcelona/lantiga-esquerra-de-leixample/piso-de-88-m2-en-venta-en-lantiga-esquerra-de-leixample-barcelona?utm_source=newsletter&utm_medium=email&utm_campaign=propiedades",
+   "key": "durancarasso.es/barcelona/lantiga-esquerra-de-leixample/piso-de-88-m2-en-venta-en-lantiga-esquerra-de-leixample-barcelona",
+   "slot": 4,
+   "clicks": 78,
+   "unique_clicks": 60
+  }
+ ],
+ "fetched_at": "2026-09-02T00:00:00+00:00"
+}
