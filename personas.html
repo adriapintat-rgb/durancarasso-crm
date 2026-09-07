@@ -7,7 +7,7 @@
 <title>DC · Personas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <style>
 :root{
   color-scheme:light;
@@ -30,14 +30,14 @@
   --serif:'Cormorant Garamond',Georgia,serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;-webkit-font-smoothing:antialiased}
+html,body{min-height:100vh;font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font-family:'Inter',system-ui,sans-serif;font-size:14px;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .hide{display:none!important}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
 /* ══ LANDING ══ */
-#login{position:fixed;inset:0;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;z-index:200}
+#login{min-height:100vh;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 20px;gap:0}
 .access{width:100%;max-width:392px;background:var(--card);border:1px solid var(--line);border-radius:3px;padding:0 0 30px;position:relative}
 .access:before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent)}
 .hero{padding:42px 34px 26px;text-align:center;width:100%}
@@ -84,7 +84,7 @@ button,input,select,textarea{font-family:'Inter',system-ui,sans-serif;font-size:
 .pin-err{color:var(--red);font-size:12px;text-align:center;min-height:18px;margin-top:16px}
 
 /* ══ SHELL ══ */
-#app{display:none;min-height:100%;flex-direction:column}
+#app{display:none;min-height:100vh;flex-direction:column}
 #app.on{display:flex}
 .topbar{background:var(--card);border-bottom:1px solid var(--line);box-shadow:inset 0 2px 0 var(--accent);padding:13px 22px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:60}
 .tb-brand{font-family:var(--serif);font-size:15px;font-weight:500;letter-spacing:2.6px;text-transform:uppercase;color:var(--navy);flex-shrink:0;line-height:1.1;white-space:nowrap}
@@ -104,7 +104,7 @@ button,input,select,textarea{font-family:'Inter',system-ui,sans-serif;font-size:
 .tb-user{display:flex;align-items:center;gap:9px;cursor:pointer;flex-shrink:0}
 .tb-uname{font-size:12.5px;color:var(--navy);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .shell{display:flex;flex:1;min-height:0}
-.side{width:214px;flex-shrink:0;background:var(--card);border-right:1px solid var(--line);padding:16px 12px;position:sticky;top:57px;align-self:flex-start;height:calc(100vh - 57px);overflow-y:auto}
+.side{width:214px;flex-shrink:0;background:var(--card);border-right:1px solid var(--line);padding:16px 12px;position:sticky;top:57px;align-self:stretch;max-height:calc(100vh - 57px);overflow-y:auto}
 .nav-i{display:flex;align-items:center;gap:12px;padding:10px 13px;border-radius:2px;font-size:13px;color:var(--text);cursor:pointer;margin-bottom:1px;border:none;background:none;width:100%;text-align:left;transition:.12s;position:relative;border-left:2px solid transparent}
 .nav-i:hover{background:var(--bg)}
 .nav-i.on{background:var(--accent-soft);color:var(--accent);font-weight:500;border-left-color:var(--gold)}
@@ -2296,30 +2296,45 @@ var DEMO_SEED = {
   ]
 };
 function dbGet(){
-  try{
-    var v=JSON.parse(localStorage.getItem('dcp_demo'));
-    if(v && v.empleados) return v;
-  }catch(e){}
-  var db={empleados:DEMO_SEED.empleados,horarios:DEMO_SEED.horarios,festivos:DEMO_SEED.festivos,
-          turnos:[],compensaciones:[],objetivos:[],evaluaciones:[],encuestas:[],respuestas:[],
-          vacantes:[],candidatos:[],checklists:[],
-          centros:[{id:'CT-BCN',nombre:'Barcelona',direccion:'Av. Diagonal',lat:41.3947,lng:2.1503,radio_m:150,activo:'SI'},
-                   {id:'CT-SIT',nombre:'Sitges',direccion:'Sitges',lat:41.2371,lng:1.8055,radio_m:150,activo:'SI'},
-                   {id:'CT-AND',nombre:'Andorra',direccion:'Andorra la Vella',lat:42.5063,lng:1.5218,radio_m:150,activo:'SI'}],
-          publicaciones:[{id:'PU-1',ts:new Date().toISOString(),autor:'Adrià Pintat',categoria:'Aviso importante',
-                          titulo:'Estrenamos DC · Personas',fijado:true,
-                          cuerpo:'A partir de hoy el fichaje se hace desde aquí.\n\nEntra con tu PIN, pulsa Entrar al empezar y Salir al terminar. Las vacaciones se piden en «Mis ausencias» y las aprueba dirección.'}],
-          fichajes:[],ausencias:[],tareas:[],documentos:[
-            {id:'D-1',trabajador:'*',tipo:'Empresa',nombre:'Política de teletrabajo 2026',url:'',fecha:hoyISO(),requiereFirma:true,firmado:''},
-            {id:'D-2',trabajador:'*',tipo:'Empresa',nombre:'Manual de acogida Durán Carasso',url:'',fecha:hoyISO(),requiereFirma:false,firmado:''}
-          ]};
-  dbSet(db); return db;
+  var db=null;
+  try{ db=JSON.parse(localStorage.getItem('dcp_demo')); }catch(e){}
+  if(!db || typeof db!=='object') db={};
+
+  // Migración: una base guardada por una versión anterior no tiene las
+  // colecciones nuevas. Se rellenan sin tocar los datos ya existentes.
+  var vacias=['fichajes','ausencias','tareas','turnos','compensaciones','objetivos',
+              'evaluaciones','encuestas','respuestas','vacantes','candidatos','checklists'];
+  vacias.forEach(function(k){ if(!Array.isArray(db[k])) db[k]=[]; });
+  if(!Array.isArray(db.empleados) || !db.empleados.length) db.empleados=DEMO_SEED.empleados;
+  if(!Array.isArray(db.horarios) || !db.horarios.length) db.horarios=DEMO_SEED.horarios;
+  if(!Array.isArray(db.festivos) || !db.festivos.length) db.festivos=DEMO_SEED.festivos;
+  if(!Array.isArray(db.centros) || !db.centros.length) db.centros=[
+    {id:'CT-BCN',nombre:'Barcelona',direccion:'Av. Diagonal',lat:41.3947,lng:2.1503,radio_m:150,activo:'SI'},
+    {id:'CT-SIT',nombre:'Sitges',direccion:'Sitges',lat:41.2371,lng:1.8055,radio_m:150,activo:'SI'},
+    {id:'CT-AND',nombre:'Andorra',direccion:'Andorra la Vella',lat:42.5063,lng:1.5218,radio_m:150,activo:'SI'}];
+  if(!Array.isArray(db.publicaciones) || !db.publicaciones.length) db.publicaciones=[
+    {id:'PU-1',ts:new Date().toISOString(),autor:'Adrià Pintat',categoria:'Aviso importante',
+     titulo:'Estrenamos DC · Personas',fijado:true,
+     cuerpo:'A partir de hoy el fichaje se hace desde aquí.\n\nEntra con tu PIN, pulsa Entrar al empezar y Salir al terminar. Las vacaciones se piden en «Mis ausencias» y las aprueba dirección.'}];
+  if(!Array.isArray(db.documentos) || !db.documentos.length) db.documentos=[
+    {id:'D-1',trabajador:'*',tipo:'Empresa',nombre:'Política de teletrabajo 2026',url:'',fecha:hoyISO(),requiereFirma:true,firmado:''},
+    {id:'D-2',trabajador:'*',tipo:'Empresa',nombre:'Manual de acogida Durán Carasso',url:'',fecha:hoyISO(),requiereFirma:false,firmado:''}];
+  db.version=2;
+  dbSet(db);
+  return db;
 }
 function dbSet(db){ try{localStorage.setItem('dcp_demo',JSON.stringify(db));}catch(e){} }
 function demoEmp(nombre){ return dbGet().empleados.filter(function(e){return e.nombre===nombre;})[0]; }
 function demoId(p){ return p+'-'+Math.random().toString(36).slice(2,10).toUpperCase(); }
 
 function demoApi(action,p){
+  try{ return demoApiInterno(action,p); }
+  catch(err){
+    console.error('demo',action,err);
+    return new Promise(function(res){ res({ok:false,error:'DEMO_'+action}); });
+  }
+}
+function demoApiInterno(action,p){
   var db=dbGet(), yo=S.emp?demoEmp(S.emp.nombre):null;
   var r={ok:false,error:'ACCION_DESCONOCIDA'};
   switch(action){
@@ -2598,11 +2613,17 @@ function initLogin(){
   pintarPad();
   $('sel_trig').onclick=function(){ this.classList.toggle('open'); $('sel_drop').classList.toggle('open'); $('sel_q').focus(); };
   $('sel_q').oninput=pintarSelect;
-  if(DEMO) $('lg_hint').innerHTML='Modo demo · PIN <b>1234</b> · dirección: Adrià Pintat / <b>0000</b>';
+  if(DEMO) $('lg_hint').innerHTML='Modo demo · PIN <b>1234</b> · dirección: Adrià Pintat / <b>0000</b>'+
+    '<br><a href="#" onclick="reiniciarDemo();return false" style="color:var(--accent);font-size:11px">Reiniciar datos de la demo</a>';
   api('listaEmpleados').then(function(r){
     S.empleados = (r&&r.ok) ? r.empleados : [];
     pintarSelect();
   }).catch(function(){ toast('No se pudo cargar la plantilla','err'); });
+}
+function reiniciarDemo(){
+  if(!confirm('Se borran los datos de prueba de este navegador. ¿Continuar?')) return;
+  try{ localStorage.removeItem('dcp_demo'); localStorage.removeItem('dcp_ses'); localStorage.removeItem('dcp_cola'); }catch(e){}
+  location.reload();
 }
 function arrancar(){
   try{ S.modalidad=localStorage.getItem('dcp_mod')||'OFICINA'; }catch(e){}
