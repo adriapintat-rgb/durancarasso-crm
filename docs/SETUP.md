@@ -87,6 +87,15 @@ Desde el móvil: **Compartir → Añadir a pantalla de inicio**. Funciona como u
 | `Tareas` | Imputación de tiempo | App |
 | `Documentos` | Documentos compartidos y su firma | App / manual |
 | `Auditoria` | Accesos, validaciones y correcciones | Automática |
+| `Turnos` | Jornadas asignadas por periodo | App |
+| `Centros` | Geovallas de los centros de trabajo | App |
+| `Compensaciones` | Movimientos de la bolsa de horas | App |
+| `Objetivos` | Metas individuales y su valoración | App |
+| `Evaluaciones` | Campañas de desempeño | App |
+| `Encuestas` / `Respuestas` | Clima laboral | App |
+| `Publicaciones` | Tablón interno | App |
+| `Vacantes` / `Candidatos` | Reclutamiento | App |
+| `Checklists` | Onboarding y offboarding | App |
 
 ### Por qué no se editan los fichajes a mano
 
@@ -114,6 +123,30 @@ motivo y autor, dejando el original intacto.
 - *Informes*: rango + persona → CSV para la gestoría, o Imprimir/PDF.
 
 ---
+
+## Ajustes opcionales
+
+En **Configuración del proyecto → Propiedades del script**:
+
+| Propiedad | Para qué |
+|---|---|
+| `EXIGIR_CENTRO` | `SI` impide fichar fuera de un centro de la hoja `Centros`. Por defecto `NO` |
+| `API_KEY` | Clave de la API de lectura. Se genera sola en `setupInicial` |
+
+**Calendario**: cada persona obtiene su enlace en *Mi perfil → Calendario*. Es un feed iCal
+de solo lectura con sus ausencias aprobadas; Outlook y Google Calendar lo aceptan como
+calendario por suscripción y se actualiza solo. No necesita ninguna integración.
+
+**API de lectura** (para Power BI, Looker Studio o un script propio):
+`https://…/exec?api=TU_CLAVE&recurso=fichajes` — recursos válidos: `fichajes`,
+`ausencias`, `empleados` (sin PIN) y `tareas`.
+
+**Quiosco**: en *Dirección → Quiosco / QR*, «Activar modo quiosco» convierte una tablet
+en punto de fichaje compartido: cada persona toca su nombre, mete su PIN y ficha, sin
+dejar sesión abierta. El QR de la misma pantalla se imprime para recepción.
+
+**Coste por proyecto**: rellena la columna `coste_hora` en la hoja `Empleados` para que
+Analytics calcule el coste real de cada proyecto.
 
 ## Notas técnicas
 

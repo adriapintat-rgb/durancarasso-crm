@@ -141,47 +141,46 @@ de movilidad real hay que informar previamente y justificar la base legal.
 
 ---
 
-## 6. Qué replicamos y qué no
+## 6. Cobertura frente a Sesame
 
-### Incluido en la v1 (`personas.html`)
-- Portal del empleado con estado en vivo
-- Fichaje entrada / pausa / reanudar / salida con contador en tiempo real
-- Historial semanal con línea de tiempo y comparación contra jornada teórica
-- Ausencias: solicitud, saldo de vacaciones, calendario anual de 12 meses, cancelación
-- Validación de ausencias por dirección con detección de solapamientos y aviso por email
-- Horarios y calendario de festivos
-- Equipo / «Who's in» en tiempo real + calendario de ausencias del equipo
-- Estadísticas: bolsa de horas, evolución de 8 semanas, exceso acumulado
-- Tareas: imputación de tiempo por proyecto con reparto visual
-- Documentos con acuse de firma
-- Dirección: validaciones, incidencias, informes con export CSV, alta de plantilla,
-  corrección trazable de fichajes, verificación de integridad
-- Cola offline y sesión persistente 12 h
+### Implementado (28 secciones)
 
-### Fuera de la v1 (evaluar después)
-- ATS / reclutamiento
-- Evaluación de desempeño y objetivos
-- Encuestas de clima
-- Firma electrónica cualificada (aquí es acuse de recepción, no firma eIDAS)
-- Nóminas (sigue en la gestoría)
-- Planificador de turnos rotativos
-- Sincronización con Google/Outlook Calendar
-- Fichaje por QR / quiosco compartido y geovallas
+**Empleado** — Portal · Mis fichajes · Mis ausencias · Mis horarios · Mis tareas ·
+Mis objetivos · Mi evaluación · Encuestas · Tablón · Mi checklist · Mis documentos ·
+Mi perfil · Equipo · Estadísticas
 
----
+**Dirección** — Validaciones · Incidencias · Turnos · Bolsa de horas · Objetivos ·
+Evaluaciones · Encuestas · Reclutamiento · Onboarding · Analytics · Informes ·
+Plantilla · Centros · Quiosco / QR
 
-## Fuentes
+| Función de Sesame | En DC · Personas |
+|---|---|
+| Fichaje web y móvil | ✅ |
+| Fichaje por QR y quiosco (tablet compartida) | ✅ Modo quiosco a pantalla completa + QR imprimible |
+| Geolocalización y geovallas | ✅ Centros con radio; opción de bloquear el fichaje fuera |
+| Estado remoto / oficina / visita | ✅ Selector de modalidad |
+| Turnos y horarios flexibles | ✅ Planificador semanal; el turno pisa el horario fijo |
+| Bolsa de horas con compensación | ✅ En días libres, económica o ajuste manual |
+| Ausencias, validaciones y calendario | ✅ |
+| Sincronización con Google / Outlook Calendar | ✅ Vía feed iCal por suscripción (sin API) |
+| Gestor documental y firma | ✅ Firma = acuse con sello temporal |
+| Objetivos individuales | ✅ Con métrica, meta, peso y valoración |
+| Evaluación de desempeño | ✅ Campañas, autoevaluación y valoración del responsable |
+| Encuestas de clima | ✅ Anónimas, con resultados agregados |
+| Comunicación interna | ✅ Tablón con publicaciones fijables |
+| ATS / reclutamiento | ✅ Vacantes + kanban de candidatos en 7 fases |
+| Onboarding / offboarding | ✅ Checklists con plantillas |
+| People analytics | ✅ Horas, absentismo, coste por proyecto, distribución |
+| Perfil del empleado | ✅ Con cambio de PIN propio |
+| Multiempresa | ⚠️ Campo `empresa` en Empleados; sin separación de datos |
+| API | ✅ Endpoint de lectura con clave (`?api=CLAVE&recurso=fichajes`) |
 
-- [Sesame · Control horario y vacaciones](https://www.sesametime.com/)
-- [Panel del empleado — Sesame](https://www.sesametime.com/panel-del-empleado/)
-- [Portal de RRHH para empleados — Sesame HR](https://www.sesamehr.es/software-rrhh-empleados/)
-- [Ficha con Sesame: modos de fichaje](https://www.sesamehr.es/blog/control-horario/ficha-sesame-hr/)
-- [Bolsa de horas con Sesame](https://www.sesamehr.es/blog/horas-extras/como-gestionar-facilmente-la-bolsa-de-horas-de-tus-empleados-con-sesame/)
-- [Sesame HR — Funcionalidades y encaje 2026 (Guía Control Horario)](https://www.guiacontrolhorario.es/software/sesame)
-- [Sesame HR: análisis y precios (Tramitapp)](https://www.tramitapp.com/blog/sesame-recursos-humanos/)
-- [Precios de Sesame HR 2026 (G2)](https://www.g2.com/products/sesame-hr/pricing)
-- [Sesame HR: opiniones y alternativas (Skello)](https://www.skello.es/blog/opiniones-sesame-alternativas)
-- [Reseña de Sesame HR (Jibble)](https://www.jibble.io/es/resenas/sesame-hr)
-- [Control horario en 2026: normativa y obligaciones (TeamSystem)](https://teamsystem.es/magazine/control-horario-2026/)
-- [Registro horario digital obligatorio 2026 (Protime)](https://www.protime.eu/es-es/noticias/registro-horario-digital-obligatorio-2026)
-- [Nuevo registro horario digital en España (Factorial)](https://factorial.es/blog/nuevo-registro-horario-digital-espana/)
+### Imposible sin terceros
+
+| Función | Por qué |
+|---|---|
+| SSO / OAuth | Requiere configuración en Microsoft Entra o Google Workspace |
+| Firma electrónica cualificada (eIDAS) | Requiere prestador certificado |
+| Publicar vacantes en InfoJobs / LinkedIn | Requiere contrato y API del portal |
+| Envío de nóminas desde la gestoría | Depende del software de la gestoría; se suben como documentos |
+

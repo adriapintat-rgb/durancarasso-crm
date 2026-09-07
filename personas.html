@@ -7,6 +7,7 @@
 <title>DC · Personas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root{
   color-scheme:light;
@@ -110,7 +111,8 @@ button,input,select,textarea{font-family:'Inter',system-ui,sans-serif;font-size:
 .nav-i .ic{width:17px;text-align:center;font-size:13px;opacity:.6}
 .nav-i.on .ic{opacity:1}
 .nav-i .badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:600;border-radius:999px;padding:1px 6px;min-width:18px;text-align:center}
-.nav-sep{font-size:9px;letter-spacing:1.3px;text-transform:uppercase;color:#ADABA5;padding:20px 11px 7px;font-weight:600}
+.nav-sep{font-size:8.5px;letter-spacing:1.4px;text-transform:uppercase;color:#ADABA5;padding:18px 11px 6px;font-weight:600}
+.nav-sep:first-child{padding-top:2px}
 .main{flex:1;min-width:0;padding:26px 30px 90px;max-width:1180px}
 .bottomnav{display:none}
 
@@ -335,7 +337,12 @@ var S = {
   fichajesHoy: [], fichajesRango: [], estado: 'FUERA', desdeTs: null,
   ausencias: [], saldo: null, ausEquipo: [], equipo: [],
   tareas: [], documentos: [], pendientes: [],
-  vista: 'portal', year: new Date().getFullYear(), cargando: false
+  centros: [], turnos: [], exigirCentro: false, modalidad: 'OFICINA',
+  perfil: null, objetivos: [], evaluacion: [], encuestas: [], publicaciones: [],
+  checklist: [], compensaciones: [],
+  objEquipo: [], evalEquipo: null, encuestasAdmin: [], turnosEquipo: [],
+  bolsaEquipo: null, reclut: null, checklistEquipo: null, analytics: null, centrosAdmin: [],
+  vista: 'portal', year: new Date().getFullYear(), cargando: false, cargandoVista: false
 };
 
 var TIPOS_AUSENCIA = [
@@ -481,15 +488,36 @@ var NAV = [
   {id:'ausencias',  ic:'☂', t:'Mis ausencias', m:'Ausencias'},
   {id:'horarios',   ic:'▤', t:'Mis horarios'},
   {id:'tareas',     ic:'✓', t:'Mis tareas'},
+  {sep:'Desarrollo'},
+  {id:'objetivos',  ic:'◎', t:'Mis objetivos'},
+  {id:'evaluacion', ic:'★', t:'Mi evaluación'},
+  {id:'encuestas',  ic:'?', t:'Encuestas'},
+  {id:'tablon',     ic:'✉', t:'Tablón'},
+  {id:'checklist',  ic:'☑', t:'Mi checklist'},
   {id:'documentos', ic:'▢', t:'Mis documentos'},
+  {id:'perfil',     ic:'⌾', t:'Mi perfil'},
+  {sep:'Mi equipo'},
   {id:'equipo',     ic:'⚇', t:'Equipo',        m:'Equipo'},
   {id:'stats',      ic:'▦', t:'Estadísticas'}
 ];
 var NAV_DIR = [
   {id:'validaciones', ic:'✓', t:'Validaciones'},
   {id:'incidencias',  ic:'⚠', t:'Incidencias'},
+  {sep:'Planificación', dir:1},
+  {id:'turnos',       ic:'▦', t:'Turnos'},
+  {id:'bolsa',        ic:'∑', t:'Bolsa de horas'},
+  {sep:'Talento', dir:1},
+  {id:'objequipo',    ic:'◎', t:'Objetivos'},
+  {id:'evaluaciones', ic:'★', t:'Evaluaciones'},
+  {id:'encuestasadm', ic:'?', t:'Encuestas'},
+  {id:'reclutamiento',ic:'⚑', t:'Reclutamiento'},
+  {id:'onboarding',   ic:'☑', t:'Onboarding'},
+  {sep:'Datos y ajustes', dir:1},
+  {id:'analytics',    ic:'◱', t:'Analytics'},
   {id:'informes',     ic:'⤓', t:'Informes'},
-  {id:'plantilla',    ic:'⚇', t:'Plantilla'}
+  {id:'plantilla',    ic:'⚇', t:'Plantilla'},
+  {id:'centros',      ic:'⌖', t:'Centros'},
+  {id:'quiosco',      ic:'▣', t:'Quiosco / QR'}
 ];
 
 function pintarNav(){
@@ -506,19 +534,45 @@ function pintarNav(){
   }).join('') + '<button class="bn-i" onclick="menuMas()"><span class="ic">≡</span>Más</button>';
 }
 function navBtn(n){
+  if(n.sep) return '<div class="nav-sep">'+esc(n.sep)+'</div>';
   var badge = (n.id==='validaciones' && S.pendientes.length) ? '<span class="badge">'+S.pendientes.length+'</span>' : '';
   return '<button class="nav-i'+(S.vista===n.id?' on':'')+'" onclick="ir(\''+n.id+'\')">'+
     '<span class="ic">'+n.ic+'</span>'+esc(n.t)+badge+'</button>';
 }
 function menuMas(){
-  var items = NAV.filter(function(n){return !n.m;}).concat(S.esDir?NAV_DIR:[]);
+  var items = NAV.filter(function(n){return !n.m && !n.sep;}).concat(S.esDir?NAV_DIR.filter(function(n){return !n.sep;}):[]);
   abrirModal('<div class="mtitle">Menú</div><div class="msub">Todas las secciones</div>'+
     items.map(function(n){
       return '<button class="nav-i" onclick="cerrarModal();ir(\''+n.id+'\')"><span class="ic">'+n.ic+'</span>'+esc(n.t)+'</button>';
     }).join('')+
     '<button class="nav-i" style="color:var(--red);margin-top:8px" onclick="salir()"><span class="ic">⏻</span>Cerrar sesión</button>');
 }
-function ir(v){ S.vista=v; pintarNav(); render(); window.scrollTo(0,0); }
+var CARGA = {
+  objetivos:   function(){ return api('misObjetivos').then(function(r){ if(r.ok) S.objetivos=r.objetivos; }); },
+  evaluacion:  function(){ return api('miEvaluacion',{}).then(function(r){ if(r.ok) S.evaluacion=r.evaluacion; }); },
+  encuestas:   function(){ return api('encuestasAbiertas').then(function(r){ if(r.ok) S.encuestas=r.encuestas; }); },
+  tablon:      function(){ return api('publicaciones').then(function(r){ if(r.ok) S.publicaciones=r.publicaciones; }); },
+  checklist:   function(){ return api('miChecklist').then(function(r){ if(r.ok) S.checklist=r.checklist; }); },
+  perfil:      function(){ return api('miPerfil').then(function(r){ if(r.ok) S.perfil=r.perfil; }); },
+  stats:       function(){ return api('miBolsa',{year:S.year}).then(function(r){ if(r.ok) S.compensaciones=r.compensaciones; }); },
+  turnos:      function(){ return api('turnosEquipo',{}).then(function(r){ if(r.ok) S.turnosEquipo=r.turnos; }); },
+  bolsa:       function(){ return api('bolsaEquipo',{year:S.year}).then(function(r){ if(r.ok) S.bolsaEquipo=r; }); },
+  objequipo:   function(){ return api('objetivosEquipo',{}).then(function(r){ if(r.ok) S.objEquipo=r.objetivos; }); },
+  evaluaciones:function(){ return api('evaluacionesEquipo',{}).then(function(r){ if(r.ok) S.evalEquipo=r; }); },
+  encuestasadm:function(){ return api('encuestasTodas').then(function(r){ if(r.ok) S.encuestasAdmin=r.encuestas; }); },
+  reclutamiento:function(){ return api('vacantes').then(function(r){ if(r.ok) S.reclut=r; }); },
+  onboarding:  function(){ return api('checklistEquipo',{}).then(function(r){ if(r.ok) S.checklistEquipo=r; }); },
+  analytics:   function(){ return api('analytics',{desde:S.year+'-01-01',hasta:hoyISO()}).then(function(r){ if(r.ok) S.analytics=r; }); },
+  centros:     function(){ return api('centros').then(function(r){ if(r.ok) S.centrosAdmin=r.centros; }); },
+  tablonPortal:function(){ return api('publicaciones').then(function(r){ if(r.ok) S.publicaciones=r.publicaciones; }); }
+};
+function ir(v){
+  S.vista=v; pintarNav(); window.scrollTo(0,0);
+  if(CARGA[v]){
+    S.cargandoVista=true; render();
+    CARGA[v]().catch(function(){}).then(function(){ S.cargandoVista=false; render(); });
+  } else render();
+}
 
 function abrirModal(html){ $('mbox').innerHTML=html; $('modal').classList.add('on'); }
 function cerrarModal(){ $('modal').classList.remove('on'); }
@@ -548,6 +602,15 @@ function minutosDia(fecha, lista){
   return minutosDe(evs).cerrado;
 }
 function minutosDiaVivo(f){ return f===hoyISO()? minutosHoy() : minutosDia(f); }
+function horarioDe(fecha){
+  for(var i=0;i<S.turnos.length;i++){
+    var t=S.turnos[i];
+    if(fecha>=t.desde && fecha<=t.hasta){
+      for(var j=0;j<S.horarios.length;j++) if(String(S.horarios[j].horario_id)===String(t.horario_id)) return S.horarios[j];
+    }
+  }
+  return miHorario();
+}
 function miHorario(){
   var id=String(S.emp.horario_id||'STD');
   for(var i=0;i<S.horarios.length;i++) if(String(S.horarios[i].horario_id)===id) return S.horarios[i];
@@ -558,7 +621,7 @@ function esFestivo(fecha){
   return null;
 }
 function minutosTeoricos(fecha){
-  var h=miHorario(); if(!h) return 0;
+  var h=horarioDe(fecha); if(!h) return 0;
   if(esFestivo(fecha)) return 0;
   var d=new Date(fecha+'T00:00:00');
   var col=['dom','lun','mar','mie','jue','vie','sab'][d.getDay()];
@@ -602,19 +665,20 @@ function pintarReloj(){
 function togglePausa(){ fichar(S.estado==='PAUSA' ? 'PAUSA_FIN' : 'PAUSA_INI'); }
 
 function fichar(tipo){
-  var geo = {dispositivo: navigator.userAgent.indexOf('Mobile')>=0?'Móvil':'Escritorio'};
+  var geo = {dispositivo: navigator.userAgent.indexOf('Mobile')>=0?'Móvil':'Escritorio', modalidad: S.modalidad};
   var lanzar = function(){
     var payload = Object.assign({tipo:tipo}, geo);
     api('fichar', payload).then(function(r){
       if(!r.ok){
         if(r.error==='TRANSICION_INVALIDA'){ toast('Estado no válido: ya estás '+etiquetaEstado(r.estado),'err'); refrescar(); }
+        else if(r.error==='FUERA_DE_CENTRO') toast('Estás fuera de un centro de trabajo autorizado','err');
         else toast('No se pudo fichar: '+(r.error||''),'err');
         return;
       }
       S.estado = r.estado;
       for(var i=0;i<S.equipo.length;i++) if(S.equipo[i].nombre===S.emp.nombre){ S.equipo[i].estado=r.estado; S.equipo[i].desde=r.ts; }
       S.fichajesHoy.push({id:r.id, ts:r.ts, fecha:r.fecha, hora:r.hora, tipo:tipo, origen:'APP'});
-      toast(mensajeFichaje(tipo)+' · '+r.hora.slice(0,5),'ok');
+      toast(mensajeFichaje(tipo)+' · '+r.hora.slice(0,5)+(r.centro?' · '+r.centro:''),'ok');
       pintarReloj(); if(S.vista==='portal'||S.vista==='fichajes') render();
     }).catch(function(){
       colaPush(Object.assign({tipo:tipo},geo));
@@ -654,7 +718,7 @@ function refrescar(){
   var lunes=lunesDe(new Date()), año=S.year;
   var desdeRango=fISO(new Date(new Date().getFullYear(),0,1));
   var tareas=[
-    api('bootstrap').then(function(r){ if(r.ok){ S.empleados=r.empleados; S.horarios=r.horarios; S.festivos=r.festivos; S.esDir=r.esDireccion; } }),
+    api('bootstrap').then(function(r){ if(r.ok){ S.empleados=r.empleados; S.horarios=r.horarios; S.festivos=r.festivos; S.esDir=r.esDireccion; S.centros=r.centros||[]; S.turnos=r.turnos||[]; S.exigirCentro=!!r.exigirCentro; } }),
     api('misFichajes',{desde:desdeRango,hasta:hoyISO()}).then(function(r){
       if(r.ok){ S.fichajesRango=r.fichajes; S.fichajesHoy=r.fichajes.filter(function(f){return f.fecha===hoyISO();});
                 S.estado=r.estado?r.estado.estado:'FUERA'; } }),
@@ -662,7 +726,8 @@ function refrescar(){
     api('estadoEquipo').then(function(r){ if(r.ok) S.equipo=r.equipo; }),
     api('ausenciasEquipo',{year:año}).then(function(r){ if(r.ok) S.ausEquipo=r.ausencias; }),
     api('misTareas',{desde:fISO(lunes),hasta:hoyISO()}).then(function(r){ if(r.ok) S.tareas=r.tareas; }),
-    api('misDocumentos').then(function(r){ if(r.ok) S.documentos=r.documentos; })
+    api('misDocumentos').then(function(r){ if(r.ok) S.documentos=r.documentos; }),
+    api('publicaciones').then(function(r){ if(r.ok) S.publicaciones=r.publicaciones; })
   ];
   return Promise.all(tareas).then(function(){
     S.pendientes = S.esDir ? S.ausEquipo.filter(function(a){return a.estado==='PENDIENTE';}) : [];
@@ -672,11 +737,17 @@ function refrescar(){
 
 /* ══ RENDER ═════════════════════════════════════════════════════════════ */
 function render(){
+  if(S.cargandoVista){ $('main').innerHTML='<div class="loading"><span class="spinner"></span> Cargando…</div>'; return; }
   if(S.cargando){ $('main').innerHTML='<div class="loading"><span class="spinner"></span> Cargando…</div>'; return; }
   var v={portal:vPortal,fichajes:vFichajes,ausencias:vAusencias,horarios:vHorarios,tareas:vTareas,
          documentos:vDocumentos,equipo:vEquipo,stats:vStats,validaciones:vValidaciones,
-         incidencias:vIncidencias,informes:vInformes,plantilla:vPlantilla}[S.vista]||vPortal;
+         incidencias:vIncidencias,informes:vInformes,plantilla:vPlantilla,
+         objetivos:vObjetivos,evaluacion:vEvaluacion,encuestas:vEncuestas,tablon:vTablon,
+         checklist:vChecklist,perfil:vPerfil,turnos:vTurnos,bolsa:vBolsa,objequipo:vObjEquipo,
+         evaluaciones:vEvaluaciones,encuestasadm:vEncuestasAdm,reclutamiento:vReclutamiento,
+         onboarding:vOnboarding,analytics:vAnalytics,centros:vCentros,quiosco:vQuiosco}[S.vista]||vPortal;
   $('main').innerHTML=v();
+  if(S.vista==='quiosco') setTimeout(pintarQR,60);
 }
 
 function cab(t,s){ return '<div class="h1">'+esc(t)+'</div><div class="h1-sub">'+esc(s||'')+'</div>'; }
@@ -740,7 +811,21 @@ function estadoPortalHTML(){
     '</div><div style="font-size:11.5px;color:var(--sub);margin-top:2px">'+esc(desde)+
     (S.estado==='SIN_FICHAR'?'Pulsa «Entrar» para iniciar tu jornada':'')+'</div></div>'+
     '<div class="sp"></div><div style="text-align:right"><div style="font-family:var(--serif);font-size:27px;color:var(--navy)">'+
-    hhmm(minutosHoy())+'</div><div style="font-size:10.5px;color:var(--sub)">de '+hhmm(minutosTeoricos(hoyISO()))+' previstas</div></div></div>';
+    hhmm(minutosHoy())+'</div><div style="font-size:10.5px;color:var(--sub)">de '+hhmm(minutosTeoricos(hoyISO()))+' previstas</div></div></div>'+
+    '<div class="row" style="margin-top:16px;padding-top:15px;border-top:1px solid var(--line-soft);gap:7px">'+
+    '<span class="lbl" style="margin:0">Modalidad</span>'+
+    ['OFICINA','REMOTO','VISITA'].map(function(m){
+      return '<button class="btn '+(S.modalidad===m?'b-gold':'b-ghost')+' b-sm" onclick="setModalidad(\''+m+'\')">'+
+        ({OFICINA:'Oficina',REMOTO:'Teletrabajo',VISITA:'Visita'}[m])+'</button>';
+    }).join('')+
+    (S.centros.length?'<div class="sp"></div><span style="font-size:11px;color:var(--sub)">'+S.centros.length+' centros con geovalla</span>':'')+
+    '</div>';
+}
+function setModalidad(m){
+  S.modalidad=m;
+  try{localStorage.setItem('dcp_mod',m);}catch(e){}
+  pintarEstadoPortal();
+  toast('Modalidad: '+({OFICINA:'Oficina',REMOTO:'Teletrabajo',VISITA:'Visita'}[m]));
 }
 function pintarEstadoPortal(){ var el=$('portal_estado'); if(el) el.innerHTML=estadoPortalHTML(); }
 function chipPersona(e,col){
@@ -793,7 +878,8 @@ function vFichajes(){
         return '<div class="tl-i t-'+e.tipo+'"><div class="tl-h">'+String(e.hora).slice(0,5)+' · '+
           ({ENTRADA:'Entrada',SALIDA:'Salida',PAUSA_INI:'Inicio pausa',PAUSA_FIN:'Fin pausa'}[e.tipo]||e.tipo)+'</div>'+
           '<div class="tl-s">'+(e.origen==='CORRECCION'?'Corrección de '+esc(e.autor)+' — '+esc(e.motivo):
-             (e.lat?'📍 geolocalizado':'registro desde la app'))+'</div></div>';
+             ({REMOTO:'Teletrabajo',VISITA:'Visita'}[e.modalidad]||'Oficina')+
+             (e.centro?' · '+esc(e.centro):(e.lat?' · geolocalizado':'')))+'</div></div>';
       }).join('')+'</div>' : '')+
     '</div>';
   }
@@ -1094,6 +1180,263 @@ function vStats(){
    '</div>';
 }
 
+/* ══ EMPLEADO: NUEVOS MÓDULOS ═══════════════════════════════════════════ */
+
+/* ── Mis objetivos ── */
+function vObjetivos(){
+  var act=S.objetivos.filter(function(o){return o.estado==='ACTIVO';});
+  var cer=S.objetivos.filter(function(o){return o.estado!=='ACTIVO';});
+  var avance=act.length? Math.round(act.reduce(function(a,o){return a+Math.min(100,o.meta?o.actual/o.meta*100:0);},0)/act.length):0;
+  return cab('Mis objetivos','Metas del periodo y su grado de cumplimiento')+
+   '<div class="grid g3" style="margin-bottom:6px">'+
+     kpi(act.length,'Activos','')+
+     kpi(avance+'%','Avance medio','')+
+     kpi(cer.length,'Cerrados','')+
+   '</div>'+
+   '<div class="sec">En curso</div>'+
+   (act.length? act.map(fichaObjetivo).join('') : vacio('No tienes objetivos asignados','◎'))+
+   (cer.length? '<div class="sec">Cerrados</div>'+cer.map(fichaObjetivo).join('') : '');
+}
+function fichaObjetivo(o){
+  var pct=o.meta? Math.min(100,Math.round(o.actual/o.meta*100)) : 0;
+  return '<div class="card" style="margin-bottom:8px">'+
+    '<div class="row" style="margin-bottom:12px"><div style="flex:1;min-width:0">'+
+      '<div class="li-t">'+esc(o.titulo)+'</div>'+
+      '<div class="li-s">'+esc(o.periodo)+(o.peso?' · peso '+o.peso+'%':'')+(o.metrica?' · '+esc(o.metrica):'')+'</div></div>'+
+      (o.estado==='ACTIVO'?'<span class="pill p-info">'+pct+'%</span>':
+        '<span class="pill '+(o.valoracion>=7?'p-ok':o.valoracion>=5?'p-warn':'p-err')+'">Valorado '+(o.valoracion==null?'—':o.valoracion)+'/10</span>')+
+    '</div>'+
+    (o.descripcion?'<div style="font-size:12.5px;color:var(--sub);line-height:1.55;margin-bottom:12px">'+esc(o.descripcion)+'</div>':'')+
+    '<div class="bar-row" style="margin-bottom:0"><div class="bar-lbl">Progreso</div>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%"></div></div>'+
+      '<div class="bar-val">'+o.actual+'/'+o.meta+'</div></div>'+
+    (o.estado==='ACTIVO'?'<div class="row" style="margin-top:12px"><input class="inp" type="number" id="ob_'+o.id+'" value="'+o.actual+'" style="max-width:130px">'+
+      '<button class="btn b-ghost b-sm" onclick="actualizarAvance(\''+o.id+'\')">Actualizar avance</button></div>':'')+
+    (o.comentario?'<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft);font-size:12.5px;color:var(--sub)"><b>Valoración:</b> '+esc(o.comentario)+'</div>':'')+
+  '</div>';
+}
+function actualizarAvance(id){
+  api('avanzarObjetivo',{id:id,actual:Number($('ob_'+id).value)}).then(function(r){
+    if(r.ok){ toast('Avance actualizado','ok'); ir('objetivos'); } else toast('Error','err');
+  });
+}
+
+/* ── Mi evaluación ── */
+function vEvaluacion(){
+  if(!S.evaluacion.length) return cab('Mi evaluación','Autoevaluación y valoración de tu responsable')+
+    vacio('No tienes ninguna evaluación abierta','★');
+  var campanas={}; S.evaluacion.forEach(function(e){ (campanas[e.campana]=campanas[e.campana]||[]).push(e); });
+  return cab('Mi evaluación','Autoevaluación y valoración de tu responsable')+
+   Object.keys(campanas).sort().reverse().map(function(c){
+     var filas=campanas[c];
+     var cerrada=filas.every(function(e){return e.estado==='CERRADA';});
+     return '<div class="sec">'+esc(c)+(cerrada?' · cerrada':'')+'</div>'+
+       '<div class="card">'+filas.map(function(e){
+         return '<div style="padding:14px 0;border-bottom:1px solid var(--line-soft)">'+
+           '<div class="row" style="margin-bottom:9px"><b style="font-size:13.5px">'+esc(e.competencia)+'</b>'+
+           '<div class="sp"></div>'+
+           (e.notaManager!=null?'<span class="pill p-ok">Responsable '+e.notaManager+'/10</span>':'')+
+           '</div>'+
+           (cerrada?
+             '<div style="font-size:12.5px;color:var(--sub)">Tu nota: <b>'+(e.notaAuto==null?'—':e.notaAuto)+'/10</b>'+
+             (e.comentarioManager?' · '+esc(e.comentarioManager):'')+'</div>'
+            :'<div class="row"><input class="inp" type="number" min="1" max="10" id="ev_n_'+e.id+'" value="'+(e.notaAuto==null?'':e.notaAuto)+'" placeholder="1-10" style="max-width:92px">'+
+             '<input class="inp" id="ev_c_'+e.id+'" value="'+esc(e.comentarioAuto||'')+'" placeholder="Comentario (opcional)"></div>')+
+         '</div>';
+       }).join('')+
+       (cerrada?'':'<button class="btn b-gold" style="margin-top:16px" onclick="guardarAuto(\''+esc(c).replace(/'/g,"\\'")+'\')">Guardar autoevaluación</button>')+
+       '</div>';
+   }).join('');
+}
+function guardarAuto(campana){
+  var notas={};
+  S.evaluacion.filter(function(e){return e.campana===campana;}).forEach(function(e){
+    var n=$('ev_n_'+e.id); if(!n||!n.value) return;
+    notas[e.id]={nota:Number(n.value),comentario:$('ev_c_'+e.id).value};
+  });
+  if(!Object.keys(notas).length) return toast('Pon al menos una nota','err');
+  api('autoevaluar',{notas:notas}).then(function(r){
+    if(r.ok){ toast('Autoevaluación guardada','ok'); ir('evaluacion'); } else toast('Error','err');
+  });
+}
+
+/* ── Encuestas (empleado) ── */
+function vEncuestas(){
+  return cab('Encuestas','Tu opinión sobre el día a día en la empresa')+
+   (S.encuestas.length? S.encuestas.map(function(e){
+     return '<div class="card" style="margin-bottom:8px">'+
+       '<div class="row" style="margin-bottom:10px"><div style="flex:1"><div class="li-t">'+esc(e.titulo)+'</div>'+
+       '<div class="li-s">'+(e.anonima?'Anónima':'Identificada')+(e.hasta?' · abierta hasta '+fBonita(e.hasta):'')+'</div></div>'+
+       (e.respondida?'<span class="pill p-ok">Respondida</span>':'<span class="pill p-warn">Pendiente</span>')+'</div>'+
+       (e.descripcion?'<div style="font-size:12.5px;color:var(--sub);line-height:1.55;margin-bottom:12px">'+esc(e.descripcion)+'</div>':'')+
+       (e.respondida?'':'<button class="btn b-gold b-sm" onclick="abrirEncuesta(\''+e.id+'\')">Responder</button>')+
+     '</div>';
+   }).join('') : vacio('No hay encuestas abiertas','?'));
+}
+function abrirEncuesta(id){
+  var e=S.encuestas.filter(function(x){return x.id===id;})[0]; if(!e) return;
+  abrirModal('<div class="mtitle">'+esc(e.titulo)+'</div>'+
+    '<div class="msub">'+(e.anonima?'Respuesta anónima: no se guarda quién ha contestado qué.':'Respuesta identificada.')+'</div>'+
+    e.preguntas.map(function(p,i){
+      if(p.tipo==='escala') return '<div class="fld"><label class="lbl">'+esc(p.texto)+'</label>'+
+        '<div class="row" style="gap:6px">'+[1,2,3,4,5].map(function(n){
+          return '<button class="btn b-ghost b-sm" style="flex:1" data-q="'+i+'" data-v="'+n+'" onclick="marcarEscala(this)">'+n+'</button>';
+        }).join('')+'</div><input type="hidden" id="enq_'+i+'"></div>';
+      return '<div class="fld"><label class="lbl">'+esc(p.texto)+'</label><textarea class="inp" id="enq_'+i+'"></textarea></div>';
+    }).join('')+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarEncuesta(\''+id+'\')">Enviar</button></div>');
+}
+function marcarEscala(btn){
+  var q=btn.getAttribute('data-q');
+  Array.prototype.forEach.call(document.querySelectorAll('[data-q="'+q+'"]'),function(b){
+    b.className='btn b-ghost b-sm'; b.style.flex='1';
+  });
+  btn.className='btn b-gold b-sm'; btn.style.flex='1';
+  $('enq_'+q).value=btn.getAttribute('data-v');
+}
+function enviarEncuesta(id){
+  var e=S.encuestas.filter(function(x){return x.id===id;})[0];
+  var resp=e.preguntas.map(function(p,i){ return {texto:p.texto,tipo:p.tipo,valor:$('enq_'+i).value}; });
+  if(resp.some(function(r){return !r.valor;})) return toast('Responde todas las preguntas','err');
+  api('responderEncuesta',{id:id,respuestas:resp}).then(function(r){
+    cerrarModal();
+    if(r.ok){ toast('Gracias por responder','ok'); ir('encuestas'); }
+    else toast(r.error==='YA_RESPONDIDA'?'Ya habías respondido':'Error','err');
+  });
+}
+
+/* ── Tablón ── */
+function vTablon(){
+  var fij=S.publicaciones.filter(function(p){return p.fijado;});
+  var res=S.publicaciones.filter(function(p){return !p.fijado;}).sort(function(a,b){return a.ts<b.ts?1:-1;});
+  return cab('Tablón','Comunicación interna del grupo')+
+   (S.esDir?'<button class="btn b-gold" style="margin-bottom:18px" onclick="modalPublicar()">+ Nueva publicación</button>':'')+
+   (fij.length? '<div class="sec">Fijado</div>'+fij.map(fichaPublicacion).join('') : '')+
+   '<div class="sec">Publicaciones</div>'+
+   (res.length? res.map(fichaPublicacion).join('') : vacio('Todavía no hay publicaciones','✉'));
+}
+function fichaPublicacion(p){
+  return '<div class="card" style="margin-bottom:8px">'+
+    '<div class="row" style="margin-bottom:10px">'+
+      '<span class="pill p-info">'+esc(p.categoria||'General')+'</span>'+
+      (p.fijado?'<span class="pill p-warn">Fijado</span>':'')+
+      '<div class="sp"></div>'+
+      '<span style="font-size:11px;color:var(--sub)">'+esc(p.autor)+' · '+fBonita(String(p.ts).slice(0,10))+'</span>'+
+      (S.esDir?'<button class="btn b-ghost b-sm" onclick="borrarPub(\''+p.id+'\')">Borrar</button>':'')+
+    '</div>'+
+    '<div style="font-family:var(--serif);font-size:20px;color:var(--navy);margin-bottom:8px">'+esc(p.titulo)+'</div>'+
+    '<div style="font-size:13px;line-height:1.65;color:var(--text);white-space:pre-wrap">'+esc(p.cuerpo)+'</div></div>';
+}
+function modalPublicar(){
+  abrirModal('<div class="mtitle">Nueva publicación</div><div class="msub">Se muestra en el tablón de todo el equipo</div>'+
+    '<div class="fld"><label class="lbl">Categoría</label><select class="inp" id="pb_cat">'+
+      ['General','Recursos Humanos','Comercial','Eventos','Aviso importante'].map(function(c){return '<option>'+c+'</option>';}).join('')+'</select></div>'+
+    '<div class="fld"><label class="lbl">Título</label><input class="inp" id="pb_tit"></div>'+
+    '<div class="fld"><label class="lbl">Contenido</label><textarea class="inp" id="pb_cue" style="min-height:130px"></textarea></div>'+
+    '<div class="fld"><label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="pb_fij"> Fijar arriba</label></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarPublicacion()">Publicar</button></div>');
+}
+function enviarPublicacion(){
+  var p={categoria:$('pb_cat').value,titulo:$('pb_tit').value.trim(),cuerpo:$('pb_cue').value.trim(),fijado:$('pb_fij').checked};
+  if(!p.titulo||!p.cuerpo) return toast('Título y contenido obligatorios','err');
+  api('publicar',p).then(function(r){ cerrarModal(); if(r.ok){toast('Publicado','ok');ir('tablon');} else toast('Error','err'); });
+}
+function borrarPub(id){
+  if(!confirm('¿Borrar esta publicación?')) return;
+  api('borrarPublicacion',{id:id}).then(function(r){ if(r.ok){toast('Borrada','ok');ir('tablon');} });
+}
+
+/* ── Mi checklist ── */
+function vChecklist(){
+  var mios=S.checklist.filter(function(c){return c.trabajador===S.emp.nombre;});
+  var ajenos=S.checklist.filter(function(c){return c.trabajador!==S.emp.nombre;});
+  return cab('Mi checklist','Tareas de incorporación y salida')+
+   (mios.length? bloqueChecklist('Mis tareas',mios) : '')+
+   (ajenos.length? bloqueChecklist('Tareas de las que eres responsable',ajenos) : '')+
+   (!mios.length&&!ajenos.length? vacio('No tienes checklists asignados','☑') : '');
+}
+function bloqueChecklist(titulo,items){
+  var hechas=items.filter(function(c){return c.hecho;}).length;
+  return '<div class="sec">'+esc(titulo)+' · '+hechas+'/'+items.length+'</div>'+
+   '<div class="card">'+
+   '<div class="bar-row"><div class="bar-lbl">Progreso</div><div class="bar-track">'+
+   '<div class="bar-fill" style="width:'+(items.length?hechas/items.length*100:0)+'%"></div></div>'+
+   '<div class="bar-val">'+Math.round(items.length?hechas/items.length*100:0)+'%</div></div>'+
+   items.sort(function(a,b){return a.orden-b.orden;}).map(function(c){
+     return '<div class="row" style="padding:11px 0;border-top:1px solid var(--line-soft)">'+
+       '<input type="checkbox" '+(c.hecho?'checked':'')+' onchange="marcarTarea(\''+c.id+'\',this.checked)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">'+
+       '<div style="flex:1;min-width:0"><div style="font-size:13px'+(c.hecho?';text-decoration:line-through;color:var(--sub)':'')+'">'+esc(c.tarea)+'</div>'+
+       '<div class="li-s">'+esc(c.trabajador)+' · '+esc(c.tipo.toLowerCase())+(c.hechoPor?' · hecho por '+esc(c.hechoPor):'')+'</div></div>'+
+       '</div>';
+   }).join('')+'</div>';
+}
+function marcarTarea(id,hecho){
+  api('marcarChecklist',{id:id,hecho:hecho}).then(function(r){ if(!r.ok) toast('Error','err'); });
+}
+
+/* ── Mi perfil ── */
+function vPerfil(){
+  var p=S.perfil||{};
+  return cab('Mi perfil','Tus datos y preferencias de acceso')+
+   '<div class="card" style="margin-bottom:8px">'+
+     '<div class="row" style="margin-bottom:20px"><div class="ava lg">'+esc(ini(p.nombre||''))+'</div>'+
+     '<div><div style="font-family:var(--serif);font-size:24px;color:var(--navy)">'+esc(p.nombre||'')+'</div>'+
+     '<div class="li-s">'+esc(p.departamento||'')+(p.oficina?' · '+esc(p.oficina):'')+'</div></div></div>'+
+     '<div class="grid g2 tight">'+
+       campoLectura('Email',p.email)+campoLectura('Empresa',p.empresa||'Durán Carasso')+
+       campoLectura('Alta en la empresa',p.fecha_alta?fBonita(p.fecha_alta):'—')+
+       campoLectura('Días de vacaciones',String(p.vacaciones_anuales||0))+
+       campoLectura('Horario asignado',p.horario_id||'—')+
+       campoLectura('Responsable',p.responsable||'—')+
+     '</div></div>'+
+   '<div class="sec">Datos que puedes editar</div>'+
+   '<div class="card"><div class="grid g2 tight">'+
+     '<div class="fld"><label class="lbl">Teléfono</label><input class="inp" id="pf_tel" value="'+esc(p.telefono||'')+'"></div>'+
+     '<div class="fld"><label class="lbl">DNI / NIE</label><input class="inp" id="pf_dni" value="'+esc(p.dni||'')+'"></div>'+
+   '</div><button class="btn b-gold" onclick="guardarPerfil()">Guardar cambios</button></div>'+
+   '<div class="sec">Seguridad</div>'+
+   '<div class="card"><div class="grid g3">'+
+     '<div class="fld"><label class="lbl">PIN actual</label><input class="inp" id="pf_p0" maxlength="4" inputmode="numeric" type="password"></div>'+
+     '<div class="fld"><label class="lbl">PIN nuevo</label><input class="inp" id="pf_p1" maxlength="4" inputmode="numeric" type="password"></div>'+
+     '<div class="fld"><label class="lbl">Repetir</label><input class="inp" id="pf_p2" maxlength="4" inputmode="numeric" type="password"></div>'+
+   '</div><button class="btn b-pri" onclick="guardarPin()">Cambiar PIN</button></div>'+
+   '<div class="sec">Calendario</div>'+
+   '<div class="card"><div style="font-size:12.5px;color:var(--sub);line-height:1.6;margin-bottom:14px">'+
+     'Suscribe tus ausencias aprobadas a Google Calendar o a Outlook. Es un calendario de solo lectura que se actualiza solo.</div>'+
+     '<button class="btn b-ghost" onclick="urlCalendario()">Obtener enlace de suscripción</button>'+
+     '<div id="cal_out" style="margin-top:14px"></div></div>';
+}
+function campoLectura(l,v){
+  return '<div class="fld"><label class="lbl">'+esc(l)+'</label>'+
+    '<div style="padding:10px 0;font-size:13.5px;border-bottom:1px solid var(--line-soft)">'+esc(v||'—')+'</div></div>';
+}
+function guardarPerfil(){
+  api('actualizarPerfil',{telefono:$('pf_tel').value,dni:$('pf_dni').value}).then(function(r){
+    if(r.ok) toast('Perfil actualizado','ok'); else toast('Error','err');
+  });
+}
+function guardarPin(){
+  var p1=$('pf_p1').value, p2=$('pf_p2').value;
+  if(p1!==p2) return toast('Los PIN nuevos no coinciden','err');
+  api('cambiarPin',{actual:$('pf_p0').value,nuevo:p1}).then(function(r){
+    if(r.ok){ toast('PIN cambiado','ok'); $('pf_p0').value=$('pf_p1').value=$('pf_p2').value=''; }
+    else toast({PIN_ACTUAL_INCORRECTO:'El PIN actual no es correcto',PIN_INVALIDO:'El PIN debe tener 4 dígitos',
+                PIN_DEBIL:'Ese PIN es demasiado obvio'}[r.error]||'Error','err');
+  });
+}
+function urlCalendario(){
+  api('tokenCalendario').then(function(r){
+    if(!r.ok) return toast('Error','err');
+    var url=(SCRIPT_URL||'[URL_DE_TU_APPS_SCRIPT]')+'?ics='+encodeURIComponent(r.token);
+    $('cal_out').innerHTML='<div style="background:var(--bg);border:1px solid var(--line);border-radius:2px;padding:12px;font-size:11.5px;word-break:break-all;font-family:ui-monospace,monospace">'+esc(url)+'</div>'+
+      '<div style="font-size:11.5px;color:var(--sub);margin-top:10px;line-height:1.6">'+
+      '<b>Outlook:</b> Calendario → Añadir calendario → Suscribirse desde Internet.<br>'+
+      '<b>Google Calendar:</b> Otros calendarios → + → Desde URL.</div>';
+  });
+}
+
 /* ══ DIRECCIÓN ══════════════════════════════════════════════════════════ */
 function vValidaciones(){
   var pend=S.ausEquipo.filter(function(a){return a.estado==='PENDIENTE';}).sort(function(a,b){return a.desde<b.desde?-1:1;});
@@ -1276,6 +1619,657 @@ function enviarAlta(){
   });
 }
 
+/* ══ DIRECCIÓN: MÓDULOS AMPLIADOS ═══════════════════════════════════════ */
+
+/* ── Turnos ── */
+var turSem=0;
+function vTurnos(){
+  var lunes=lunesDe(new Date()); lunes.setDate(lunes.getDate()+turSem*7);
+  var dias=[]; for(var i=0;i<7;i++){ var d=new Date(lunes); d.setDate(d.getDate()+i); dias.push(fISO(d)); }
+  var fin=dias[6];
+  return cab('Turnos','Planificación semanal de jornadas del equipo')+
+   '<div class="card" style="margin-bottom:14px"><div class="row wrap">'+
+     '<button class="btn b-ghost b-sm" onclick="turSem--;render()">←</button>'+
+     '<div style="flex:1;text-align:center;font-weight:500">'+fBonita(dias[0])+' — '+fBonita(fin)+'</div>'+
+     '<button class="btn b-ghost b-sm" onclick="turSem++;render()">→</button>'+
+     '<button class="btn b-gold b-sm" onclick="modalTurno()">+ Asignar turno</button>'+
+   '</div></div>'+
+   '<div class="scroll-x"><table class="tbl"><tr><th style="min-width:150px">Persona</th>'+
+     dias.map(function(f){ var d=new Date(f+'T00:00:00');
+       return '<th style="text-align:center">'+DOW[(d.getDay()+6)%7]+'<br><span style="font-weight:400;text-transform:none;letter-spacing:0">'+d.getDate()+'</span></th>'; }).join('')+
+   '</tr>'+
+   S.empleados.map(function(e){
+     return '<tr><td>'+esc(e.nombre)+'</td>'+dias.map(function(f){
+       var t=turnoDe(e.nombre,f), hid=t?t.horario_id:e.horario_id;
+       var h=S.horarios.filter(function(x){return String(x.horario_id)===String(hid);})[0];
+       var rango=h?String(h[['dom','lun','mar','mie','jue','vie','sab'][new Date(f+'T00:00:00').getDay()]]||''):'';
+       var fest=esFestivo(f);
+       return '<td style="text-align:center;font-size:11px;'+(t?'background:var(--accent-soft);color:var(--accent);font-weight:500':'')+'">'+
+         (fest?'<span style="color:var(--sub)">Festivo</span>':(rango||'—'))+'</td>';
+     }).join('')+'</tr>';
+   }).join('')+'</table></div>'+
+   '<div class="sec">Turnos asignados</div>'+
+   (S.turnosEquipo.length? S.turnosEquipo.slice().sort(function(a,b){return a.desde<b.desde?1:-1;}).map(function(t){
+     var h=S.horarios.filter(function(x){return String(x.horario_id)===String(t.horario_id);})[0];
+     return '<div class="li"><div style="flex:1"><div class="li-t">'+esc(t.trabajador)+' · '+esc(h?h.nombre:t.horario_id)+'</div>'+
+       '<div class="li-s">'+fBonita(t.desde)+' → '+fBonita(t.hasta)+(t.nota?' · '+esc(t.nota):'')+'</div></div>'+
+       '<button class="btn b-ghost b-sm" onclick="borrarTurno(\''+t.id+'\')">Quitar</button></div>';
+   }).join('') : vacio('Sin turnos asignados: todos siguen su horario fijo','▦'));
+}
+function turnoDe(nombre,fecha){
+  for(var i=0;i<S.turnosEquipo.length;i++){
+    var t=S.turnosEquipo[i];
+    if(t.trabajador===nombre && fecha>=t.desde && fecha<=t.hasta) return t;
+  }
+  return null;
+}
+function modalTurno(){
+  abrirModal('<div class="mtitle">Asignar turno</div><div class="msub">Sustituye al horario fijo en las fechas indicadas</div>'+
+    '<div class="fld"><label class="lbl">Persona</label><select class="inp" id="tu_p">'+
+      S.empleados.map(function(e){return '<option>'+esc(e.nombre)+'</option>';}).join('')+'</select></div>'+
+    '<div class="fld"><label class="lbl">Horario</label><select class="inp" id="tu_h">'+
+      S.horarios.map(function(h){return '<option value="'+esc(h.horario_id)+'">'+esc(h.nombre)+'</option>';}).join('')+'</select></div>'+
+    '<div class="grid g2 tight"><div class="fld"><label class="lbl">Desde</label><input class="inp" type="date" id="tu_d" value="'+hoyISO()+'"></div>'+
+    '<div class="fld"><label class="lbl">Hasta</label><input class="inp" type="date" id="tu_f" value="'+hoyISO()+'"></div></div>'+
+    '<div class="fld"><label class="lbl">Nota</label><input class="inp" id="tu_n" placeholder="Opcional"></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarTurno()">Asignar</button></div>');
+}
+function enviarTurno(){
+  api('guardarTurno',{trabajador:$('tu_p').value,horario_id:$('tu_h').value,desde:$('tu_d').value,
+      hasta:$('tu_f').value,nota:$('tu_n').value}).then(function(r){
+    cerrarModal(); if(r.ok){toast('Turno asignado','ok');ir('turnos');} else toast('Error: '+(r.error||''),'err');
+  });
+}
+function borrarTurno(id){
+  if(!confirm('¿Quitar este turno?')) return;
+  api('borrarTurno',{id:id}).then(function(r){ if(r.ok){toast('Turno eliminado','ok');ir('turnos');} });
+}
+
+/* ── Bolsa de horas ── */
+function vBolsa(){
+  var b=S.bolsaEquipo||{compensado:{},detalle:[]};
+  var total=Object.keys(b.compensado).reduce(function(a,k){return a+b.compensado[k];},0);
+  return cab('Bolsa de horas','Saldo acumulado y compensaciones del equipo · '+S.year)+
+   '<div class="grid g3" style="margin-bottom:6px">'+
+     kpi(hhmmSigned(total),'Compensado total','')+
+     kpi(b.detalle.filter(function(d){return d.tipo==='DIA_LIBRE';}).length,'En días libres','')+
+     kpi(b.detalle.filter(function(d){return d.tipo==='ECONOMICA';}).length,'Económicas','')+
+   '</div>'+
+   '<button class="btn b-gold" style="margin:16px 0" onclick="modalCompensar()">+ Registrar compensación</button>'+
+   '<div class="sec">Saldo por persona</div>'+
+   '<div class="scroll-x"><table class="tbl"><tr><th>Persona</th><th>Compensado</th><th></th></tr>'+
+   S.empleados.map(function(e){
+     var m=b.compensado[e.nombre]||0;
+     return '<tr><td>'+esc(e.nombre)+'</td><td class="'+(m>=0?'pos':'neg')+'">'+hhmmSigned(m)+'</td>'+
+       '<td><button class="btn b-ghost b-sm" onclick="modalCompensar(\''+esc(e.nombre).replace(/'/g,"\\'")+'\')">Compensar</button></td></tr>';
+   }).join('')+'</table></div>'+
+   '<div class="sec">Movimientos</div>'+
+   (b.detalle.length? '<div class="scroll-x"><table class="tbl"><tr><th>Fecha</th><th>Persona</th><th>Tipo</th><th>Minutos</th><th>Nota</th></tr>'+
+     b.detalle.slice().sort(function(x,y){return x.fecha<y.fecha?1:-1;}).map(function(d){
+       return '<tr><td>'+fBonita(d.fecha)+'</td><td>'+esc(d.trabajador)+'</td>'+
+         '<td><span class="pill '+(d.tipo==='ECONOMICA'?'p-info':'p-grey')+'">'+esc(d.tipo.replace('_',' '))+'</span></td>'+
+         '<td class="'+(d.minutos>=0?'pos':'neg')+'">'+hhmmSigned(d.minutos)+'</td><td>'+esc(d.nota||'')+'</td></tr>';
+     }).join('')+'</table></div>' : vacio('Sin compensaciones registradas','∑'));
+}
+function modalCompensar(quien){
+  abrirModal('<div class="mtitle">Registrar compensación</div>'+
+    '<div class="msub">Descuenta o añade saldo a la bolsa de horas de una persona</div>'+
+    '<div class="fld"><label class="lbl">Persona</label><select class="inp" id="co_p">'+
+      S.empleados.map(function(e){return '<option'+(quien===e.nombre?' selected':'')+'>'+esc(e.nombre)+'</option>';}).join('')+'</select></div>'+
+    '<div class="grid g2 tight"><div class="fld"><label class="lbl">Minutos (negativo = consume)</label><input class="inp" type="number" id="co_m" value="-480" step="30"></div>'+
+    '<div class="fld"><label class="lbl">Fecha</label><input class="inp" type="date" id="co_f" value="'+hoyISO()+'"></div></div>'+
+    '<div class="fld"><label class="lbl">Tipo</label><select class="inp" id="co_t">'+
+      '<option value="DIA_LIBRE">Compensado con día libre</option>'+
+      '<option value="ECONOMICA">Compensado económicamente</option>'+
+      '<option value="AJUSTE">Ajuste manual</option></select></div>'+
+    '<div class="fld"><label class="lbl">Nota</label><input class="inp" id="co_n" placeholder="Opcional"></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarCompensacion()">Guardar</button></div>');
+}
+function enviarCompensacion(){
+  api('compensar',{trabajador:$('co_p').value,minutos:Number($('co_m').value),fecha:$('co_f').value,
+      tipo:$('co_t').value,nota:$('co_n').value}).then(function(r){
+    cerrarModal(); if(r.ok){toast('Compensación registrada','ok');ir('bolsa');} else toast('Error','err');
+  });
+}
+
+/* ── Objetivos del equipo ── */
+function vObjEquipo(){
+  var act=S.objEquipo.filter(function(o){return o.estado==='ACTIVO';});
+  var porPersona={}; S.objEquipo.forEach(function(o){ (porPersona[o.trabajador]=porPersona[o.trabajador]||[]).push(o); });
+  return cab('Objetivos','Metas asignadas al equipo y su seguimiento')+
+   '<button class="btn b-gold" style="margin-bottom:18px" onclick="modalObjetivo()">+ Asignar objetivo</button>'+
+   '<div class="grid g3" style="margin-bottom:6px">'+
+     kpi(act.length,'Activos','')+
+     kpi(Object.keys(porPersona).length,'Personas con objetivos','')+
+     kpi(S.objEquipo.filter(function(o){return o.estado!=='ACTIVO';}).length,'Cerrados','')+
+   '</div>'+
+   (Object.keys(porPersona).length? Object.keys(porPersona).sort().map(function(p){
+     return '<div class="sec">'+esc(p)+'</div>'+porPersona[p].map(function(o){
+       var pct=o.meta?Math.min(100,Math.round(o.actual/o.meta*100)):0;
+       return '<div class="card" style="margin-bottom:8px">'+
+         '<div class="row" style="margin-bottom:11px"><div style="flex:1;min-width:0">'+
+         '<div class="li-t">'+esc(o.titulo)+'</div><div class="li-s">'+esc(o.periodo)+(o.peso?' · peso '+o.peso+'%':'')+'</div></div>'+
+         '<span class="pill '+(o.estado==='ACTIVO'?'p-info':'p-ok')+'">'+(o.estado==='ACTIVO'?pct+'%':'Valorado '+(o.valoracion==null?'—':o.valoracion)+'/10')+'</span></div>'+
+         '<div class="bar-row" style="margin-bottom:0"><div class="bar-lbl">Progreso</div>'+
+         '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%"></div></div>'+
+         '<div class="bar-val">'+o.actual+'/'+o.meta+'</div></div>'+
+         (o.estado==='ACTIVO'?'<button class="btn b-ghost b-sm" style="margin-top:12px" onclick="modalValorar(\''+o.id+'\')">Cerrar y valorar</button>':'')+
+       '</div>';
+     }).join('');
+   }).join('') : vacio('Nadie tiene objetivos asignados todavía','◎'));
+}
+function modalObjetivo(){
+  abrirModal('<div class="mtitle">Asignar objetivo</div><div class="msub">La persona verá el avance en su portal</div>'+
+    '<div class="fld"><label class="lbl">Persona</label><select class="inp" id="ob_p">'+
+      S.empleados.map(function(e){return '<option>'+esc(e.nombre)+'</option>';}).join('')+'</select></div>'+
+    '<div class="fld"><label class="lbl">Título</label><input class="inp" id="ob_t" placeholder="Ej.: Cerrar 12 operaciones"></div>'+
+    '<div class="fld"><label class="lbl">Descripción</label><textarea class="inp" id="ob_d"></textarea></div>'+
+    '<div class="grid g3"><div class="fld"><label class="lbl">Métrica</label><input class="inp" id="ob_m" placeholder="operaciones"></div>'+
+    '<div class="fld"><label class="lbl">Meta</label><input class="inp" type="number" id="ob_g" value="10"></div>'+
+    '<div class="fld"><label class="lbl">Peso %</label><input class="inp" type="number" id="ob_w" value="25"></div></div>'+
+    '<div class="fld"><label class="lbl">Periodo</label><input class="inp" id="ob_pe" value="'+new Date().getFullYear()+'"></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarObjetivo()">Asignar</button></div>');
+}
+function enviarObjetivo(){
+  var p={trabajador:$('ob_p').value,titulo:$('ob_t').value.trim(),descripcion:$('ob_d').value,
+         metrica:$('ob_m').value,meta:Number($('ob_g').value),peso:Number($('ob_w').value),periodo:$('ob_pe').value};
+  if(!p.titulo) return toast('El título es obligatorio','err');
+  api('guardarObjetivo',p).then(function(r){ cerrarModal(); if(r.ok){toast('Objetivo asignado','ok');ir('objequipo');} else toast('Error','err'); });
+}
+function modalValorar(id){
+  abrirModal('<div class="mtitle">Cerrar y valorar</div><div class="msub">La valoración queda visible para la persona</div>'+
+    '<div class="fld"><label class="lbl">Valoración (1-10)</label><input class="inp" type="number" min="1" max="10" id="vo_n" value="7"></div>'+
+    '<div class="fld"><label class="lbl">Comentario</label><textarea class="inp" id="vo_c"></textarea></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarValoracion(\''+id+'\')">Guardar</button></div>');
+}
+function enviarValoracion(id){
+  api('valorarObjetivo',{id:id,valoracion:Number($('vo_n').value),comentario:$('vo_c').value}).then(function(r){
+    cerrarModal(); if(r.ok){toast('Objetivo cerrado','ok');ir('objequipo');} else toast('Error','err');
+  });
+}
+
+/* ── Evaluaciones ── */
+function vEvaluaciones(){
+  var d=S.evalEquipo||{evaluaciones:[],campanas:[],competencias:[]};
+  var porPersona={};
+  d.evaluaciones.forEach(function(e){ (porPersona[e.trabajador]=porPersona[e.trabajador]||[]).push(e); });
+  return cab('Evaluaciones','Campañas de desempeño y sus resultados')+
+   '<button class="btn b-gold" style="margin-bottom:18px" onclick="modalCampana()">+ Lanzar campaña</button>'+
+   (d.campanas.length? '<div class="sec">Campañas</div><div class="row wrap" style="margin-bottom:8px">'+
+     d.campanas.map(function(c){return '<span class="pill p-info">'+esc(c)+'</span>';}).join('')+'</div>' : '')+
+   '<div class="sec">Resultados por persona</div>'+
+   (Object.keys(porPersona).length? Object.keys(porPersona).sort().map(function(p){
+     var filas=porPersona[p];
+     var auto=media(filas.map(function(e){return e.notaAuto;}));
+     var mgr=media(filas.map(function(e){return e.notaManager;}));
+     var pend=filas.filter(function(e){return e.estado!=='CERRADA';}).length;
+     return '<div class="card" style="margin-bottom:8px">'+
+       '<div class="row" style="margin-bottom:12px"><div class="ava sm">'+esc(ini(p))+'</div>'+
+       '<div style="flex:1"><div class="li-t">'+esc(p)+'</div>'+
+       '<div class="li-s">'+filas[0].campana+' · '+(pend?pend+' sin cerrar':'completada')+'</div></div>'+
+       '<span class="pill p-grey">Auto '+(auto==null?'—':auto.toFixed(1))+'</span>'+
+       '<span class="pill '+(mgr>=7?'p-ok':mgr>=5?'p-warn':mgr==null?'p-grey':'p-err')+'">Resp. '+(mgr==null?'—':mgr.toFixed(1))+'</span></div>'+
+       filas.map(function(e){
+         return '<div class="row" style="padding:9px 0;border-top:1px solid var(--line-soft);font-size:12.5px">'+
+           '<span style="flex:1">'+esc(e.competencia)+'</span>'+
+           '<span style="color:var(--sub);width:64px;text-align:right">auto '+(e.notaAuto==null?'—':e.notaAuto)+'</span>'+
+           '<input class="inp" type="number" min="1" max="10" id="em_'+e.id+'" value="'+(e.notaManager==null?'':e.notaManager)+'" style="width:74px;padding:6px 8px">'+
+         '</div>';
+       }).join('')+
+       '<button class="btn b-pri b-sm" style="margin-top:14px" onclick="guardarEvalManager(\''+esc(p).replace(/'/g,"\\'")+'\')">Guardar valoración</button>'+
+     '</div>';
+   }).join('') : vacio('No hay ninguna campaña lanzada','★'));
+}
+function media(v){
+  var n=v.filter(function(x){return x!=null&&!isNaN(x);});
+  return n.length? n.reduce(function(a,b){return a+b;},0)/n.length : null;
+}
+function modalCampana(){
+  abrirModal('<div class="mtitle">Lanzar campaña</div><div class="msub">Se crea una autoevaluación para cada persona seleccionada</div>'+
+    '<div class="fld"><label class="lbl">Nombre de la campaña</label><input class="inp" id="ca_n" value="Desempeño '+new Date().getFullYear()+'"></div>'+
+    '<div class="fld"><label class="lbl">Personas</label>'+
+      '<div style="max-height:190px;overflow-y:auto;border:1px solid var(--line);border-radius:2px;padding:10px">'+
+      S.empleados.map(function(e,i){
+        return '<label style="display:flex;align-items:center;gap:9px;padding:5px 0;font-size:13px;cursor:pointer">'+
+          '<input type="checkbox" class="ca_e" value="'+esc(e.nombre)+'" checked style="accent-color:var(--accent)"> '+esc(e.nombre)+'</label>';
+      }).join('')+'</div></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarCampana()">Lanzar</button></div>');
+}
+function enviarCampana(){
+  var sel=Array.prototype.filter.call(document.querySelectorAll('.ca_e'),function(c){return c.checked;})
+    .map(function(c){return c.value;});
+  if(!sel.length) return toast('Selecciona al menos una persona','err');
+  api('lanzarEvaluacion',{campana:$('ca_n').value.trim(),trabajadores:sel}).then(function(r){
+    cerrarModal();
+    if(r.ok){ toast('Campaña lanzada · '+r.creadas+' evaluaciones','ok'); ir('evaluaciones'); }
+    else toast(r.error==='YA_LANZADA'?'Esa campaña ya existe para esas personas':'Error','err');
+  });
+}
+function guardarEvalManager(persona){
+  var notas={};
+  (S.evalEquipo.evaluaciones||[]).filter(function(e){return e.trabajador===persona;}).forEach(function(e){
+    var n=$('em_'+e.id); if(n&&n.value) notas[e.id]={nota:Number(n.value),comentario:''};
+  });
+  if(!Object.keys(notas).length) return toast('Pon al menos una nota','err');
+  api('evaluarManager',{notas:notas}).then(function(r){
+    if(r.ok){ toast('Valoración guardada','ok'); ir('evaluaciones'); } else toast('Error','err');
+  });
+}
+
+/* ── Encuestas (dirección) ── */
+function vEncuestasAdm(){
+  return cab('Encuestas','Clima laboral y consultas al equipo')+
+   '<button class="btn b-gold" style="margin-bottom:18px" onclick="modalEncuesta()">+ Nueva encuesta</button>'+
+   (S.encuestasAdmin.length? S.encuestasAdmin.map(function(e){
+     return '<div class="card" style="margin-bottom:8px">'+
+       '<div class="row" style="margin-bottom:10px"><div style="flex:1"><div class="li-t">'+esc(e.titulo)+'</div>'+
+       '<div class="li-s">'+e.preguntas.length+' preguntas · '+(e.anonima?'anónima':'identificada')+
+       (e.hasta?' · hasta '+fBonita(e.hasta):'')+'</div></div>'+
+       '<span class="pill '+(e.activa?'p-ok':'p-grey')+'">'+(e.activa?'Activa':'Cerrada')+'</span></div>'+
+       '<button class="btn b-ghost b-sm" onclick="verResultados(\''+e.id+'\')">Ver resultados</button>'+
+       '<div id="res_'+e.id+'"></div></div>';
+   }).join('') : vacio('No has creado ninguna encuesta','?'));
+}
+function modalEncuesta(){
+  abrirModal('<div class="mtitle">Nueva encuesta</div><div class="msub">Una pregunta por línea. Empieza con «#» para respuesta abierta.</div>'+
+    '<div class="fld"><label class="lbl">Título</label><input class="inp" id="en_t" value="Clima laboral"></div>'+
+    '<div class="fld"><label class="lbl">Descripción</label><input class="inp" id="en_d" placeholder="Opcional"></div>'+
+    '<div class="fld"><label class="lbl">Preguntas</label><textarea class="inp" id="en_q" style="min-height:140px">'+
+      'Estoy satisfecho con mi trabajo\nMe siento reconocido por mi responsable\nLa comunicación interna es clara\nRecomendaría trabajar aquí\n#¿Qué cambiarías de la empresa?</textarea></div>'+
+    '<div class="grid g2 tight"><div class="fld"><label class="lbl">Abierta hasta</label><input class="inp" type="date" id="en_h"></div>'+
+    '<div class="fld"><label class="lbl">&nbsp;</label><label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 0">'+
+      '<input type="checkbox" id="en_a" checked style="accent-color:var(--accent)"> Anónima</label></div></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarEncuestaNueva()">Crear</button></div>');
+}
+function enviarEncuestaNueva(){
+  var preguntas=$('en_q').value.split('\n').map(function(l){return l.trim();}).filter(Boolean)
+    .map(function(l){ return l[0]==='#'? {texto:l.slice(1).trim(),tipo:'texto'} : {texto:l,tipo:'escala'}; });
+  if(!preguntas.length) return toast('Añade alguna pregunta','err');
+  api('guardarEncuesta',{titulo:$('en_t').value.trim(),descripcion:$('en_d').value,
+      preguntas:preguntas,hasta:$('en_h').value,anonima:$('en_a').checked}).then(function(r){
+    cerrarModal(); if(r.ok){toast('Encuesta creada','ok');ir('encuestasadm');} else toast('Error','err');
+  });
+}
+function verResultados(id){
+  var cont=$('res_'+id);
+  cont.innerHTML='<div class="loading"><span class="spinner"></span></div>';
+  api('resultadosEncuesta',{id:id}).then(function(r){
+    if(!r.ok) return cont.innerHTML='';
+    if(!r.total) return cont.innerHTML='<div style="font-size:12.5px;color:var(--sub);margin-top:14px">Sin respuestas todavía.</div>';
+    var preg=r.encuesta.preguntas;
+    cont.innerHTML='<div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line-soft)">'+
+      '<div style="font-size:11.5px;color:var(--sub);margin-bottom:14px">'+r.total+' respuestas</div>'+
+      preg.map(function(p,i){
+        var vals=r.respuestas.map(function(res){return res[i]?res[i].valor:null;}).filter(Boolean);
+        if(p.tipo==='texto'){
+          return '<div style="margin-bottom:16px"><div style="font-size:12.5px;font-weight:500;margin-bottom:8px">'+esc(p.texto)+'</div>'+
+            vals.map(function(v){return '<div style="font-size:12.5px;color:var(--sub);background:var(--bg);border-radius:2px;padding:8px 10px;margin-bottom:5px">'+esc(v)+'</div>';}).join('')+'</div>';
+        }
+        var nums=vals.map(Number).filter(function(n){return !isNaN(n);});
+        var med=nums.length?nums.reduce(function(a,b){return a+b;},0)/nums.length:0;
+        return '<div class="bar-row"><div class="bar-lbl" title="'+esc(p.texto)+'">'+esc(p.texto.slice(0,18))+'</div>'+
+          '<div class="bar-track"><div class="bar-fill" style="width:'+(med/5*100)+'%"></div></div>'+
+          '<div class="bar-val">'+med.toFixed(1)+'/5</div></div>';
+      }).join('')+'</div>';
+  });
+}
+
+/* ── Reclutamiento ── */
+function vReclutamiento(){
+  var d=S.reclut||{vacantes:[],candidatos:[],fases:[]};
+  var abiertas=d.vacantes.filter(function(v){return v.estado==='ABIERTA';});
+  return cab('Reclutamiento','Vacantes y proceso de selección')+
+   '<div class="row wrap" style="margin-bottom:18px">'+
+     '<button class="btn b-gold" onclick="modalVacante()">+ Nueva vacante</button>'+
+     (d.vacantes.length?'<button class="btn b-ghost" onclick="modalCandidato()">+ Añadir candidato</button>':'')+
+   '</div>'+
+   '<div class="grid g3" style="margin-bottom:6px">'+
+     kpi(abiertas.length,'Vacantes abiertas','')+
+     kpi(d.candidatos.length,'Candidatos','')+
+     kpi(d.candidatos.filter(function(c){return c.fase==='Contratado';}).length,'Contratados','')+
+   '</div>'+
+   (d.vacantes.length? d.vacantes.map(function(v){
+     var cands=d.candidatos.filter(function(c){return c.vacante_id===v.id;});
+     return '<div class="sec">'+esc(v.titulo)+' · '+cands.length+' candidatos</div>'+
+       '<div class="scroll-x"><div style="display:flex;gap:9px;min-width:760px">'+
+       d.fases.map(function(f){
+         var col=cands.filter(function(c){return c.fase===f;});
+         return '<div style="flex:1;min-width:104px">'+
+           '<div style="font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--sub);font-weight:600;padding-bottom:8px;border-bottom:1px solid var(--line);margin-bottom:8px">'+
+             esc(f)+' <span style="color:var(--gold)">'+col.length+'</span></div>'+
+           col.map(function(c){
+             return '<div class="card" style="padding:11px 12px;margin-bottom:6px;cursor:pointer" onclick="modalMover(\''+c.id+'\')">'+
+               '<div style="font-size:12.5px;font-weight:500;color:var(--navy)">'+esc(c.nombre)+'</div>'+
+               (c.valoracion?'<div style="font-size:10.5px;color:var(--gold);margin-top:3px">'+'★'.repeat(c.valoracion)+'</div>':'')+
+               (c.email?'<div class="li-s" style="font-size:10.5px">'+esc(c.email)+'</div>':'')+'</div>';
+           }).join('')+'</div>';
+       }).join('')+'</div></div>';
+   }).join('') : vacio('No hay vacantes abiertas','⚑'));
+}
+function modalVacante(){
+  abrirModal('<div class="mtitle">Nueva vacante</div><div class="msub">Proceso interno de selección</div>'+
+    '<div class="fld"><label class="lbl">Título</label><input class="inp" id="va_t" placeholder="Ej.: Comercial senior Sitges"></div>'+
+    '<div class="grid g2 tight"><div class="fld"><label class="lbl">Departamento</label><input class="inp" id="va_d" value="Comercial"></div>'+
+    '<div class="fld"><label class="lbl">Oficina</label><input class="inp" id="va_o"></div></div>'+
+    '<div class="fld"><label class="lbl">Descripción</label><textarea class="inp" id="va_x"></textarea></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarVacante()">Crear</button></div>');
+}
+function enviarVacante(){
+  if(!$('va_t').value.trim()) return toast('El título es obligatorio','err');
+  api('guardarVacante',{titulo:$('va_t').value.trim(),departamento:$('va_d').value,
+      oficina:$('va_o').value,descripcion:$('va_x').value}).then(function(r){
+    cerrarModal(); if(r.ok){toast('Vacante creada','ok');ir('reclutamiento');} else toast('Error','err');
+  });
+}
+function modalCandidato(){
+  var d=S.reclut||{vacantes:[]};
+  abrirModal('<div class="mtitle">Añadir candidato</div><div class="msub">Entra en la fase «Recibido»</div>'+
+    '<div class="fld"><label class="lbl">Vacante</label><select class="inp" id="cn_v">'+
+      d.vacantes.map(function(v){return '<option value="'+esc(v.id)+'">'+esc(v.titulo)+'</option>';}).join('')+'</select></div>'+
+    '<div class="fld"><label class="lbl">Nombre</label><input class="inp" id="cn_n"></div>'+
+    '<div class="grid g2 tight"><div class="fld"><label class="lbl">Email</label><input class="inp" type="email" id="cn_e"></div>'+
+    '<div class="fld"><label class="lbl">Teléfono</label><input class="inp" id="cn_t"></div></div>'+
+    '<div class="fld"><label class="lbl">Enlace al CV</label><input class="inp" id="cn_c" placeholder="URL de Drive"></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarCandidato()">Añadir</button></div>');
+}
+function enviarCandidato(){
+  if(!$('cn_n').value.trim()) return toast('El nombre es obligatorio','err');
+  api('guardarCandidato',{vacante_id:$('cn_v').value,nombre:$('cn_n').value.trim(),email:$('cn_e').value,
+      telefono:$('cn_t').value,cv_url:$('cn_c').value}).then(function(r){
+    cerrarModal(); if(r.ok){toast('Candidato añadido','ok');ir('reclutamiento');} else toast('Error','err');
+  });
+}
+function modalMover(id){
+  var d=S.reclut, c=d.candidatos.filter(function(x){return x.id===id;})[0]; if(!c) return;
+  abrirModal('<div class="mtitle">'+esc(c.nombre)+'</div>'+
+    '<div class="msub">'+esc(c.email||'')+(c.telefono?' · '+esc(c.telefono):'')+'</div>'+
+    (c.cv_url?'<div class="fld"><a class="btn b-ghost b-sm" href="'+esc(c.cv_url)+'" target="_blank" rel="noopener">Abrir CV</a></div>':'')+
+    '<div class="fld"><label class="lbl">Fase</label><select class="inp" id="mv_f">'+
+      d.fases.map(function(f){return '<option'+(f===c.fase?' selected':'')+'>'+esc(f)+'</option>';}).join('')+'</select></div>'+
+    '<div class="fld"><label class="lbl">Valoración (0-5)</label><input class="inp" type="number" min="0" max="5" id="mv_v" value="'+(c.valoracion||0)+'"></div>'+
+    '<div class="fld"><label class="lbl">Notas</label><textarea class="inp" id="mv_n">'+esc(c.nota||'')+'</textarea></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarMover(\''+id+'\')">Guardar</button></div>');
+}
+function enviarMover(id){
+  api('moverCandidato',{id:id,fase:$('mv_f').value,valoracion:Number($('mv_v').value),nota:$('mv_n').value}).then(function(r){
+    cerrarModal(); if(r.ok){toast('Candidato actualizado','ok');ir('reclutamiento');} else toast('Error','err');
+  });
+}
+
+/* ── Onboarding / offboarding ── */
+function vOnboarding(){
+  var d=S.checklistEquipo||{checklist:[],plantillas:{}};
+  var porPersona={};
+  d.checklist.forEach(function(c){ (porPersona[c.trabajador+'|'+c.tipo]=porPersona[c.trabajador+'|'+c.tipo]||[]).push(c); });
+  return cab('Onboarding','Incorporaciones y salidas del equipo')+
+   '<div class="row wrap" style="margin-bottom:18px">'+
+     '<button class="btn b-gold" onclick="modalChecklist(\'ONBOARDING\')">+ Incorporación</button>'+
+     '<button class="btn b-ghost" onclick="modalChecklist(\'OFFBOARDING\')">+ Salida</button>'+
+   '</div>'+
+   (Object.keys(porPersona).length? Object.keys(porPersona).map(function(k){
+     var items=porPersona[k], p=k.split('|'), hechas=items.filter(function(c){return c.hecho;}).length;
+     var pct=Math.round(hechas/items.length*100);
+     return '<div class="card" style="margin-bottom:8px">'+
+       '<div class="row" style="margin-bottom:13px"><div class="ava sm">'+esc(ini(p[0]))+'</div>'+
+       '<div style="flex:1"><div class="li-t">'+esc(p[0])+'</div>'+
+       '<div class="li-s">'+(p[1]==='ONBOARDING'?'Incorporación':'Salida')+' · '+hechas+' de '+items.length+'</div></div>'+
+       '<span class="pill '+(pct===100?'p-ok':'p-warn')+'">'+pct+'%</span></div>'+
+       items.sort(function(a,b){return a.orden-b.orden;}).map(function(c){
+         return '<div class="row" style="padding:9px 0;border-top:1px solid var(--line-soft)">'+
+           '<input type="checkbox" '+(c.hecho?'checked':'')+' onchange="marcarTareaAdmin(\''+c.id+'\',this.checked)" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent)">'+
+           '<span style="flex:1;font-size:12.5px'+(c.hecho?';text-decoration:line-through;color:var(--sub)':'')+'">'+esc(c.tarea)+'</span>'+
+           (c.hechoPor?'<span style="font-size:10.5px;color:var(--sub)">'+esc(c.hechoPor)+'</span>':'')+'</div>';
+       }).join('')+'</div>';
+   }).join('') : vacio('No hay procesos de incorporación abiertos','☑'));
+}
+function modalChecklist(tipo){
+  var d=S.checklistEquipo||{plantillas:{}};
+  var tareas=(d.plantillas&&d.plantillas[tipo])||[];
+  abrirModal('<div class="mtitle">'+(tipo==='ONBOARDING'?'Nueva incorporación':'Proceso de salida')+'</div>'+
+    '<div class="msub">Se crea la checklist estándar; puedes editarla antes de crearla</div>'+
+    '<div class="fld"><label class="lbl">Persona</label><select class="inp" id="ck_p">'+
+      S.empleados.map(function(e){return '<option>'+esc(e.nombre)+'</option>';}).join('')+'</select></div>'+
+    '<div class="fld"><label class="lbl">Responsable</label><select class="inp" id="ck_r">'+
+      S.empleados.map(function(e){return '<option'+(e.nombre===S.emp.nombre?' selected':'')+'>'+esc(e.nombre)+'</option>';}).join('')+'</select></div>'+
+    '<div class="fld"><label class="lbl">Tareas (una por línea)</label><textarea class="inp" id="ck_t" style="min-height:170px">'+esc(tareas.join('\n'))+'</textarea></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarChecklist(\''+tipo+'\')">Crear</button></div>');
+}
+function enviarChecklist(tipo){
+  var tareas=$('ck_t').value.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+  if(!tareas.length) return toast('Añade alguna tarea','err');
+  api('crearChecklist',{trabajador:$('ck_p').value,responsable:$('ck_r').value,tipo:tipo,tareas:tareas}).then(function(r){
+    cerrarModal(); if(r.ok){toast('Checklist creada · '+r.creadas+' tareas','ok');ir('onboarding');} else toast('Error','err');
+  });
+}
+function marcarTareaAdmin(id,hecho){
+  api('marcarChecklist',{id:id,hecho:hecho}).then(function(r){ if(!r.ok) toast('Error','err'); });
+}
+
+/* ── Analytics ── */
+function vAnalytics(){
+  var a=S.analytics;
+  if(!a) return cab('Analytics','Indicadores de plantilla')+vacio('Sin datos','◱');
+  var horas=Object.keys(a.horas).map(function(k){return {n:k,v:a.horas[k]};}).sort(function(x,y){return y.v-x.v;});
+  var maxH=Math.max.apply(null,[1].concat(horas.map(function(h){return h.v;})));
+  var abs=Object.keys(a.absentismo).map(function(k){return {n:k,v:a.absentismo[k]};}).sort(function(x,y){return y.v-x.v;});
+  var maxA=Math.max.apply(null,[1].concat(abs.map(function(x){return x.v;})));
+  var proy=Object.keys(a.proyectos).map(function(k){return {n:k,m:a.proyectos[k].minutos,c:a.proyectos[k].coste};})
+            .sort(function(x,y){return y.m-x.m;});
+  var maxP=Math.max.apply(null,[1].concat(proy.map(function(p){return p.m;})));
+  var totalDiasAus=Object.keys(a.diasAusencia).reduce(function(s,k){return s+a.diasAusencia[k];},0);
+
+  return cab('Analytics','Indicadores de plantilla · '+fBonita(a.desde)+' → '+fBonita(a.hasta))+
+   '<div class="grid g4" style="margin-bottom:6px">'+
+     kpi(a.plantilla,'Plantilla activa','')+
+     kpi(hhmm(Object.keys(a.horas).reduce(function(s,k){return s+a.horas[k];},0)),'Horas registradas','')+
+     kpi(totalDiasAus,'Días de ausencia','')+
+     kpi(Object.keys(a.proyectos).length,'Proyectos activos','')+
+   '</div>'+
+   '<div class="sec">Horas por persona</div>'+
+   '<div class="card">'+horas.map(function(h){
+     return '<div class="bar-row"><div class="bar-lbl" title="'+esc(h.n)+'">'+esc(h.n.split(' ')[0])+'</div>'+
+       '<div class="bar-track"><div class="bar-fill" style="width:'+(h.v/maxH*100)+'%"></div></div>'+
+       '<div class="bar-val">'+hhmm(h.v)+'</div></div>';
+   }).join('')+'</div>'+
+   '<div class="sec">Absentismo por tipo</div>'+
+   '<div class="card">'+(abs.length? abs.map(function(x){
+     return '<div class="bar-row"><div class="bar-lbl" title="'+esc(x.n)+'">'+esc(x.n.slice(0,15))+'</div>'+
+       '<div class="bar-track"><div class="bar-fill over" style="width:'+(x.v/maxA*100)+'%"></div></div>'+
+       '<div class="bar-val">'+x.v+' d</div></div>';
+   }).join('') : '<div style="color:var(--sub);font-size:13px">Sin ausencias aprobadas en el periodo.</div>')+'</div>'+
+   '<div class="sec">Coste por proyecto</div>'+
+   '<div class="card">'+(proy.length? proy.map(function(p){
+     return '<div class="bar-row"><div class="bar-lbl" title="'+esc(p.n)+'">'+esc(p.n.slice(0,15))+'</div>'+
+       '<div class="bar-track"><div class="bar-fill" style="width:'+(p.m/maxP*100)+'%"></div></div>'+
+       '<div class="bar-val">'+(p.c? Math.round(p.c)+' €' : hhmm(p.m))+'</div></div>';
+   }).join('')+'<div style="font-size:11px;color:var(--sub);margin-top:12px">El coste sale del campo «coste_hora» de cada persona en la hoja Empleados.</div>'
+     : '<div style="color:var(--sub);font-size:13px">Nadie ha imputado tiempo a proyectos.</div>')+'</div>'+
+   '<div class="sec">Distribución de la plantilla</div>'+
+   '<div class="grid g2">'+
+     '<div class="card"><div class="lbl">Por departamento</div>'+repartoHTML(a.porDepartamento)+'</div>'+
+     '<div class="card"><div class="lbl">Por oficina</div>'+repartoHTML(a.porOficina)+'</div>'+
+   '</div>';
+}
+function repartoHTML(obj){
+  var total=Object.keys(obj).reduce(function(s,k){return s+obj[k];},0)||1;
+  return Object.keys(obj).sort(function(a,b){return obj[b]-obj[a];}).map(function(k){
+    return '<div class="row" style="padding:7px 0;font-size:12.5px;border-top:1px solid var(--line-soft)">'+
+      '<span style="flex:1">'+esc(k)+'</span><span style="color:var(--sub)">'+Math.round(obj[k]/total*100)+'%</span>'+
+      '<b style="width:26px;text-align:right">'+obj[k]+'</b></div>';
+  }).join('');
+}
+
+/* ── Centros de trabajo ── */
+function vCentros(){
+  return cab('Centros de trabajo','Geovallas que validan desde dónde se ficha')+
+   '<button class="btn b-gold" style="margin-bottom:18px" onclick="modalCentro()">+ Añadir centro</button>'+
+   '<div class="card" style="margin-bottom:16px"><div style="font-size:12.5px;color:var(--sub);line-height:1.65">'+
+     'Cuando alguien ficha, la app compara sus coordenadas con estos centros y guarda en qué centro estaba. '+
+     'Para <b>impedir</b> el fichaje fuera de un centro, pon la propiedad <code>EXIGIR_CENTRO</code> a <code>SI</code> '+
+     'en las Propiedades del script. Ahora mismo está en <b>'+(S.exigirCentro?'SI':'NO')+'</b>.</div></div>'+
+   (S.centrosAdmin.length? '<div class="scroll-x"><table class="tbl"><tr><th>Centro</th><th>Dirección</th><th>Coordenadas</th><th>Radio</th><th>Activo</th></tr>'+
+     S.centrosAdmin.map(function(c){
+       return '<tr><td>'+esc(c.nombre)+'</td><td>'+esc(c.direccion||'')+'</td>'+
+         '<td>'+Number(c.lat).toFixed(4)+', '+Number(c.lng).toFixed(4)+'</td><td>'+c.radio_m+' m</td>'+
+         '<td><span class="pill '+(String(c.activo).toUpperCase()==='NO'?'p-grey':'p-ok')+'">'+
+         (String(c.activo).toUpperCase()==='NO'?'No':'Sí')+'</span></td></tr>';
+     }).join('')+'</table></div>' : vacio('No hay centros definidos','⌖'));
+}
+function modalCentro(){
+  abrirModal('<div class="mtitle">Añadir centro</div>'+
+    '<div class="msub">Usa «Mi ubicación» estando en la oficina para capturar las coordenadas exactas</div>'+
+    '<div class="fld"><label class="lbl">Nombre</label><input class="inp" id="ce_n" placeholder="Ej.: Oficina Sitges"></div>'+
+    '<div class="fld"><label class="lbl">Dirección</label><input class="inp" id="ce_d"></div>'+
+    '<div class="grid g3"><div class="fld"><label class="lbl">Latitud</label><input class="inp" id="ce_la"></div>'+
+    '<div class="fld"><label class="lbl">Longitud</label><input class="inp" id="ce_lo"></div>'+
+    '<div class="fld"><label class="lbl">Radio (m)</label><input class="inp" type="number" id="ce_r" value="150"></div></div>'+
+    '<button class="btn b-ghost b-sm" style="margin-bottom:16px" onclick="capturarUbicacion()">Usar mi ubicación actual</button>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarCentro()">Guardar</button></div>');
+}
+function capturarUbicacion(){
+  if(!navigator.geolocation) return toast('Tu navegador no da ubicación','err');
+  toast('Obteniendo ubicación…');
+  navigator.geolocation.getCurrentPosition(function(p){
+    $('ce_la').value=p.coords.latitude.toFixed(6);
+    $('ce_lo').value=p.coords.longitude.toFixed(6);
+    toast('Ubicación capturada · precisión '+Math.round(p.coords.accuracy)+' m','ok');
+  },function(){ toast('No se pudo obtener la ubicación','err'); },{enableHighAccuracy:true,timeout:8000});
+}
+function enviarCentro(){
+  var p={nombre:$('ce_n').value.trim(),direccion:$('ce_d').value,lat:Number($('ce_la').value),
+         lng:Number($('ce_lo').value),radio_m:Number($('ce_r').value)};
+  if(!p.nombre||!p.lat||!p.lng) return toast('Nombre y coordenadas obligatorios','err');
+  api('guardarCentro',p).then(function(r){ cerrarModal(); if(r.ok){toast('Centro guardado','ok');ir('centros');} else toast('Error','err'); });
+}
+
+/* ── Quiosco y QR ── */
+function vQuiosco(){
+  return cab('Quiosco y QR','Fichaje desde una tablet compartida o escaneando un código')+
+   '<div class="grid g2">'+
+     '<div class="card"><div class="lbl">Modo quiosco</div>'+
+       '<div style="font-size:12.5px;color:var(--sub);line-height:1.65;margin:12px 0 16px">'+
+       'Convierte esta pantalla en un punto de fichaje compartido: cada persona toca su nombre, '+
+       'introduce su PIN y ficha. No queda ninguna sesión abierta.</div>'+
+       '<button class="btn b-pri" onclick="abrirQuiosco()">Activar modo quiosco</button></div>'+
+     '<div class="card"><div class="lbl">Código QR de acceso</div>'+
+       '<div style="font-size:12.5px;color:var(--sub);line-height:1.65;margin:12px 0 16px">'+
+       'Imprímelo y colócalo en recepción. Al escanearlo se abre la app de fichaje en el móvil.</div>'+
+       '<div id="qr_box" style="display:flex;justify-content:center;padding:16px;background:#fff;border:1px solid var(--line)"></div>'+
+       '<button class="btn b-ghost" style="margin-top:14px" onclick="window.print()">Imprimir</button></div>'+
+   '</div>';
+}
+function pintarQR(){
+  var box=$('qr_box'); if(!box||typeof QRCode==='undefined') return;
+  box.innerHTML='';
+  try{ new QRCode(box,{text:location.href.split('#')[0],width:170,height:170,colorDark:'#122E29',colorLight:'#ffffff'}); }
+  catch(e){ box.innerHTML='<div style="font-size:11.5px;color:var(--sub);word-break:break-all">'+esc(location.href)+'</div>'; }
+}
+function abrirQuiosco(){
+  var ov=document.createElement('div');
+  ov.id='quiosco';
+  ov.style.cssText='position:fixed;inset:0;background:var(--bg);z-index:400;overflow-y:auto;padding:34px 22px';
+  ov.innerHTML='<div style="max-width:820px;margin:0 auto">'+
+    '<div class="row" style="margin-bottom:30px"><div><div class="tb-brand">Durán Carasso<small>Punto de fichaje</small></div></div>'+
+    '<div class="sp"></div><div id="qk_reloj" style="font-family:var(--serif);font-size:30px;color:var(--navy)"></div>'+
+    '<button class="btn b-ghost b-sm" onclick="cerrarQuiosco()">Salir del quiosco</button></div>'+
+    '<div id="qk_body"></div></div>';
+  document.body.appendChild(ov);
+  quioscoLista();
+  ov._t=setInterval(function(){
+    var d=new Date(); var el=$('qk_reloj');
+    if(el) el.textContent=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+  },1000);
+}
+function cerrarQuiosco(){
+  var ov=$('quiosco'); if(!ov) return;
+  clearInterval(ov._t); ov.remove();
+}
+var qkSel='', qkPin='';
+function quioscoLista(){
+  qkSel=''; qkPin='';
+  $('qk_body').innerHTML='<div class="sec">Toca tu nombre para fichar</div>'+
+    '<div class="grid g4">'+S.empleados.map(function(e){
+      var est=(S.equipo.filter(function(x){return x.nombre===e.nombre;})[0]||{}).estado||'SIN_FICHAR';
+      return '<div class="card" style="cursor:pointer;text-align:center;padding:20px 12px" onclick="quioscoPin(\''+esc(e.nombre).replace(/'/g,"\\'")+'\')">'+
+        '<div class="ava lg" style="margin:0 auto 12px">'+esc(ini(e.nombre))+'</div>'+
+        '<div style="font-size:13px;font-weight:500;color:var(--navy)">'+esc(e.nombre)+'</div>'+
+        '<div style="margin-top:8px"><span class="pill '+({TRABAJANDO:'p-ok',PAUSA:'p-warn'}[est]||'p-grey')+'">'+
+        ({TRABAJANDO:'Dentro',PAUSA:'Pausa',FUERA:'Fuera',SIN_FICHAR:'Sin fichar'}[est])+'</span></div></div>';
+    }).join('')+'</div>';
+}
+function quioscoPin(nombre){
+  qkSel=nombre; qkPin='';
+  $('qk_body').innerHTML='<div style="max-width:300px;margin:20px auto;text-align:center">'+
+    '<div class="ava lg" style="margin:0 auto 14px">'+esc(ini(nombre))+'</div>'+
+    '<div style="font-family:var(--serif);font-size:23px;color:var(--navy)">'+esc(nombre)+'</div>'+
+    '<div style="font-size:12px;color:var(--sub);margin-top:6px">Introduce tu PIN</div>'+
+    '<div class="pin-dots" id="qk_dots"></div>'+
+    '<div class="pad" id="qk_pad"></div>'+
+    '<div class="pin-err" id="qk_err"></div>'+
+    '<button class="btn b-ghost b-sm" style="margin-top:8px" onclick="quioscoLista()">Cancelar</button></div>';
+  $('qk_pad').innerHTML=['1','2','3','4','5','6','7','8','9','←','0','↵'].map(function(t){
+    return '<button class="'+((t==='←'||t==='↵')?'fn':'')+'" onclick="qkTecla(\''+t+'\')">'+t+'</button>';
+  }).join('');
+  qkDots();
+}
+function qkDots(){
+  $('qk_dots').innerHTML=[0,1,2,3].map(function(i){return '<div class="pin-dot'+(i<qkPin.length?' on':'')+'"></div>';}).join('');
+}
+function qkTecla(t){
+  $('qk_err').textContent='';
+  if(t==='←'){ qkPin=qkPin.slice(0,-1); qkDots(); return; }
+  if(t==='↵'){ qkValidar(); return; }
+  if(qkPin.length>=4) return;
+  qkPin+=t; qkDots();
+  if(qkPin.length===4) setTimeout(qkValidar,120);
+}
+function qkValidar(){
+  if(qkPin.length<4) return;
+  $('qk_err').innerHTML='<span class="spinner"></span>';
+  api('auth',{nombre:qkSel,pin:qkPin}).then(function(r){
+    if(!r.ok){ qkPin=''; qkDots(); $('qk_err').textContent='PIN incorrecto'; return; }
+    quioscoAcciones(r.token, qkSel);
+  });
+}
+function quioscoAcciones(token,nombre){
+  var est=(S.equipo.filter(function(x){return x.nombre===nombre;})[0]||{}).estado||'SIN_FICHAR';
+  var fuera=(est==='FUERA'||est==='SIN_FICHAR');
+  $('qk_body').innerHTML='<div style="max-width:400px;margin:30px auto;text-align:center">'+
+    '<div class="ava lg" style="margin:0 auto 14px">'+esc(ini(nombre))+'</div>'+
+    '<div style="font-family:var(--serif);font-size:24px;color:var(--navy);margin-bottom:26px">Hola, '+esc(nombre.split(' ')[0])+'</div>'+
+    '<div class="grid g'+(fuera?'2':'3')+'">'+
+      (fuera? '<button class="btn b-ok" style="padding:22px 10px" onclick="qkFichar(\''+token+'\',\'ENTRADA\')">Entrar</button>'
+            : '<button class="btn b-no" style="padding:22px 10px" onclick="qkFichar(\''+token+'\',\'SALIDA\')">Salir</button>'+
+              '<button class="btn b-ghost" style="padding:22px 10px" onclick="qkFichar(\''+token+'\',\''+(est==='PAUSA'?'PAUSA_FIN':'PAUSA_INI')+'\')">'+
+              (est==='PAUSA'?'Reanudar':'Pausa')+'</button>')+
+      '<button class="btn b-ghost" style="padding:22px 10px" onclick="quioscoLista()">Cancelar</button>'+
+    '</div></div>';
+}
+function qkFichar(token,tipo){
+  var guardado=S.token; S.token=token;
+  api('fichar',{tipo:tipo,dispositivo:'Quiosco',modalidad:'OFICINA'}).then(function(r){
+    S.token=guardado;
+    if(r.ok){
+      $('qk_body').innerHTML='<div style="text-align:center;padding:70px 20px">'+
+        '<div style="font-family:var(--serif);font-size:34px;color:var(--accent)">'+mensajeFichaje(tipo)+'</div>'+
+        '<div style="font-size:15px;color:var(--sub);margin-top:10px">'+String(r.hora).slice(0,5)+'</div></div>';
+      api('estadoEquipo').then(function(e){ if(e.ok) S.equipo=e.equipo; });
+      setTimeout(quioscoLista,2600);
+    } else { toast('No se pudo fichar','err'); quioscoLista(); }
+  }).catch(function(){ S.token=guardado; toast('Sin conexión','err'); quioscoLista(); });
+}
+
 /* ══ MODO DEMO (sin backend) ════════════════════════════════════════════
    Persiste en localStorage para que puedas probar toda la app antes de
    desplegar el Apps Script. Al rellenar SCRIPT_URL se desactiva solo.    */
@@ -1307,6 +2301,14 @@ function dbGet(){
     if(v && v.empleados) return v;
   }catch(e){}
   var db={empleados:DEMO_SEED.empleados,horarios:DEMO_SEED.horarios,festivos:DEMO_SEED.festivos,
+          turnos:[],compensaciones:[],objetivos:[],evaluaciones:[],encuestas:[],respuestas:[],
+          vacantes:[],candidatos:[],checklists:[],
+          centros:[{id:'CT-BCN',nombre:'Barcelona',direccion:'Av. Diagonal',lat:41.3947,lng:2.1503,radio_m:150,activo:'SI'},
+                   {id:'CT-SIT',nombre:'Sitges',direccion:'Sitges',lat:41.2371,lng:1.8055,radio_m:150,activo:'SI'},
+                   {id:'CT-AND',nombre:'Andorra',direccion:'Andorra la Vella',lat:42.5063,lng:1.5218,radio_m:150,activo:'SI'}],
+          publicaciones:[{id:'PU-1',ts:new Date().toISOString(),autor:'Adrià Pintat',categoria:'Aviso importante',
+                          titulo:'Estrenamos DC · Personas',fijado:true,
+                          cuerpo:'A partir de hoy el fichaje se hace desde aquí.\n\nEntra con tu PIN, pulsa Entrar al empezar y Salir al terminar. Las vacaciones se piden en «Mis ausencias» y las aprueba dirección.'}],
           fichajes:[],ausencias:[],tareas:[],documentos:[
             {id:'D-1',trabajador:'*',tipo:'Empresa',nombre:'Política de teletrabajo 2026',url:'',fecha:hoyISO(),requiereFirma:true,firmado:''},
             {id:'D-2',trabajador:'*',tipo:'Empresa',nombre:'Manual de acogida Durán Carasso',url:'',fecha:hoyISO(),requiereFirma:false,firmado:''}
@@ -1329,6 +2331,8 @@ function demoApi(action,p){
       break;
     case 'bootstrap':
       r={ok:true,empleados:db.empleados,horarios:db.horarios,festivos:db.festivos,
+         centros:db.centros,exigirCentro:false,
+         turnos:db.turnos.filter(function(t){return t.trabajador===(yo&&yo.nombre);}),
          esDireccion:yo&&yo.rol==='DIRECCION'}; break;
     case 'fichar':
       var evs=db.fichajes.filter(function(f){return f.trabajador===yo.nombre&&f.fecha===hoyISO();});
@@ -1337,7 +2341,7 @@ function demoApi(action,p){
       if(!ok){ r={ok:false,error:'TRANSICION_INVALIDA',estado:est}; break; }
       var d=new Date(), reg={id:demoId('F'),ts:d.toISOString(),fecha:hoyISO(),
         hora:pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()),
-        trabajador:yo.nombre,tipo:p.tipo,origen:'APP',lat:p.lat||'',lng:p.lng||''};
+        trabajador:yo.nombre,tipo:p.tipo,origen:'APP',lat:p.lat||'',lng:p.lng||'',modalidad:p.modalidad||'OFICINA'};
       db.fichajes.push(reg); dbSet(db);
       r={ok:true,id:reg.id,ts:reg.ts,fecha:reg.fecha,hora:reg.hora,
          estado:{ENTRADA:'TRABAJANDO',PAUSA_INI:'PAUSA',PAUSA_FIN:'TRABAJANDO',SALIDA:'FUERA'}[p.tipo]};
@@ -1408,6 +2412,177 @@ function demoApi(action,p){
       r={ok:true,incidencias:inc}; break;
     case 'verificarCadena':
       r={ok:true,total:db.fichajes.length,integridad:true,rotas:[]}; break;
+
+    /* ── Perfil ── */
+    case 'miPerfil':
+      r={ok:true,perfil:{nombre:yo.nombre,email:yo.email,rol:yo.rol,departamento:yo.departamento,
+         oficina:yo.oficina,empresa:'Durán Carasso',horario_id:yo.horario_id,fecha_alta:'2022-01-10',
+         vacaciones_anuales:yo.vacaciones_anuales,telefono:yo.telefono||'',dni:yo.dni||'',responsable:'Adrià Pintat'}};
+      break;
+    case 'actualizarPerfil':
+      db.empleados.forEach(function(e){ if(e.nombre===yo.nombre){ e.telefono=p.telefono; e.dni=p.dni; } });
+      dbSet(db); r={ok:true}; break;
+    case 'cambiarPin':
+      if(yo.pin!==p.actual){ r={ok:false,error:'PIN_ACTUAL_INCORRECTO'}; break; }
+      if(!/^\d{4}$/.test(p.nuevo)){ r={ok:false,error:'PIN_INVALIDO'}; break; }
+      if(p.nuevo==='0000'||p.nuevo==='1234'){ r={ok:false,error:'PIN_DEBIL'}; break; }
+      db.empleados.forEach(function(e){ if(e.nombre===yo.nombre) e.pin=p.nuevo; }); dbSet(db); r={ok:true}; break;
+    case 'tokenCalendario': r={ok:true,token:'demo-'+btoa(yo.nombre).replace(/=/g,'')}; break;
+
+    /* ── Turnos y centros ── */
+    case 'guardarTurno':
+      db.turnos.push({id:demoId('TU'),trabajador:p.trabajador,desde:p.desde,hasta:p.hasta,
+                      horario_id:p.horario_id,nota:p.nota||''}); dbSet(db); r={ok:true}; break;
+    case 'borrarTurno':
+      db.turnos=db.turnos.filter(function(t){return t.id!==p.id;}); dbSet(db); r={ok:true}; break;
+    case 'turnosEquipo': r={ok:true,turnos:db.turnos}; break;
+    case 'centros': r={ok:true,centros:db.centros}; break;
+    case 'guardarCentro':
+      db.centros.push({id:demoId('CT'),nombre:p.nombre,direccion:p.direccion||'',lat:p.lat,lng:p.lng,
+                       radio_m:p.radio_m||150,activo:'SI'}); dbSet(db); r={ok:true}; break;
+
+    /* ── Bolsa de horas ── */
+    case 'compensar':
+      db.compensaciones.push({id:demoId('CO'),trabajador:p.trabajador,fecha:p.fecha,minutos:p.minutos,
+                              tipo:p.tipo,nota:p.nota||''}); dbSet(db); r={ok:true}; break;
+    case 'miBolsa':
+      r={ok:true,compensaciones:db.compensaciones.filter(function(c){return c.trabajador===yo.nombre;})}; break;
+    case 'bolsaEquipo':
+      var comp={}; db.compensaciones.forEach(function(c){ comp[c.trabajador]=(comp[c.trabajador]||0)+c.minutos; });
+      r={ok:true,compensado:comp,detalle:db.compensaciones}; break;
+
+    /* ── Objetivos ── */
+    case 'misObjetivos':
+      r={ok:true,objetivos:db.objetivos.filter(function(o){return o.trabajador===yo.nombre;})}; break;
+    case 'objetivosEquipo': r={ok:true,objetivos:db.objetivos}; break;
+    case 'guardarObjetivo':
+      db.objetivos.push({id:demoId('OB'),trabajador:p.trabajador,titulo:p.titulo,descripcion:p.descripcion||'',
+        metrica:p.metrica||'',meta:p.meta||0,actual:0,periodo:p.periodo,peso:p.peso||0,
+        estado:'ACTIVO',valoracion:null,comentario:''}); dbSet(db); r={ok:true}; break;
+    case 'avanzarObjetivo':
+      db.objetivos.forEach(function(o){ if(o.id===p.id&&o.trabajador===yo.nombre) o.actual=p.actual; });
+      dbSet(db); r={ok:true}; break;
+    case 'valorarObjetivo':
+      db.objetivos.forEach(function(o){ if(o.id===p.id){o.estado='CERRADO';o.valoracion=p.valoracion;o.comentario=p.comentario;} });
+      dbSet(db); r={ok:true}; break;
+
+    /* ── Evaluaciones ── */
+    case 'lanzarEvaluacion':
+      var comps=['Orientación a resultados','Trato con el cliente','Trabajo en equipo',
+                 'Autonomía e iniciativa','Conocimiento del producto','Comunicación'];
+      var creadas=0;
+      (p.trabajadores||[]).forEach(function(t){
+        comps.forEach(function(c){
+          if(db.evaluaciones.some(function(e){return e.campana===p.campana&&e.trabajador===t&&e.competencia===c;})) return;
+          db.evaluaciones.push({id:demoId('EV'),campana:p.campana,trabajador:t,evaluador:yo.nombre,
+            competencia:c,notaAuto:null,notaManager:null,comentarioAuto:'',comentarioManager:'',estado:'PENDIENTE'});
+          creadas++;
+        });
+      });
+      if(!creadas){ r={ok:false,error:'YA_LANZADA'}; break; }
+      dbSet(db); r={ok:true,creadas:creadas}; break;
+    case 'miEvaluacion':
+      r={ok:true,evaluacion:db.evaluaciones.filter(function(e){return e.trabajador===yo.nombre;})}; break;
+    case 'autoevaluar':
+      db.evaluaciones.forEach(function(e){
+        var v=(p.notas||{})[e.id];
+        if(v&&e.trabajador===yo.nombre){ e.notaAuto=v.nota; e.comentarioAuto=v.comentario||'';
+          if(e.estado==='PENDIENTE') e.estado='AUTOEVALUADA'; }
+      }); dbSet(db); r={ok:true}; break;
+    case 'evaluarManager':
+      db.evaluaciones.forEach(function(e){
+        var v=(p.notas||{})[e.id];
+        if(v){ e.notaManager=v.nota; e.comentarioManager=v.comentario||''; e.estado='CERRADA'; }
+      }); dbSet(db); r={ok:true}; break;
+    case 'evaluacionesEquipo':
+      var camps={}; db.evaluaciones.forEach(function(e){camps[e.campana]=true;});
+      r={ok:true,evaluaciones:db.evaluaciones,campanas:Object.keys(camps),
+         competencias:['Orientación a resultados','Trato con el cliente','Trabajo en equipo',
+                       'Autonomía e iniciativa','Conocimiento del producto','Comunicación']}; break;
+
+    /* ── Encuestas ── */
+    case 'guardarEncuesta':
+      db.encuestas.push({id:demoId('EN'),titulo:p.titulo,descripcion:p.descripcion||'',preguntas:p.preguntas,
+        desde:hoyISO(),hasta:p.hasta||'',anonima:p.anonima!==false,activa:true}); dbSet(db); r={ok:true}; break;
+    case 'encuestasTodas': r={ok:true,encuestas:db.encuestas}; break;
+    case 'encuestasAbiertas':
+      r={ok:true,encuestas:db.encuestas.filter(function(e){return e.activa;}).map(function(e){
+        var c=JSON.parse(JSON.stringify(e));
+        c.respondida=db.respuestas.some(function(x){return x.encuesta_id===e.id&&x.quien===yo.nombre;});
+        return c;
+      })}; break;
+    case 'responderEncuesta':
+      if(db.respuestas.some(function(x){return x.encuesta_id===p.id&&x.quien===yo.nombre;})){ r={ok:false,error:'YA_RESPONDIDA'}; break; }
+      db.respuestas.push({id:demoId('RE'),encuesta_id:p.id,quien:yo.nombre,respuestas:p.respuestas});
+      dbSet(db); r={ok:true}; break;
+    case 'resultadosEncuesta':
+      var enc=db.encuestas.filter(function(e){return e.id===p.id;})[0];
+      var res=db.respuestas.filter(function(x){return x.encuesta_id===p.id;}).map(function(x){return x.respuestas;});
+      r={ok:true,encuesta:enc,respuestas:res,total:res.length}; break;
+
+    /* ── Tablón ── */
+    case 'publicaciones': r={ok:true,publicaciones:db.publicaciones}; break;
+    case 'publicar':
+      db.publicaciones.push({id:demoId('PU'),ts:new Date().toISOString(),autor:yo.nombre,
+        categoria:p.categoria,titulo:p.titulo,cuerpo:p.cuerpo,fijado:!!p.fijado}); dbSet(db); r={ok:true}; break;
+    case 'borrarPublicacion':
+      db.publicaciones=db.publicaciones.filter(function(x){return x.id!==p.id;}); dbSet(db); r={ok:true}; break;
+
+    /* ── Reclutamiento ── */
+    case 'vacantes':
+      r={ok:true,fases:['Recibido','Cribado','Entrevista','Prueba','Oferta','Contratado','Descartado'],
+         vacantes:db.vacantes,candidatos:db.candidatos}; break;
+    case 'guardarVacante':
+      db.vacantes.push({id:demoId('VA'),titulo:p.titulo,departamento:p.departamento||'',oficina:p.oficina||'',
+        descripcion:p.descripcion||'',estado:'ABIERTA',ts:new Date().toISOString()}); dbSet(db); r={ok:true}; break;
+    case 'guardarCandidato':
+      db.candidatos.push({id:demoId('CA'),vacante_id:p.vacante_id,nombre:p.nombre,email:p.email||'',
+        telefono:p.telefono||'',fase:'Recibido',valoracion:0,nota:'',cv_url:p.cv_url||''}); dbSet(db); r={ok:true}; break;
+    case 'moverCandidato':
+      db.candidatos.forEach(function(c){ if(c.id===p.id){ if(p.fase)c.fase=p.fase;
+        if(p.valoracion!==undefined)c.valoracion=p.valoracion; if(p.nota!==undefined)c.nota=p.nota; } });
+      dbSet(db); r={ok:true}; break;
+
+    /* ── Checklists ── */
+    case 'crearChecklist':
+      (p.tareas||[]).forEach(function(t,i){
+        db.checklists.push({id:demoId('CK'),trabajador:p.trabajador,tipo:p.tipo,tarea:t,
+          responsable:p.responsable,fechaLimite:'',hecho:false,hechoTs:'',hechoPor:'',orden:i+1});
+      }); dbSet(db); r={ok:true,creadas:(p.tareas||[]).length}; break;
+    case 'miChecklist':
+      r={ok:true,checklist:db.checklists.filter(function(c){return c.trabajador===yo.nombre||c.responsable===yo.nombre;})}; break;
+    case 'marcarChecklist':
+      db.checklists.forEach(function(c){ if(c.id===p.id){ c.hecho=p.hecho!==false;
+        c.hechoPor=c.hecho?yo.nombre:''; c.hechoTs=c.hecho?new Date().toISOString():''; } });
+      dbSet(db); r={ok:true}; break;
+    case 'checklistEquipo':
+      r={ok:true,checklist:db.checklists,plantillas:{
+        ONBOARDING:['Contrato firmado','Alta en Seguridad Social','Email corporativo creado',
+                    'Equipo informático entregado','Accesos al CRM','Tarjeta de visita',
+                    'Formación de producto','Presentación al equipo','Manual de acogida entregado'],
+        OFFBOARDING:['Entrevista de salida','Devolución de equipo','Revocación de accesos',
+                     'Traspaso de cartera de clientes','Finiquito calculado','Baja en Seguridad Social']}}; break;
+
+    /* ── Analytics ── */
+    case 'analytics':
+      var hrs={},dias={},porK2={};
+      db.fichajes.forEach(function(f){ (porK2[f.trabajador+'|'+f.fecha]=porK2[f.trabajador+'|'+f.fecha]||[]).push(f); });
+      Object.keys(porK2).forEach(function(k){
+        var n=k.split('|')[0];
+        hrs[n]=(hrs[n]||0)+minutosDe(porK2[k]).cerrado; dias[n]=(dias[n]||0)+1;
+      });
+      var absx={},diasAus={};
+      db.ausencias.forEach(function(a){ if(a.estado!=='APROBADA')return;
+        absx[a.tipo]=(absx[a.tipo]||0)+a.dias; diasAus[a.trabajador]=(diasAus[a.trabajador]||0)+a.dias; });
+      var prj={};
+      db.tareas.forEach(function(t){
+        var k=t.proyecto||'Sin proyecto'; prj[k]=prj[k]||{minutos:0,coste:0}; prj[k].minutos+=t.minutos;
+      });
+      var dep={},ofi={};
+      db.empleados.forEach(function(e){ dep[e.departamento||'—']=(dep[e.departamento||'—']||0)+1;
+        ofi[e.oficina||'—']=(ofi[e.oficina||'—']||0)+1; });
+      r={ok:true,desde:p.desde,hasta:p.hasta,plantilla:db.empleados.length,horas:hrs,diasFichados:dias,
+         absentismo:absx,diasAusencia:diasAus,proyectos:prj,porDepartamento:dep,porOficina:ofi}; break;
   }
   return new Promise(function(res){ setTimeout(function(){res(r);},120); });
 }
@@ -1430,6 +2605,7 @@ function initLogin(){
   }).catch(function(){ toast('No se pudo cargar la plantilla','err'); });
 }
 function arrancar(){
+  try{ S.modalidad=localStorage.getItem('dcp_mod')||'OFICINA'; }catch(e){}
   var ses=leerSesion();
   if(ses && ses.token){ S.token=ses.token; S.emp=ses.emp; S.esDir=ses.esDir; entrarApp(); }
   else initLogin();
