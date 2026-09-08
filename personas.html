@@ -595,6 +595,13 @@ var ESPACIOS = {
 function nivelUsuario(){ return (S.emp && S.emp.nivel!=null) ? S.emp.nivel : (S.esDir?2:0); }
 function puedeGestionar(){ return nivelUsuario() >= 1; }
 
+/** A quién puede gestionar quien está dentro: el admin a todos, el manager a los suyos. */
+function miEquipo(){
+  if(nivelUsuario()>=2) return S.empleados;
+  return S.empleados.filter(function(e){
+    return e.responsable===S.emp.nombre || e.nombre===S.emp.nombre;
+  });
+}
 function itemsDe(espacio){
   var out=[];
   (ESPACIOS[espacio].grupos||[]).forEach(function(g){
@@ -1606,7 +1613,8 @@ function validar(id,decision){
   var comentario = decision==='DENEGADA' ? (prompt('Motivo de la denegación (se enviará al empleado):')||'') : '';
   if(decision==='DENEGADA' && !comentario) return;
   api('validarAusencia',{id:id,decision:decision,comentario:comentario}).then(function(r){
-    if(r.ok){ toast('Solicitud '+decision.toLowerCase(),'ok'); refrescar(); } else toast('Error: '+(r.error||''),'err');
+    if(r.ok){ toast('Solicitud '+decision.toLowerCase(),'ok'); refrescar(); }
+    else toast(r.error==='FUERA_DE_TU_EQUIPO'?'Esa persona no está en tu equipo':'Error: '+(r.error||''),'err');
   });
 }
 
@@ -1660,7 +1668,8 @@ function guardarCorreccion(trabajador){
   api('corregirFichaje',{trabajador:trabajador,ts:new Date($('cd_ts').value).toISOString(),
       tipo:$('cd_tipo').value,motivo:motivo}).then(function(r){
     cerrarModal();
-    if(r.ok){ toast('Corrección registrada','ok'); cargarIncidencias(); } else toast('Error: '+(r.error||''),'err');
+    if(r.ok){ toast('Corrección registrada','ok'); cargarIncidencias(); }
+    else toast(r.error==='FUERA_DE_TU_EQUIPO'?'Esa persona no está en tu equipo':'Error: '+(r.error||''),'err');
   });
 }
 
@@ -1671,7 +1680,8 @@ function vInformes(){
      '<div class="fld" style="margin:0"><label class="lbl">Desde</label><input class="inp" type="date" id="inf_d" value="'+mes+'-01"></div>'+
      '<div class="fld" style="margin:0"><label class="lbl">Hasta</label><input class="inp" type="date" id="inf_h" value="'+hoyISO()+'"></div>'+
      '<div class="fld" style="margin:0;min-width:170px"><label class="lbl">Persona</label><select class="inp" id="inf_p">'+
-       '<option value="">Toda la plantilla</option>'+S.empleados.map(function(e){return '<option>'+esc(e.nombre)+'</option>';}).join('')+'</select></div>'+
+       '<option value="">'+(nivelUsuario()>=2?'Toda la plantilla':'Todo mi equipo')+'</option>'+
+       miEquipo().map(function(e){return '<option>'+esc(e.nombre)+'</option>';}).join('')+'</select></div>'+
      '<button class="btn b-pri" style="align-self:flex-end" onclick="generarInforme()">Generar</button>'+
    '</div></div><div id="inf_out">'+vacio('Configura el rango y pulsa Generar','⤓')+'</div>';
 }
@@ -1918,7 +1928,7 @@ function turnoDe(nombre,fecha){
 function modalTurno(){
   abrirModal('<div class="mtitle">Asignar turno</div><div class="msub">Sustituye al horario fijo en las fechas indicadas</div>'+
     '<div class="fld"><label class="lbl">Persona</label><select class="inp" id="tu_p">'+
-      S.empleados.map(function(e){return '<option>'+esc(e.nombre)+'</option>';}).join('')+'</select></div>'+
+      miEquipo().map(function(e){return '<option>'+esc(e.nombre)+'</option>';}).join('')+'</select></div>'+
     '<div class="fld"><label class="lbl">Horario</label><select class="inp" id="tu_h">'+
       S.horarios.map(function(h){return '<option value="'+esc(h.horario_id)+'">'+esc(h.nombre)+'</option>';}).join('')+'</select></div>'+
     '<div class="grid g2 tight"><div class="fld"><label class="lbl">Desde</label><input class="inp" type="date" id="tu_d" value="'+hoyISO()+'"></div>'+
@@ -1930,7 +1940,8 @@ function modalTurno(){
 function enviarTurno(){
   api('guardarTurno',{trabajador:$('tu_p').value,horario_id:$('tu_h').value,desde:$('tu_d').value,
       hasta:$('tu_f').value,nota:$('tu_n').value}).then(function(r){
-    cerrarModal(); if(r.ok){toast('Turno asignado','ok');ir('turnos');} else toast('Error: '+(r.error||''),'err');
+    cerrarModal(); if(r.ok){toast('Turno asignado','ok');ir('turnos');}
+    else toast(r.error==='FUERA_DE_TU_EQUIPO'?'Esa persona no está en tu equipo':'Error: '+(r.error||''),'err');
   });
 }
 function borrarTurno(id){
@@ -2749,8 +2760,12 @@ function demoApiInterno(action,p){
       r={ok:true,ausencias:mias,saldo:vac||{totales:yo.vacaciones_anuales,arrastre:0,consumidos:0,pendientes:0,
          disponibles:yo.vacaciones_anuales},saldos:sal,tipos:db.tipos||TIPOS_AUSENCIA_DEF}; break;
     case 'ausenciasEquipo':
-      r={ok:true,ausencias:db.ausencias.filter(function(x){return x.desde.slice(0,4)===String(p.year);})}; break;
+      var amb=demoAmbito(db,yo);
+      r={ok:true,ausencias:db.ausencias.filter(function(x){
+        return x.desde.slice(0,4)===String(p.year) && demoDentro(amb,x.trabajador);})}; break;
     case 'validarAusencia':
+      var objetivo=db.ausencias.filter(function(x){return x.id===p.id;})[0];
+      if(objetivo && !demoDentro(demoAmbito(db,yo),objetivo.trabajador)){ r={ok:false,error:'FUERA_DE_TU_EQUIPO'}; break; }
       db.ausencias.forEach(function(x){ if(x.id===p.id){x.estado=p.decision;x.validador=yo.nombre;x.comentario=p.comentario||'';} });
       demoAudit(db,yo,'VALIDA_AUSENCIA',p.id+' → '+p.decision); dbSet(db); r={ok:true}; break;
     case 'corregirFichaje':
@@ -2769,10 +2784,16 @@ function demoApiInterno(action,p){
       if(demoEmp(p.nombre)){ r={ok:false,error:'YA_EXISTE'}; break; }
       db.empleados.push(p); dbSet(db); r={ok:true}; break;
     case 'informe':
-      r={ok:true,fichajes:db.fichajes.filter(function(f){return f.fecha>=p.desde&&f.fecha<=p.hasta&&(!p.trabajador||f.trabajador===p.trabajador);})}; break;
+      var ambI=demoAmbito(db,yo);
+      r={ok:true,fichajes:db.fichajes.filter(function(f){
+        return f.fecha>=p.desde&&f.fecha<=p.hasta&&demoDentro(ambI,f.trabajador)&&
+               (!p.trabajador||f.trabajador===p.trabajador);})}; break;
     case 'incidencias':
       var porK={};
-      db.fichajes.forEach(function(f){ if(f.fecha<p.desde||f.fecha>p.hasta)return; (porK[f.trabajador+'|'+f.fecha]=porK[f.trabajador+'|'+f.fecha]||[]).push(f); });
+      var ambInc=demoAmbito(db,yo);
+      db.fichajes.forEach(function(f){
+        if(f.fecha<p.desde||f.fecha>p.hasta||!demoDentro(ambInc,f.trabajador))return;
+        (porK[f.trabajador+'|'+f.fecha]=porK[f.trabajador+'|'+f.fecha]||[]).push(f); });
       var inc=[];
       Object.keys(porK).forEach(function(k){
         var evs2=porK[k].sort(cmpTs),pr=k.split('|'),m=minutosDe(evs2).cerrado;
@@ -2809,7 +2830,9 @@ function demoApiInterno(action,p){
                       horario_id:p.horario_id,nota:p.nota||''}); dbSet(db); r={ok:true}; break;
     case 'borrarTurno':
       db.turnos=db.turnos.filter(function(t){return t.id!==p.id;}); dbSet(db); r={ok:true}; break;
-    case 'turnosEquipo': r={ok:true,turnos:db.turnos}; break;
+    case 'turnosEquipo':
+      var ambT=demoAmbito(db,yo);
+      r={ok:true,turnos:db.turnos.filter(function(t){return demoDentro(ambT,t.trabajador);})}; break;
     case 'centros': r={ok:true,centros:db.centros}; break;
     case 'guardarCentro':
       var nc={id:p.id||demoId('CT'),nombre:p.nombre,direccion:p.direccion||'',lat:p.lat,lng:p.lng,
@@ -2961,6 +2984,14 @@ function demoApiInterno(action,p){
   }
   return new Promise(function(res){ setTimeout(function(){res(r);},120); });
 }
+function demoAmbito(db,yo){
+  if(!yo || demoNivel(yo)>=2) return null;                 // el admin, sin límite
+  var mios=db.empleados.filter(function(e){return e.responsable===yo.nombre;})
+                       .map(function(e){return e.nombre;});
+  mios.push(yo.nombre);
+  return mios;
+}
+function demoDentro(lista,nombre){ return !lista || lista.indexOf(nombre)>=0; }
 function demoNivel(e){
   var r=String(e&&e.rol||'EMPLEADO').toUpperCase();
   if(r==='ADMIN'||r==='ADMINISTRADOR'||r==='DIRECCION') return 2;

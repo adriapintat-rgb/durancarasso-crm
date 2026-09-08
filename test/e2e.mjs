@@ -250,7 +250,30 @@ const menuManager = await manager.$$eval('.side .nav-i', ns => ns.map(n => n.tex
 comprobar(menuManager.some(t => /Validaciones/.test(t)), 'el manager puede validar');
 comprobar(!menuManager.some(t => /Configuración|Auditor/.test(t)),
   'el manager no ve configuración ni auditoría');
+
+// El ámbito de datos, no solo el menú: un manager solo ve a los suyos
+const suyos = await manager.evaluate(() => miEquipo().map(e => e.nombre));
+comprobar(suyos.length < 8 && suyos.includes('Empleado de pruebas') && suyos.includes('Manager de pruebas'),
+  'el manager solo gestiona a quien le reporta (' + suyos.length + ' personas)');
+
+const ajenas = await manager.evaluate(async () => {
+  const r = await api('ausenciasEquipo', { year: new Date().getFullYear() });
+  const equipo = miEquipo().map(e => e.nombre);
+  return (r.ausencias || []).filter(a => !equipo.includes(a.trabajador)).length;
+});
+comprobar(ajenas === 0, 'el manager no recibe ausencias de fuera de su equipo');
 await manager.close();
+
+const admin = await navegador.newPage({ viewport: { width: 1200, height: 900 } });
+admin.on('dialog', d => d.accept());
+await admin.goto(APP); await admin.waitForTimeout(800);
+await admin.click('#sel_trig'); await admin.waitForTimeout(250);
+await admin.click('.sel-item:first-child'); await admin.waitForTimeout(250);
+for (const t of ['0', '0', '0', '0']) await admin.click(`#pad button:has-text("${t}")`);
+await admin.waitForTimeout(1500);
+const todosAdmin = await admin.evaluate(() => miEquipo().length);
+comprobar(todosAdmin >= 7, 'el administrador sí ve a toda la plantilla (' + todosAdmin + ')');
+await admin.close();
 
 // ── Móvil ─────────────────────────────────────────────────────────────────
 console.log('\nMóvil');

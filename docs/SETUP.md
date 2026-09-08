@@ -61,7 +61,9 @@ En la hoja **Empleados**, una fila por persona:
   la empresa, gestiona la plantilla y ve la auditoría. `DIRECCION` sigue valiendo
   como sinónimo de `ADMIN` para las fichas ya creadas.
 - `fecha_alta`: obligatoria. De ella salen las vacaciones prorrateadas del primer año.
-- `responsable`: nombre de su manager. A quien le llegan sus solicitudes.
+- `responsable`: nombre de su manager. **Define el ámbito de datos**: un manager
+  solo ve las ausencias, incidencias, turnos e informes de quien le tiene puesto
+  como responsable. Si lo dejas vacío, sus solicitudes van a los administradores.
 - `activo`: `SI` / `NO`. Una baja se marca `NO`, nunca se borra la fila.
 - Los PIN solo viven en esta hoja. **Nunca** llegan al navegador.
 

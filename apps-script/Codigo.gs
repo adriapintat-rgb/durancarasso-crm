@@ -180,7 +180,7 @@ function router(b) {
     case 'solicitarAusencia': return solicitarAusencia(emp, b);
     case 'cancelarAusencia':  return cancelarAusencia(emp, b);
     case 'misAusencias':    return misAusencias(emp, b);
-    case 'ausenciasEquipo': return ausenciasEquipo(b);
+    case 'ausenciasEquipo': return ausenciasEquipo(b, emp);
     case 'imputarTarea':    return imputarTarea(emp, b);
     case 'misTareas':       return misTareas(emp, b);
     case 'miPerfil':        return miPerfil(emp);
@@ -192,13 +192,13 @@ function router(b) {
     // ── Solo dirección ──
     case 'validarAusencia': return esGestor ? validarAusencia(emp, b) : denegado();
     case 'corregirFichaje': return esGestor ? corregirFichaje(emp, b) : denegado();
-    case 'informe':         return esGestor ? informe(b)            : denegado();
-    case 'incidencias':     return esGestor ? incidencias(b)        : denegado();
+    case 'informe':         return esGestor ? informe(b, emp)       : denegado();
+    case 'incidencias':     return esGestor ? incidencias(b, emp)   : denegado();
     case 'verificarCadena': return esDir ? verificarCadena()        : denegado();
     case 'altaEmpleado':    return esDir ? altaEmpleado(emp, b)     : denegado();
     case 'guardarTurno':    return esGestor ? guardarTurno(emp, b)  : denegado();
     case 'borrarTurno':     return esGestor ? borrarTurno(emp, b)   : denegado();
-    case 'turnosEquipo':    return esGestor ? turnosEquipo(b)       : denegado();
+    case 'turnosEquipo':    return esGestor ? turnosEquipo(b, emp)  : denegado();
     case 'guardarCentro':   return esDir ? guardarCentro(emp, b)    : denegado();
     case 'centros':         return esDir ? { ok: true, centros: leer(HOJAS.centros) } : denegado();
     case 'publicar':        return esDir ? publicar(emp, b)         : denegado();
@@ -238,8 +238,26 @@ function nivel(emp) {
 }
 function esEquipoDe(jefe, nombre) {
   if (nivel(jefe) >= 2) return true;                 // el admin ve a todos
+  if (String(nombre).trim() === jefe.nombre) return true;
   var e = buscarEmpleado(nombre);
   return !!e && String(e.responsable || '').trim() === jefe.nombre;
+}
+
+/**
+ * A quién puede ver una persona. El administrador, a toda la plantilla; el
+ * manager, solo a quien le reporta y a sí mismo. Devolver null significa
+ * "sin límite" y evita filtrar en balde en el caso del administrador.
+ */
+function ambito(emp) {
+  if (nivel(emp) >= 2) return null;
+  var mios = leer(HOJAS.empleados)
+    .filter(function (e) { return String(e.responsable || '').trim() === emp.nombre; })
+    .map(function (e) { return String(e.nombre).trim(); });
+  mios.push(emp.nombre);
+  return mios;
+}
+function dentroDe(lista, nombre) {
+  return !lista || lista.indexOf(String(nombre).trim()) >= 0;
 }
 
 /**
@@ -613,6 +631,7 @@ function corregirFichaje(dir, b) {
   if (!trabajador || TIPOS_FICHAJE.indexOf(tipo) < 0) return { ok: false, error: 'DATOS_INVALIDOS' };
   if (!motivo) return { ok: false, error: 'MOTIVO_OBLIGATORIO' };
 
+  if (!esEquipoDe(dir, trabajador)) return { ok: false, error: 'FUERA_DE_TU_EQUIPO' };
   var emp = buscarEmpleado(trabajador);
   var d = new Date(ts);
   if (isNaN(d.getTime())) return { ok: false, error: 'FECHA_INVALIDA' };
@@ -900,12 +919,13 @@ function limpiarAusencia(a) {
   };
 }
 
-function ausenciasEquipo(b) {
+function ausenciasEquipo(b, emp) {
   var year = String(b.year || new Date().getFullYear());
+  var lista = ambito(emp);
   var filas = leer(HOJAS.ausencias).filter(function (a) {
-    return normFecha(a.fecha_inicio).slice(0, 4) === year;
+    return normFecha(a.fecha_inicio).slice(0, 4) === year && dentroDe(lista, a.trabajador);
   }).map(limpiarAusencia);
-  return { ok: true, ausencias: filas };
+  return { ok: true, ausencias: filas, ambito: lista };
 }
 
 function validarAusencia(dir, b) {
@@ -915,6 +935,7 @@ function validarAusencia(dir, b) {
   var filas = leer(HOJAS.ausencias);
   for (var i = 0; i < filas.length; i++) {
     if (String(filas[i].id) !== id) continue;
+    if (!esEquipoDe(dir, filas[i].trabajador)) return { ok: false, error: 'FUERA_DE_TU_EQUIPO' };
     var h = hoja(HOJAS.ausencias);
     h.getRange(filas[i]._fila, 11).setValue(decision);
     h.getRange(filas[i]._fila, 12).setValue(dir.nombre);
@@ -996,21 +1017,24 @@ function misTareas(emp, b) {
 }
 
 // ── DIRECCIÓN: informes e incidencias ────────────────────────────────────────
-function informe(b) {
+function informe(b, emp) {
   var desde = String(b.desde || '1900-01-01'), hasta = String(b.hasta || '2999-12-31');
+  var lista = ambito(emp);
   var filas = leer(HOJAS.fichajes).filter(function (f) {
     var fe = normFecha(f.fecha);
-    return fe >= desde && fe <= hasta && (!b.trabajador || String(f.trabajador).trim() === String(b.trabajador));
+    return fe >= desde && fe <= hasta && dentroDe(lista, f.trabajador) &&
+           (!b.trabajador || String(f.trabajador).trim() === String(b.trabajador));
   }).map(limpiarFichaje);
   return { ok: true, fichajes: filas, desde: desde, hasta: hasta };
 }
 
-function incidencias(b) {
+function incidencias(b, emp) {
   var desde = String(b.desde || fmtFecha(ahora())), hasta = String(b.hasta || fmtFecha(ahora()));
+  var lista = emp ? ambito(emp) : null;
   var porClave = {};
   leer(HOJAS.fichajes).forEach(function (f) {
     var fe = normFecha(f.fecha);
-    if (fe < desde || fe > hasta) return;
+    if (fe < desde || fe > hasta || !dentroDe(lista, f.trabajador)) return;
     var k = String(f.trabajador).trim() + '|' + fe;
     (porClave[k] = porClave[k] || []).push(f);
   });
@@ -1445,6 +1469,7 @@ function cambiarPin(emp, b) {
 function guardarTurno(dir, b) {
   var desde = String(b.desde || '').slice(0, 10), hasta = String(b.hasta || '').slice(0, 10);
   if (!b.trabajador || !desde || !hasta || !b.horario_id) return { ok: false, error: 'DATOS_INCOMPLETOS' };
+  if (!esEquipoDe(dir, b.trabajador)) return { ok: false, error: 'FUERA_DE_TU_EQUIPO' };
   if (hasta < desde) return { ok: false, error: 'RANGO_INVALIDO' };
   var id = uid('TU');
   hoja(HOJAS.turnos).appendRow([id, String(b.trabajador), desde, hasta, String(b.horario_id),
@@ -1465,10 +1490,11 @@ function borrarTurno(dir, b) {
   return { ok: false, error: 'NO_ENCONTRADO' };
 }
 
-function turnosEquipo(b) {
+function turnosEquipo(b, emp) {
   var desde = String(b.desde || '1900-01-01'), hasta = String(b.hasta || '2999-12-31');
+  var lista = emp ? ambito(emp) : null;
   var filas = leer(HOJAS.turnos).filter(function (t) {
-    return normFecha(t.desde) <= hasta && normFecha(t.hasta) >= desde;
+    return normFecha(t.desde) <= hasta && normFecha(t.hasta) >= desde && dentroDe(lista, t.trabajador);
   }).map(function (t) {
     return { id: t.id, trabajador: t.trabajador, desde: normFecha(t.desde),
              hasta: normFecha(t.hasta), horario_id: t.horario_id, nota: t.nota };
@@ -1537,6 +1563,7 @@ function borrarPublicacion(dir, b) {
 
 // ── ANALYTICS ────────────────────────────────────────────────────────────────
 function analytics(b) {
+  // Solo el administrador llega aquí: la analítica es de toda la plantilla
   var desde = String(b.desde || '1900-01-01'), hasta = String(b.hasta || '2999-12-31');
   var empleados = leer(HOJAS.empleados).filter(function (e) { return String(e.activo).toUpperCase() !== 'NO'; });
 
