@@ -16,10 +16,10 @@
   --card:#FFFFFF;
   --line:#DCE2E4;
   --line-soft:#E9EDEE;
-  --navy:#0E3946;        /* tinta: el petrol del logo Durán Carasso */
-  --text:#28363B;
+  --navy:#243B43;        /* tinta: el petrol exacto del logotipo */
+  --text:#2C3A40;
   --sub:#75838A;
-  --accent:#12525F;      /* petrol claro para acciones */
+  --accent:#1B4F5C;      /* petrol claro para acciones */
   --accent-soft:#E2EAEC;
   --gold:#9C7C3C;        /* latón: solo filetes y marcas */
   --gold-soft:#F2ECE0;
@@ -37,9 +37,6 @@ button,input,select,textarea{font-family:'Inter',system-ui,sans-serif;font-size:
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
 /* ══ MARCA ══ */
-.wordmark{font-family:var(--serif);color:var(--navy);line-height:.92;font-weight:500;letter-spacing:.5px}
-.wordmark span{display:block}
-.wordmark.grande{font-size:40px;letter-spacing:1.2px;text-align:center}
 
 /* ══ LANDING ══ */
 #login{min-height:100vh;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 20px;gap:0}
@@ -93,7 +90,6 @@ button,input,select,textarea{font-family:'Inter',system-ui,sans-serif;font-size:
 #app.on{display:flex}
 .topbar{background:var(--card);border-bottom:1px solid var(--line);box-shadow:inset 0 2px 0 var(--accent);padding:13px 22px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:60}
 .tb-brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.tb-brand .wordmark{font-size:15px;letter-spacing:.4px}
 .tb-brand .et{font-size:7.5px;font-weight:500;letter-spacing:2.2px;color:var(--gold);text-transform:uppercase;font-family:'Inter',sans-serif;align-self:flex-end;padding-bottom:2px}
 
 .tb-spacer{flex:1}
@@ -108,7 +104,12 @@ button,input,select,textarea{font-family:'Inter',system-ui,sans-serif;font-size:
 .cb-pause:not(:disabled):hover{background:var(--amber);color:#fff}
 .cb-out{background:var(--red-soft);color:var(--red);border-color:#EFD3CD}
 .cb-out:not(:disabled):hover{background:var(--red);color:#fff}
-.tb-user{display:flex;align-items:center;gap:9px;cursor:pointer;flex-shrink:0}
+.tb-user{display:flex;align-items:center;gap:9px;cursor:pointer;flex-shrink:0;padding:4px 8px;border-radius:2px}
+.tb-user:hover{background:var(--bg)}
+.switch{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:2px;padding:2px}
+.switch button{border:none;background:none;padding:6px 14px;font-size:12px;color:var(--sub);cursor:pointer;border-radius:1px;white-space:nowrap}
+.switch button.on{background:var(--navy);color:#fff}
+@media(max-width:860px){.switch{order:2}.switch button{padding:5px 10px;font-size:11px}}
 .tb-uname{font-size:12.5px;color:var(--navy);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .shell{display:flex;flex:1;min-height:0}
 .side{width:214px;flex-shrink:0;background:var(--card);border-right:1px solid var(--line);padding:16px 12px;position:sticky;top:57px;align-self:stretch;max-height:calc(100vh - 57px);overflow-y:auto}
@@ -124,7 +125,7 @@ button,input,select,textarea{font-family:'Inter',system-ui,sans-serif;font-size:
 .bottomnav{display:none}
 
 @media(max-width:860px){
-  .tb-brand .wordmark{font-size:13px}
+  .tb-brand img{height:24px}
   .tb-brand .et{display:none}
   .side{display:none}
   .main{padding:16px 14px 96px}
@@ -236,6 +237,28 @@ textarea.inp{resize:vertical;min-height:72px;line-height:1.55}
 .leg{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--sub);margin-top:18px;padding-top:16px;border-top:1px solid var(--line-soft)}
 .leg i{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:-1px}
 
+
+/* ══ CONFIGURACIÓN ══ */
+.conf{display:flex;gap:26px;align-items:flex-start}
+.conf-nav{width:186px;flex-shrink:0;position:sticky;top:78px}
+.conf-g{font-size:8.5px;letter-spacing:1.4px;text-transform:uppercase;color:#A6AFB2;font-weight:600;padding:16px 10px 6px}
+.conf-g:first-child{padding-top:0}
+.conf-i{display:block;width:100%;text-align:left;border:none;background:none;padding:9px 11px;border-radius:2px;
+  font-size:13px;color:var(--text);cursor:pointer;border-left:2px solid transparent;font-family:inherit}
+.conf-i:hover{background:var(--card)}
+.conf-i.on{background:var(--accent-soft);color:var(--accent);font-weight:500;border-left-color:var(--gold)}
+.conf-panel{flex:1;min-width:0}
+.conf-t{font-family:var(--serif);font-size:23px;color:var(--navy);margin-bottom:4px}
+.conf-s{font-size:12.5px;color:var(--sub);margin-bottom:20px}
+.b-del{color:var(--red);border-color:#EBD7D4}
+.b-del:hover{background:var(--red);color:#fff;border-color:var(--red)}
+@media(max-width:860px){
+  .conf{flex-direction:column;gap:14px}
+  .conf-nav{width:100%;position:static;display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}
+  .conf-g{display:none}
+  .conf-i{width:auto;white-space:nowrap;border:1px solid var(--line);border-left-width:1px;background:var(--card)}
+}
+
 /* Modal */
 .modal{position:fixed;inset:0;background:rgba(23,36,43,.32);display:none;align-items:flex-end;justify-content:center;z-index:150;backdrop-filter:blur(3px)}
 .modal.on{display:flex}
@@ -308,9 +331,14 @@ textarea.inp{resize:vertical;min-height:72px;line-height:1.55}
       <button class="cbtn cb-pause" id="btn_pause" onclick="togglePausa()">Pausa</button>
       <button class="cbtn cb-out"   id="btn_out"   onclick="fichar('SALIDA')">Salir</button>
     </div>
-    <div class="tb-user" onclick="salir()">
+    <div class="switch hide" id="sw_espacio">
+      <button id="sw_mi" class="on" onclick="cambiarEspacio('mi')">Mi espacio</button>
+      <button id="sw_gestion" onclick="cambiarEspacio('gestion')">Gestión</button>
+    </div>
+    <div class="tb-user" onclick="menuUsuario()">
       <div class="ava sm" id="tb_ava"></div>
       <div class="tb-uname" id="tb_name"></div>
+      <span style="color:var(--sub);font-size:10px">▾</span>
     </div>
   </div>
   <div class="offline-bar hide" id="offbar">Sin conexión · <span id="offn">0</span> fichaje(s) en cola, se enviarán al recuperar la red</div>
@@ -336,7 +364,7 @@ textarea.inp{resize:vertical;min-height:72px;line-height:1.55}
    ══════════════════════════════════════════════════════════════════════════ */
 
 var SCRIPT_URL = '';   // ← pega aquí la URL /exec de tu Apps Script desplegado
-var LOGO_URL   = '';   // ← URL del logo (SVG o PNG). Vacío = wordmark tipográfico
+var LOGO_URL   = '';   // ← si sirves el logo desde tu dominio, ponlo aquí; si no, se usa el embebido
 var DEMO = !SCRIPT_URL;
 
 /* ── Estado global ── */
@@ -347,12 +375,14 @@ var S = {
   ausencias: [], saldo: null, ausEquipo: [], equipo: [],
   tareas: [], documentos: [], pendientes: [],
   centros: [], turnos: [], exigirCentro: false, modalidad: 'OFICINA',
+  ubicacion: {texto:'', manual:false, centro:''},
   perfil: null, objetivos: [], evaluacion: [], encuestas: [], publicaciones: [],
-  tiposAusencia: [], saldos: [], auditoria: null,
+  tiposAusencia: [], saldos: [], auditoria: null, empresa: {}, descansos: [],
   checklist: [], compensaciones: [],
   objEquipo: [], evalEquipo: null, encuestasAdmin: [], turnosEquipo: [],
   bolsaEquipo: null, reclut: null, checklistEquipo: null, analytics: null, centrosAdmin: [],
-  vista: 'portal', year: new Date().getFullYear(), cargando: false, cargandoVista: false
+  vista: 'portal', espacio: 'mi', config: null,
+  year: new Date().getFullYear(), cargando: false, cargandoVista: false
 };
 
 // Los tipos y sus cupos se configuran en la hoja TiposAusencia (Dirección → Ausencias)
@@ -378,16 +408,12 @@ var DOW = ['L','M','X','J','V','S','D'];
 /* ── Utilidades ── */
 function $(id){return document.getElementById(id);}
 
-/** Lockup de marca. Con LOGO_URL usa la imagen oficial; si no, el wordmark. */
+/** Logotipo oficial de Durán Carasso, extraído del original en vectorial. */
+var LOGO_DATA = 'data:image/png;base64,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';
 function logo(variante){
-  if(LOGO_URL){
-    var alturas={grande:74,cabecera:26,email:30};
-    return '<img src="'+LOGO_URL+'" alt="Durán Carasso" style="height:'+(alturas[variante]||30)+'px;width:auto;display:block">';
-  }
-  if(variante==='grande'){
-    return '<div class="wordmark grande"><span>Durán</span><span>Carasso</span></div>';
-  }
-  return '<div class="wordmark"><span>Durán</span><span>Carasso</span></div>';
+  var alturas={grande:62,cabecera:30,pequeno:22};
+  return '<img src="'+(LOGO_URL||LOGO_DATA)+'" alt="Durán Carasso" '+
+    'style="height:'+(alturas[variante]||30)+'px;width:auto;display:block">';
 }
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function ini(n){return String(n||'').trim().split(/\s+/).slice(0,2).map(function(w){return w[0]||'';}).join('').toUpperCase();}
@@ -442,7 +468,7 @@ function guardarSesion(){
 function leerSesion(){
   try{
     var v=JSON.parse(localStorage.getItem('dcp_ses'));
-    if(!v||Date.now()-v.ts>11*3600*1000) return null;
+    if(!v||Date.now()-v.ts>30*86400000) return null;
     return v;
   }catch(e){return null;}
 }
@@ -450,7 +476,18 @@ function cerrarSesion(){
   try{localStorage.removeItem('dcp_ses');}catch(e){}
   S.token=null;S.emp=null;location.reload();
 }
-function salir(){ if(confirm('¿Cerrar sesión?')) cerrarSesion(); }
+function salir(){ if(confirm('¿Cerrar sesión en este dispositivo?')) cerrarSesion(); }
+function menuUsuario(){
+  var roles={0:'Empleado',1:'Manager',2:'Administrador'};
+  abrirModal('<div class="row" style="margin-bottom:18px"><div class="ava lg">'+esc(ini(S.emp.nombre))+'</div>'+
+    '<div><div style="font-family:var(--serif);font-size:22px;color:var(--navy)">'+esc(S.emp.nombre)+'</div>'+
+    '<div class="li-s">'+esc(S.emp.departamento||'')+' · '+esc(roles[nivelUsuario()])+'</div></div></div>'+
+    '<button class="nav-i" onclick="cerrarModal();irA(\'mi\',\'perfil\')"><span class="ic">⌾</span>Mi perfil</button>'+
+    (puedeGestionar()?'<button class="nav-i" onclick="cerrarModal();cambiarEspacio(S.espacio===\'mi\'?\'gestion\':\'mi\')">'+
+      '<span class="ic">⇄</span>Ir a '+(S.espacio==='mi'?'Gestión':'Mi espacio')+'</button>':'')+
+    '<button class="nav-i" style="color:var(--red);margin-top:8px" onclick="salir()">'+
+    '<span class="ic">⏻</span>Cerrar sesión</button>');
+}
 
 /* ══ LOGIN ══════════════════════════════════════════════════════════════ */
 var pinTarget='', pinBuf='';
@@ -516,96 +553,125 @@ function validarPin(){
 }
 
 /* ══ SHELL / NAVEGACIÓN ═════════════════════════════════════════════════ */
-var NAV = [
-  {id:'portal',     ic:'◈', t:'Portal',        m:'Portal'},
-  {id:'fichajes',   ic:'◷', t:'Mis fichajes',  m:'Fichajes'},
-  {id:'ausencias',  ic:'☂', t:'Mis ausencias', m:'Ausencias'},
-  {id:'horarios',   ic:'▤', t:'Mis horarios'},
-  {id:'tareas',     ic:'✓', t:'Mis tareas'},
-  {sep:'Desarrollo'},
-  {id:'objetivos',  ic:'◎', t:'Mis objetivos'},
-  {id:'evaluacion', ic:'★', t:'Mi evaluación'},
-  {id:'encuestas',  ic:'?', t:'Encuestas'},
-  {id:'tablon',     ic:'✉', t:'Tablón'},
-  {id:'checklist',  ic:'☑', t:'Mi checklist'},
-  {id:'documentos', ic:'▢', t:'Mis documentos'},
-  {id:'perfil',     ic:'⌾', t:'Mi perfil'},
-  {sep:'Mi equipo'},
-  {id:'equipo',     ic:'⚇', t:'Equipo',        m:'Equipo'},
-  {id:'stats',      ic:'▦', t:'Estadísticas'}
-];
-var NAV_DIR = [
-  {id:'validaciones', ic:'✓', t:'Validaciones'},
-  {id:'incidencias',  ic:'⚠', t:'Incidencias'},
-  {sep:'Planificación', dir:1},
-  {id:'turnos',       ic:'▦', t:'Turnos'},
-  {id:'bolsa',        ic:'∑', t:'Bolsa de horas'},
-  {sep:'Talento', dir:1},
-  {id:'objequipo',    ic:'◎', t:'Objetivos'},
-  {id:'evaluaciones', ic:'★', t:'Evaluaciones'},
-  {id:'encuestasadm', ic:'?', t:'Encuestas'},
-  {id:'reclutamiento',ic:'⚑', t:'Reclutamiento'},
-  {id:'onboarding',   ic:'☑', t:'Onboarding'},
-  {sep:'Datos y ajustes', dir:1},
-  {id:'analytics',    ic:'◱', t:'Analytics'},
-  {id:'informes',     ic:'⤓', t:'Informes'},
-  {id:'plantilla',    ic:'⚇', t:'Plantilla'},
-  {id:'tiposaus',     ic:'☂', t:'Tipos de ausencia'},
-  {id:'auditoria',    ic:'⎘', t:'Auditoría'},
-  {id:'centros',      ic:'⌖', t:'Centros'},
-  {id:'quiosco',      ic:'▣', t:'Quiosco / QR'}
-];
+var ESPACIOS = {
+  mi: {
+    etiqueta: 'Mi espacio', nivel: 0,
+    grupos: [
+      { items: [
+        {id:'portal',    ic:'◈', t:'Portal',        m:'Portal'},
+        {id:'fichajes',  ic:'◷', t:'Mis fichajes',  m:'Fichajes'},
+        {id:'ausencias', ic:'☂', t:'Mis ausencias', m:'Ausencias'},
+        {id:'horarios',  ic:'▤', t:'Mis horarios'},
+        {id:'tareas',    ic:'✓', t:'Mis tareas'},
+        {id:'tablon',    ic:'✉', t:'Tablón'},
+        {id:'perfil',    ic:'⌾', t:'Mi perfil'}
+      ]},
+      { sep:'Mi equipo', items:[
+        {id:'equipo',    ic:'⚇', t:'Equipo',        m:'Equipo'},
+        {id:'stats',     ic:'▦', t:'Estadísticas'}
+      ]}
+    ]
+  },
+  gestion: {
+    etiqueta: 'Gestión', nivel: 1,
+    grupos: [
+      { sep:'Equipo', items:[
+        {id:'validaciones', ic:'✓', t:'Validaciones', m:'Validar'},
+        {id:'incidencias',  ic:'⚠', t:'Incidencias'},
+        {id:'turnos',       ic:'▦', t:'Turnos'},
+        {id:'informes',     ic:'⤓', t:'Informes'}
+      ]},
+      { sep:'Administración', nivel:2, items:[
+        {id:'plantilla',    ic:'⚇', t:'Plantilla',   m:'Plantilla'},
+        {id:'analytics',    ic:'◱', t:'Analytics'},
+        {id:'quiosco',      ic:'▣', t:'Quiosco / QR'},
+        {id:'auditoria',    ic:'⎘', t:'Auditoría'},
+        {id:'configuracion',ic:'⚙', t:'Configuración', m:'Ajustes'}
+      ]}
+    ]
+  }
+};
+
+function nivelUsuario(){ return (S.emp && S.emp.nivel!=null) ? S.emp.nivel : (S.esDir?2:0); }
+function puedeGestionar(){ return nivelUsuario() >= 1; }
+
+function itemsDe(espacio){
+  var out=[];
+  (ESPACIOS[espacio].grupos||[]).forEach(function(g){
+    if(g.nivel && nivelUsuario() < g.nivel) return;
+    out = out.concat(g.items);
+  });
+  return out;
+}
+function vistaValida(v){
+  return itemsDe('mi').concat(puedeGestionar()?itemsDe('gestion'):[])
+    .some(function(i){return i.id===v;});
+}
 
 function pintarNav(){
-  var h = NAV.map(navBtn).join('');
-  if(S.esDir){
-    h += '<div class="nav-sep">Dirección</div>' + NAV_DIR.map(navBtn).join('');
-  }
-  $('side').innerHTML = h;
+  var esp=ESPACIOS[S.espacio]||ESPACIOS.mi;
+  var html='';
+  esp.grupos.forEach(function(g){
+    if(g.nivel && nivelUsuario() < g.nivel) return;
+    if(g.sep) html+='<div class="nav-sep">'+esc(g.sep)+'</div>';
+    html+=g.items.map(navBtn).join('');
+  });
+  $('side').innerHTML=html;
 
-  var mob = NAV.filter(function(n){return n.m;});
-  $('bnav').innerHTML = mob.map(function(n){
+  var cambio=$('sw_espacio');
+  if(cambio) cambio.classList.toggle('hide', !puedeGestionar());
+  ['mi','gestion'].forEach(function(k){
+    var b=$('sw_'+k); if(b) b.classList.toggle('on', S.espacio===k);
+  });
+
+  var mov=itemsDe(S.espacio).filter(function(n){return n.m;}).slice(0,4);
+  $('bnav').innerHTML=mov.map(function(n){
     return '<button class="bn-i'+(S.vista===n.id?' on':'')+'" onclick="ir(\''+n.id+'\')">'+
       '<span class="ic">'+n.ic+'</span>'+n.m+'</button>';
-  }).join('') + '<button class="bn-i" onclick="menuMas()"><span class="ic">≡</span>Más</button>';
+  }).join('')+'<button class="bn-i" onclick="menuMas()"><span class="ic">≡</span>Más</button>';
 }
 function navBtn(n){
-  if(n.sep) return '<div class="nav-sep">'+esc(n.sep)+'</div>';
   var badge = (n.id==='validaciones' && S.pendientes.length) ? '<span class="badge">'+S.pendientes.length+'</span>' : '';
   return '<button class="nav-i'+(S.vista===n.id?' on':'')+'" onclick="ir(\''+n.id+'\')">'+
     '<span class="ic">'+n.ic+'</span>'+esc(n.t)+badge+'</button>';
 }
 function menuMas(){
-  var items = NAV.filter(function(n){return !n.m && !n.sep;}).concat(S.esDir?NAV_DIR.filter(function(n){return !n.sep;}):[]);
-  abrirModal('<div class="mtitle">Menú</div><div class="msub">Todas las secciones</div>'+
-    items.map(function(n){
-      return '<button class="nav-i" onclick="cerrarModal();ir(\''+n.id+'\')"><span class="ic">'+n.ic+'</span>'+esc(n.t)+'</button>';
+  var bloques=['mi'].concat(puedeGestionar()?['gestion']:[]);
+  abrirModal('<div class="mtitle">Menú</div><div class="msub">Todas las secciones a las que tienes acceso</div>'+
+    bloques.map(function(k){
+      return '<div class="nav-sep" style="padding-left:0">'+ESPACIOS[k].etiqueta+'</div>'+
+        itemsDe(k).map(function(n){
+          return '<button class="nav-i" onclick="cerrarModal();irA(\''+k+'\',\''+n.id+'\')">'+
+            '<span class="ic">'+n.ic+'</span>'+esc(n.t)+'</button>';
+        }).join('');
     }).join('')+
-    '<button class="nav-i" style="color:var(--red);margin-top:8px" onclick="salir()"><span class="ic">⏻</span>Cerrar sesión</button>');
+    '<button class="nav-i" style="color:var(--red);margin-top:10px" onclick="salir()">'+
+    '<span class="ic">⏻</span>Cerrar sesión</button>');
 }
+function cambiarEspacio(k){
+  if(k==='gestion' && !puedeGestionar()) return;
+  S.espacio=k;
+  var primero=itemsDe(k)[0];
+  if(primero) ir(primero.id);
+}
+function irA(espacio,vista){ S.espacio=espacio; ir(vista); }
+
+/* ── Carga perezosa: cada sección pide solo sus datos ── */
 var CARGA = {
-  objetivos:   function(){ return api('misObjetivos').then(function(r){ if(r.ok) S.objetivos=r.objetivos; }); },
-  evaluacion:  function(){ return api('miEvaluacion',{}).then(function(r){ if(r.ok) S.evaluacion=r.evaluacion; }); },
-  encuestas:   function(){ return api('encuestasAbiertas').then(function(r){ if(r.ok) S.encuestas=r.encuestas; }); },
-  tablon:      function(){ return api('publicaciones').then(function(r){ if(r.ok) S.publicaciones=r.publicaciones; }); },
-  checklist:   function(){ return api('miChecklist').then(function(r){ if(r.ok) S.checklist=r.checklist; }); },
-  perfil:      function(){ return api('miPerfil').then(function(r){ if(r.ok) S.perfil=r.perfil; }); },
-  documentos:  function(){ return api('misDocumentos').then(function(r){ if(r.ok) S.documentos=r.documentos; }); },
-  stats:       function(){ return api('miBolsa',{year:S.year}).then(function(r){ if(r.ok) S.compensaciones=r.compensaciones; }); },
-  turnos:      function(){ return api('turnosEquipo',{}).then(function(r){ if(r.ok) S.turnosEquipo=r.turnos; }); },
-  bolsa:       function(){ return api('bolsaEquipo',{year:S.year}).then(function(r){ if(r.ok) S.bolsaEquipo=r; }); },
-  objequipo:   function(){ return api('objetivosEquipo',{}).then(function(r){ if(r.ok) S.objEquipo=r.objetivos; }); },
-  evaluaciones:function(){ return api('evaluacionesEquipo',{}).then(function(r){ if(r.ok) S.evalEquipo=r; }); },
-  encuestasadm:function(){ return api('encuestasTodas').then(function(r){ if(r.ok) S.encuestasAdmin=r.encuestas; }); },
-  reclutamiento:function(){ return api('vacantes').then(function(r){ if(r.ok) S.reclut=r; }); },
-  onboarding:  function(){ return api('checklistEquipo',{}).then(function(r){ if(r.ok) S.checklistEquipo=r; }); },
-  analytics:   function(){ return api('analytics',{desde:S.year+'-01-01',hasta:hoyISO()}).then(function(r){ if(r.ok) S.analytics=r; }); },
-  centros:     function(){ return api('centros').then(function(r){ if(r.ok) S.centrosAdmin=r.centros; }); },
-  auditoria:   function(){ return api('auditoria',{limite:300}).then(function(r){ if(r.ok) S.auditoria=r; }); },
-  tiposaus:    function(){ return api('tiposAusencia').then(function(r){ if(r.ok) S.tiposAusencia=r.tipos; }); },
-  tablonPortal:function(){ return api('publicaciones').then(function(r){ if(r.ok) S.publicaciones=r.publicaciones; }); }
+  tablon:        function(){ return api('publicaciones').then(function(r){ if(r.ok) S.publicaciones=r.publicaciones; }); },
+  perfil:        function(){ return api('miPerfil').then(function(r){ if(r.ok) S.perfil=r.perfil; }); },
+  turnos:        function(){ return api('turnosEquipo',{}).then(function(r){ if(r.ok) S.turnosEquipo=r.turnos; }); },
+  analytics:     function(){ return api('analytics',{desde:S.year+'-01-01',hasta:hoyISO()}).then(function(r){ if(r.ok) S.analytics=r; }); },
+  auditoria:     function(){ return api('auditoria',{limite:300}).then(function(r){ if(r.ok) S.auditoria=r; }); },
+  configuracion: function(){ return api('configuracion').then(function(r){ if(r.ok) S.config=r; }); }
 };
+
 function ir(v){
+  if(!vistaValida(v)) v = itemsDe(S.espacio)[0].id;
+  // Si la sección vive en el otro espacio, se cambia de espacio con ella
+  if(!itemsDe(S.espacio).some(function(i){return i.id===v;})){
+    S.espacio = itemsDe('mi').some(function(i){return i.id===v;}) ? 'mi' : 'gestion';
+  }
   S.vista=v; pintarNav(); window.scrollTo(0,0);
   if(CARGA[v]){
     S.cargandoVista=true; render();
@@ -711,12 +777,25 @@ function pintarReloj(){
 }
 var _semVista={min:0,teo:0};
 function minutosSemanaVista(){ return _semVista.min; }
-function togglePausa(){ fichar(S.estado==='PAUSA' ? 'PAUSA_FIN' : 'PAUSA_INI'); }
+function togglePausa(){
+  if(S.estado==='PAUSA') return fichar('PAUSA_FIN');
+  var tipos=S.descansos&&S.descansos.length? S.descansos : [{id:'D-COM',nombre:'Comida'},{id:'D-CAF',nombre:'Café'},{id:'D-PER',nombre:'Personal'}];
+  if(tipos.length===1) return fichar('PAUSA_INI',tipos[0].nombre);
+  abrirModal('<div class="mtitle">Iniciar pausa</div><div class="msub">¿Qué tipo de descanso?</div>'+
+    tipos.map(function(t){
+      return '<button class="nav-i" style="border:1px solid var(--line);margin-bottom:6px" '+
+        'onclick="cerrarModal();fichar(\'PAUSA_INI\',\''+esc(t.nombre).replace(/'/g,"\\'")+'\')">'+
+        '<span class="ic">◷</span><span style="flex:1">'+esc(t.nombre)+'</span>'+
+        (t.minutos?'<span style="font-size:11px;color:var(--sub)">'+t.minutos+' min</span>':'')+
+        (t.computa?'<span class="pill p-ok" style="margin-left:8px">computa</span>':'')+'</button>';
+    }).join('')+
+    '<button class="btn b-ghost" style="width:100%;margin-top:8px" onclick="cerrarModal()">Cancelar</button>');
+}
 
-function fichar(tipo){
+function fichar(tipo,descanso){
   var geo = {dispositivo: navigator.userAgent.indexOf('Mobile')>=0?'Móvil':'Escritorio', modalidad: S.modalidad};
   var lanzar = function(){
-    var payload = Object.assign({tipo:tipo}, geo);
+    var payload = Object.assign({tipo:tipo, descanso:descanso||''}, geo);
     api('fichar', payload).then(function(r){
       if(!r.ok){
         if(r.error==='TRANSICION_INVALIDA'){ toast('Estado no válido: ya estás '+etiquetaEstado(r.estado),'err'); refrescar(); }
@@ -726,11 +805,11 @@ function fichar(tipo){
       }
       S.estado = r.estado;
       for(var i=0;i<S.equipo.length;i++) if(S.equipo[i].nombre===S.emp.nombre){ S.equipo[i].estado=r.estado; S.equipo[i].desde=r.ts; }
-      S.fichajesHoy.push({id:r.id, ts:r.ts, fecha:r.fecha, hora:r.hora, tipo:tipo, origen:'APP'});
-      toast(mensajeFichaje(tipo)+' · '+r.hora.slice(0,5)+(r.centro?' · '+r.centro:''),'ok');
+      S.fichajesHoy.push({id:r.id, ts:r.ts, fecha:r.fecha, hora:r.hora, tipo:tipo, origen:'APP', descanso:descanso||''});
+      toast(mensajeFichaje(tipo)+(descanso?' ('+descanso+')':'')+' · '+r.hora.slice(0,5)+(r.centro?' · '+r.centro:''),'ok');
       pintarReloj(); if(S.vista==='portal'||S.vista==='fichajes') render();
     }).catch(function(){
-      colaPush(Object.assign({tipo:tipo},geo));
+      colaPush(Object.assign({tipo:tipo,descanso:descanso||''},geo));
       toast('Sin conexión · fichaje guardado en cola','err');
     });
   };
@@ -758,6 +837,7 @@ function entrarApp(){
   $('tb_logo').innerHTML=logo('cabecera')+'<span class="et">Personas</span>';
   $('tb_name').textContent=S.emp.nombre;
   $('tb_ava').textContent=ini(S.emp.nombre);
+  S.espacio='mi';
   pintarNav();
   refrescar().then(function(){ setInterval(pintarReloj,1000); pintarReloj(); });
   vaciarCola();
@@ -768,7 +848,8 @@ function refrescar(){
   var lunes=lunesDe(new Date()), año=S.year;
   var desdeRango=fISO(new Date(new Date().getFullYear(),0,1));
   var tareas=[
-    api('bootstrap').then(function(r){ if(r.ok){ S.empleados=r.empleados; S.horarios=r.horarios; S.festivos=r.festivos; S.esDir=r.esDireccion; S.centros=r.centros||[]; S.turnos=r.turnos||[]; S.exigirCentro=!!r.exigirCentro;
+    api('bootstrap').then(function(r){ if(r.ok){ S.empleados=r.empleados; S.horarios=r.horarios; S.festivos=r.festivos; S.esDir=r.esDireccion; if(r.nivel!=null&&S.emp) S.emp.nivel=r.nivel;
+        S.empresa=r.empresa||{}; S.descansos=r.descansos||[]; S.centros=r.centros||[]; S.turnos=r.turnos||[]; S.exigirCentro=!!r.exigirCentro;
         S.tiposAusencia=r.tiposAusencia||[]; } }),
     api('misFichajes',{desde:desdeRango,hasta:hoyISO()}).then(function(r){
       if(r.ok){ S.fichajesRango=r.fichajes; S.fichajesHoy=r.fichajes.filter(function(f){return f.fecha===hoyISO();});
@@ -777,12 +858,11 @@ function refrescar(){
     api('estadoEquipo').then(function(r){ if(r.ok) S.equipo=r.equipo; }),
     api('ausenciasEquipo',{year:año}).then(function(r){ if(r.ok) S.ausEquipo=r.ausencias; }),
     api('misTareas',{desde:fISO(lunes),hasta:hoyISO()}).then(function(r){ if(r.ok) S.tareas=r.tareas; }),
-    api('misDocumentos').then(function(r){ if(r.ok) S.documentos=r.documentos; }),
     api('publicaciones').then(function(r){ if(r.ok) S.publicaciones=r.publicaciones; })
   ];
   return Promise.all(tareas).then(function(){
-    S.pendientes = S.esDir ? S.ausEquipo.filter(function(a){return a.estado==='PENDIENTE';}) : [];
-    S.cargando=false; pintarNav(); render(); pintarOffline();
+    S.pendientes = puedeGestionar() ? S.ausEquipo.filter(function(a){return a.estado==='PENDIENTE';}) : [];
+    S.cargando=false; pintarNav(); render(); pintarOffline(); detectarModalidad();
   }).catch(function(e){ S.cargando=false; toast('Error de carga: '+e.message,'err'); });
 }
 
@@ -790,16 +870,53 @@ function refrescar(){
 function render(){
   if(S.cargandoVista){ $('main').innerHTML='<div class="loading"><span class="spinner"></span> Cargando…</div>'; return; }
   if(S.cargando){ $('main').innerHTML='<div class="loading"><span class="spinner"></span> Cargando…</div>'; return; }
-  var v={portal:vPortal,fichajes:vFichajes,ausencias:vAusencias,horarios:vHorarios,tareas:vTareas,
-         documentos:vDocumentos,equipo:vEquipo,stats:vStats,validaciones:vValidaciones,
-         incidencias:vIncidencias,informes:vInformes,plantilla:vPlantilla,
-         objetivos:vObjetivos,evaluacion:vEvaluacion,encuestas:vEncuestas,tablon:vTablon,
-         checklist:vChecklist,perfil:vPerfil,turnos:vTurnos,bolsa:vBolsa,objequipo:vObjEquipo,
-         evaluaciones:vEvaluaciones,encuestasadm:vEncuestasAdm,reclutamiento:vReclutamiento,
-         onboarding:vOnboarding,analytics:vAnalytics,centros:vCentros,quiosco:vQuiosco,
-         auditoria:vAuditoria,tiposaus:vTiposAusencia}[S.vista]||vPortal;
+  var v={portal:vPortal,fichajes:vFichajes,ausencias:vAusencias,horarios:vHorarios,
+         tareas:vTareas,tablon:vTablon,perfil:vPerfil,equipo:vEquipo,stats:vStats,
+         validaciones:vValidaciones,incidencias:vIncidencias,turnos:vTurnos,informes:vInformes,
+         plantilla:vPlantilla,analytics:vAnalytics,quiosco:vQuiosco,auditoria:vAuditoria,
+         configuracion:vConfiguracion}[S.vista]||vPortal;
   $('main').innerHTML=v();
   if(S.vista==='quiosco') setTimeout(pintarQR,60);
+}
+
+/* ── Tabla estándar con acciones ─────────────────────────────────────────
+   Todas las tablas de gestión se pintan con esto, para que editar y
+   eliminar funcionen igual en cualquier sección. */
+function tabla(cabecera, filas){
+  return '<div class="scroll-x"><table class="tbl"><tr>'+
+    cabecera.map(function(c){return '<th>'+esc(c)+'</th>';}).join('')+
+    '<th style="width:1%"></th></tr>'+
+    filas.map(function(f){
+      return '<tr>'+f.celdas.map(function(c){return '<td>'+c+'</td>';}).join('')+
+        '<td style="white-space:nowrap;text-align:right">'+
+        (f.acciones||[]).map(function(a){
+          return '<button class="btn b-ghost b-sm" onclick="'+a.fn+'">'+esc(a.t)+'</button> ';
+        }).join('')+
+        (f.editar?'<button class="btn b-ghost b-sm" onclick="'+f.editar+'">Editar</button> ':'')+
+        (f.eliminar?'<button class="btn b-ghost b-sm b-del" onclick="'+f.eliminar+'">Eliminar</button>':'')+
+        '</td></tr>';
+    }).join('')+'</table></div>';
+}
+
+/** Borrado con confirmación explícita y mensajes que explican el porqué. */
+function eliminar(tabla, id, etiqueta){
+  abrirModal('<div class="mtitle">Eliminar</div>'+
+    '<div class="msub">Se va a eliminar «'+esc(etiqueta)+'»</div>'+
+    '<div style="font-size:12.5px;color:var(--sub);line-height:1.65;margin-bottom:20px">'+
+      'La acción queda registrada en Auditoría con tu nombre y la hora.</div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-no" style="flex:1" onclick="cerrarModal();confirmarEliminar(\''+tabla+'\',\''+String(id).replace(/'/g,"\\'")+'\')">Eliminar</button></div>');
+}
+function confirmarEliminar(tabla, id){
+  api('eliminar',{tabla:tabla,id:id}).then(function(r){
+    if(r.ok){ toast('Eliminado','ok'); ir(S.vista); return; }
+    toast({
+      HORARIO_EN_USO:'No se puede: hay personas con esa jornada asignada',
+      ULTIMO_CENTRO:'No se puede eliminar el único centro de trabajo',
+      NO_TE_PUEDES_BORRAR:'No puedes darte de baja a ti mismo',
+      TABLA_NO_BORRABLE:'Este elemento no se puede eliminar'
+    }[r.error]||'No se pudo eliminar','err');
+  });
 }
 
 function cab(t,s){ return '<div class="h1">'+esc(t)+'</div><div class="h1-sub">'+esc(s||'')+'</div>'; }
@@ -864,20 +981,62 @@ function estadoPortalHTML(){
     (S.estado==='SIN_FICHAR'?'Pulsa «Entrar» para iniciar tu jornada':'')+'</div></div>'+
     '<div class="sp"></div><div style="text-align:right"><div style="font-family:var(--serif);font-size:27px;color:var(--navy)">'+
     hhmm(minutosHoy())+'</div><div style="font-size:10.5px;color:var(--sub)">de '+hhmm(minutosTeoricos(hoyISO()))+' previstas</div></div></div>'+
-    '<div class="row" style="margin-top:16px;padding-top:15px;border-top:1px solid var(--line-soft);gap:7px">'+
+    '<div class="row wrap" style="margin-top:16px;padding-top:15px;border-top:1px solid var(--line-soft);gap:7px">'+
     '<span class="lbl" style="margin:0">Modalidad</span>'+
     ['OFICINA','REMOTO','VISITA'].map(function(m){
-      return '<button class="btn '+(S.modalidad===m?'b-gold':'b-ghost')+' b-sm" onclick="setModalidad(\''+m+'\')">'+
+      return '<button class="btn '+(S.modalidad===m?'b-gold':'b-ghost')+' b-sm" onclick="setModalidad(\''+m+'\',true)">'+
         ({OFICINA:'Oficina',REMOTO:'Teletrabajo',VISITA:'Visita'}[m])+'</button>';
     }).join('')+
-    (S.centros.length?'<div class="sp"></div><span style="font-size:11px;color:var(--sub)">'+S.centros.length+' centros con geovalla</span>':'')+
+    '<div class="sp"></div><span id="ubi_estado" style="font-size:11px;color:var(--sub)">'+esc(S.ubicacion.texto)+'</span>'+
     '</div>';
 }
-function setModalidad(m){
+function setModalidad(m,manual){
   S.modalidad=m;
+  if(manual){ S.ubicacion.manual=true; S.ubicacion.texto='Elegida a mano'; }
   try{localStorage.setItem('dcp_mod',m);}catch(e){}
   pintarEstadoPortal();
-  toast('Modalidad: '+({OFICINA:'Oficina',REMOTO:'Teletrabajo',VISITA:'Visita'}[m]));
+  if(manual) toast('Modalidad: '+({OFICINA:'Oficina',REMOTO:'Teletrabajo',VISITA:'Visita'}[m]));
+}
+
+/**
+ * Detecta la modalidad cruzando la posición con los centros de trabajo.
+ * Si estás en tu oficina asignada, entra como Oficina; en otro centro del
+ * grupo, también; fuera de todos, Teletrabajo. Siempre se puede corregir.
+ */
+function detectarModalidad(){
+  if(S.ubicacion.manual || !navigator.geolocation || !S.centros.length) return;
+  S.ubicacion.texto='Detectando ubicación…';
+  pintarEstadoPortal();
+  navigator.geolocation.getCurrentPosition(function(p){
+    var cerca=null, mejor=Infinity;
+    S.centros.forEach(function(c){
+      var d=distanciaM(p.coords.latitude,p.coords.longitude,c.lat,c.lng);
+      if(d<mejor){ mejor=d; cerca=c; }
+    });
+    if(cerca && mejor<=(cerca.radio_m||150)){
+      S.modalidad='OFICINA';
+      S.ubicacion.centro=cerca.nombre;
+      S.ubicacion.texto = (cerca.nombre===S.emp.oficina)
+        ? 'Estás en tu oficina de '+cerca.nombre
+        : 'Estás en el centro de '+cerca.nombre;
+    } else {
+      S.modalidad='REMOTO';
+      S.ubicacion.texto = cerca
+        ? 'Fuera de los centros · '+(mejor>2000? Math.round(mejor/1000)+' km':Math.round(mejor)+' m')+' de '+cerca.nombre
+        : 'Fuera de los centros';
+    }
+    pintarEstadoPortal();
+  }, function(){
+    S.ubicacion.texto='Sin permiso de ubicación · elige la modalidad a mano';
+    pintarEstadoPortal();
+  }, {timeout:8000, maximumAge:120000});
+}
+function distanciaM(la1,lo1,la2,lo2){
+  var R=6371000, rad=Math.PI/180;
+  var dLa=(la2-la1)*rad, dLo=(lo2-lo1)*rad;
+  var a=Math.sin(dLa/2)*Math.sin(dLa/2)+
+        Math.cos(la1*rad)*Math.cos(la2*rad)*Math.sin(dLo/2)*Math.sin(dLo/2);
+  return 2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 function pintarEstadoPortal(){ var el=$('portal_estado'); if(el) el.innerHTML=estadoPortalHTML(); }
 function chipPersona(e,col){
@@ -929,7 +1088,8 @@ function vFichajes(){
       '</div>'+
       (evs.length? '<div class="tl">'+evs.map(function(e){
         return '<div class="tl-i t-'+e.tipo+'"><div class="tl-h">'+String(e.hora).slice(0,5)+' · '+
-          ({ENTRADA:'Entrada',SALIDA:'Salida',PAUSA_INI:'Inicio pausa',PAUSA_FIN:'Fin pausa'}[e.tipo]||e.tipo)+'</div>'+
+          ({ENTRADA:'Entrada',SALIDA:'Salida',PAUSA_INI:'Inicio pausa',PAUSA_FIN:'Fin pausa'}[e.tipo]||e.tipo)+
+          (e.descanso?' · '+esc(e.descanso):'')+'</div>'+
           '<div class="tl-s">'+(e.origen==='CORRECCION'?'Corrección de '+esc(e.autor)+' — '+esc(e.motivo):
              ({REMOTO:'Teletrabajo',VISITA:'Visita'}[e.modalidad]||'Oficina')+
              (e.centro?' · '+esc(e.centro):(e.lat?' · geolocalizado':'')))+'</div></div>';
@@ -953,7 +1113,7 @@ function vFichajes(){
 }
 function modalCorreccion(){
   abrirModal('<div class="mtitle">Solicitar corrección</div>'+
-    '<div class="msub">Se enviará a dirección para su validación</div>'+
+    '<div class="msub">Se envía a control horario. El fichaje original no se toca: se añade la corrección con su motivo.</div>'+
     '<div class="fld"><label class="lbl">Fecha y hora correcta</label><input class="inp" type="datetime-local" id="cor_ts"></div>'+
     '<div class="fld"><label class="lbl">Tipo de fichaje</label><select class="inp" id="cor_tipo">'+
       '<option value="ENTRADA">Entrada</option><option value="SALIDA">Salida</option>'+
@@ -965,11 +1125,10 @@ function modalCorreccion(){
 function enviarCorreccion(){
   var ts=$('cor_ts').value, motivo=$('cor_motivo').value.trim();
   if(!ts||!motivo) return toast('Completa fecha y motivo','err');
-  api('solicitarAusencia',{tipo:'Corrección de fichaje',desde:ts.slice(0,10),hasta:ts.slice(0,10),
-      motivo:'['+$('cor_tipo').value+' '+ts+'] '+motivo}).then(function(r){
+  api('solicitarCorreccion',{ts:new Date(ts).toISOString(),tipo:$('cor_tipo').value,motivo:motivo}).then(function(r){
     cerrarModal();
-    if(r.ok) toast('Solicitud enviada a dirección','ok'); else toast('Error: '+(r.error||''),'err');
-    refrescar();
+    if(r.ok) toast('Solicitud enviada a control horario','ok');
+    else toast('Error: '+(r.error||''),'err');
   });
 }
 
@@ -1203,60 +1362,7 @@ function enviarTarea(){
 }
 
 /* ── MIS DOCUMENTOS ── */
-function vDocumentos(){
-  var porTipo={};
-  S.documentos.forEach(function(d){ (porTipo[d.tipo||'General']=porTipo[d.tipo||'General']||[]).push(d); });
-  var pendFirma=S.documentos.filter(function(d){return d.requiereFirma && !d.firmado;});
-  return cab('Mis documentos','Nóminas, contratos y documentación laboral')+
-   (pendFirma.length? '<div class="card" style="border-color:#EEDFBE;background:var(--amber-soft);margin-bottom:14px">'+
-     '<b>'+pendFirma.length+'</b> documento(s) pendientes de tu firma.</div>':'')+
-   (S.documentos.length? Object.keys(porTipo).map(function(t){
-     return '<div class="sec">'+esc(t)+'</div>'+porTipo[t].map(function(d){
-       var visto=docsVistos[d.id];
-       return '<div class="li"><div style="flex:1;min-width:0"><div class="li-t">'+esc(d.nombre)+'</div>'+
-         '<div class="li-s">'+fBonita(d.fecha)+(d.firmado?' · firmado el '+fBonita(String(d.firmado).slice(0,10)):'')+'</div></div>'+
-         '<button class="btn b-ghost b-sm" onclick="verDocumento(\''+d.id+'\')">Ver</button>'+
-         (d.requiereFirma && !d.firmado?
-            '<button class="btn b-pri b-sm" id="fb_'+d.id+'" '+(visto?'':'disabled title="Ábrelo antes de firmar"')+
-            ' onclick="firmar(\''+d.id+'\')">Firmar</button>'
-          : d.firmado?'<span class="pill p-ok">Firmado</span>':'')+'</div>';
-     }).join('');
-   }).join('') : vacio('No tienes documentos compartidos','▢'));
-}
 var docsVistos={};
-function verDocumento(id){
-  var d=S.documentos.filter(function(x){return x.id===id;})[0]; if(!d) return;
-  docsVistos[id]=true;
-  var cuerpo;
-  if(!d.url){
-    cuerpo='<div style="background:var(--bg);border:1px solid var(--line);border-radius:2px;padding:26px;text-align:center;color:var(--sub);font-size:13px">'+
-      'Este documento todavía no tiene archivo asociado.<br>Dirección debe añadir el enlace en la hoja <b>Documentos</b>.</div>';
-  } else if(/\.(png|jpe?g|gif|webp)$/i.test(d.url)){
-    cuerpo='<img src="'+esc(d.url)+'" alt="'+esc(d.nombre)+'" style="width:100%;border:1px solid var(--line)">';
-  } else {
-    var visor=d.url.indexOf('drive.google.com')>=0 ? d.url.replace(/\/view.*$/,'/preview') : d.url;
-    cuerpo='<iframe src="'+esc(visor)+'" style="width:100%;height:58vh;border:1px solid var(--line)" title="'+esc(d.nombre)+'"></iframe>';
-  }
-  abrirModal('<div class="mtitle">'+esc(d.nombre)+'</div>'+
-    '<div class="msub">'+esc(d.tipo||'')+' · '+fBonita(d.fecha)+(d.firmado?' · ya firmado':'')+
-    (d.requiereFirma&&!d.firmado?'<br>Al firmar dejas constancia de que lo has recibido y leído. Queda sellado con fecha y hora.':'')+'</div>'+
-    cuerpo+
-    '<div class="row" style="margin-top:16px">'+
-      (d.url?'<a class="btn b-ghost" href="'+esc(d.url)+'" target="_blank" rel="noopener">Abrir en pestaña</a>':'')+
-      '<div class="sp"></div>'+
-      (d.requiereFirma && !d.firmado
-        ? '<button class="btn b-pri" onclick="firmar(\''+d.id+'\')">He leído y firmo este documento</button>'
-        : '<button class="btn b-ghost" onclick="cerrarModal()">Cerrar</button>')+
-    '</div>');
-  var b=$('fb_'+id); if(b) b.disabled=false;
-}
-function firmar(id){
-  if(!docsVistos[id]) return verDocumento(id);   // primero se abre, luego se firma
-  api('firmarDocumento',{id:id}).then(function(r){
-    cerrarModal();
-    if(r.ok){ toast('Documento firmado','ok'); ir('documentos'); } else toast('Error','err');
-  });
-}
 
 /* ── EQUIPO ── */
 function vEquipo(){
@@ -1331,128 +1437,10 @@ function vStats(){
 /* ══ EMPLEADO: NUEVOS MÓDULOS ═══════════════════════════════════════════ */
 
 /* ── Mis objetivos ── */
-function vObjetivos(){
-  var act=S.objetivos.filter(function(o){return o.estado==='ACTIVO';});
-  var cer=S.objetivos.filter(function(o){return o.estado!=='ACTIVO';});
-  var avance=act.length? Math.round(act.reduce(function(a,o){return a+Math.min(100,o.meta?o.actual/o.meta*100:0);},0)/act.length):0;
-  return cab('Mis objetivos','Metas del periodo y su grado de cumplimiento')+
-   '<div class="grid g3" style="margin-bottom:6px">'+
-     kpi(act.length,'Activos','')+
-     kpi(avance+'%','Avance medio','')+
-     kpi(cer.length,'Cerrados','')+
-   '</div>'+
-   '<div class="sec">En curso</div>'+
-   (act.length? act.map(fichaObjetivo).join('') : vacio('No tienes objetivos asignados','◎'))+
-   (cer.length? '<div class="sec">Cerrados</div>'+cer.map(fichaObjetivo).join('') : '');
-}
-function fichaObjetivo(o){
-  var pct=o.meta? Math.min(100,Math.round(o.actual/o.meta*100)) : 0;
-  return '<div class="card" style="margin-bottom:8px">'+
-    '<div class="row" style="margin-bottom:12px"><div style="flex:1;min-width:0">'+
-      '<div class="li-t">'+esc(o.titulo)+'</div>'+
-      '<div class="li-s">'+esc(o.periodo)+(o.peso?' · peso '+o.peso+'%':'')+(o.metrica?' · '+esc(o.metrica):'')+'</div></div>'+
-      (o.estado==='ACTIVO'?'<span class="pill p-info">'+pct+'%</span>':
-        '<span class="pill '+(o.valoracion>=7?'p-ok':o.valoracion>=5?'p-warn':'p-err')+'">Valorado '+(o.valoracion==null?'—':o.valoracion)+'/10</span>')+
-    '</div>'+
-    (o.descripcion?'<div style="font-size:12.5px;color:var(--sub);line-height:1.55;margin-bottom:12px">'+esc(o.descripcion)+'</div>':'')+
-    '<div class="bar-row" style="margin-bottom:0"><div class="bar-lbl">Progreso</div>'+
-      '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%"></div></div>'+
-      '<div class="bar-val">'+o.actual+'/'+o.meta+'</div></div>'+
-    (o.estado==='ACTIVO'?'<div class="row" style="margin-top:12px"><input class="inp" type="number" id="ob_'+o.id+'" value="'+o.actual+'" style="max-width:130px">'+
-      '<button class="btn b-ghost b-sm" onclick="actualizarAvance(\''+o.id+'\')">Actualizar avance</button></div>':'')+
-    (o.comentario?'<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft);font-size:12.5px;color:var(--sub)"><b>Valoración:</b> '+esc(o.comentario)+'</div>':'')+
-  '</div>';
-}
-function actualizarAvance(id){
-  api('avanzarObjetivo',{id:id,actual:Number($('ob_'+id).value)}).then(function(r){
-    if(r.ok){ toast('Avance actualizado','ok'); ir('objetivos'); } else toast('Error','err');
-  });
-}
 
 /* ── Mi evaluación ── */
-function vEvaluacion(){
-  if(!S.evaluacion.length) return cab('Mi evaluación','Autoevaluación y valoración de tu responsable')+
-    vacio('No tienes ninguna evaluación abierta','★');
-  var campanas={}; S.evaluacion.forEach(function(e){ (campanas[e.campana]=campanas[e.campana]||[]).push(e); });
-  return cab('Mi evaluación','Autoevaluación y valoración de tu responsable')+
-   Object.keys(campanas).sort().reverse().map(function(c){
-     var filas=campanas[c];
-     var cerrada=filas.every(function(e){return e.estado==='CERRADA';});
-     return '<div class="sec">'+esc(c)+(cerrada?' · cerrada':'')+'</div>'+
-       '<div class="card">'+filas.map(function(e){
-         return '<div style="padding:14px 0;border-bottom:1px solid var(--line-soft)">'+
-           '<div class="row" style="margin-bottom:9px"><b style="font-size:13.5px">'+esc(e.competencia)+'</b>'+
-           '<div class="sp"></div>'+
-           (e.notaManager!=null?'<span class="pill p-ok">Responsable '+e.notaManager+'/10</span>':'')+
-           '</div>'+
-           (cerrada?
-             '<div style="font-size:12.5px;color:var(--sub)">Tu nota: <b>'+(e.notaAuto==null?'—':e.notaAuto)+'/10</b>'+
-             (e.comentarioManager?' · '+esc(e.comentarioManager):'')+'</div>'
-            :'<div class="row"><input class="inp" type="number" min="1" max="10" id="ev_n_'+e.id+'" value="'+(e.notaAuto==null?'':e.notaAuto)+'" placeholder="1-10" style="max-width:92px">'+
-             '<input class="inp" id="ev_c_'+e.id+'" value="'+esc(e.comentarioAuto||'')+'" placeholder="Comentario (opcional)"></div>')+
-         '</div>';
-       }).join('')+
-       (cerrada?'':'<button class="btn b-gold" style="margin-top:16px" onclick="guardarAuto(\''+esc(c).replace(/'/g,"\\'")+'\')">Guardar autoevaluación</button>')+
-       '</div>';
-   }).join('');
-}
-function guardarAuto(campana){
-  var notas={};
-  S.evaluacion.filter(function(e){return e.campana===campana;}).forEach(function(e){
-    var n=$('ev_n_'+e.id); if(!n||!n.value) return;
-    notas[e.id]={nota:Number(n.value),comentario:$('ev_c_'+e.id).value};
-  });
-  if(!Object.keys(notas).length) return toast('Pon al menos una nota','err');
-  api('autoevaluar',{notas:notas}).then(function(r){
-    if(r.ok){ toast('Autoevaluación guardada','ok'); ir('evaluacion'); } else toast('Error','err');
-  });
-}
 
 /* ── Encuestas (empleado) ── */
-function vEncuestas(){
-  return cab('Encuestas','Tu opinión sobre el día a día en la empresa')+
-   (S.encuestas.length? S.encuestas.map(function(e){
-     return '<div class="card" style="margin-bottom:8px">'+
-       '<div class="row" style="margin-bottom:10px"><div style="flex:1"><div class="li-t">'+esc(e.titulo)+'</div>'+
-       '<div class="li-s">'+(e.anonima?'Anónima':'Identificada')+(e.hasta?' · abierta hasta '+fBonita(e.hasta):'')+'</div></div>'+
-       (e.respondida?'<span class="pill p-ok">Respondida</span>':'<span class="pill p-warn">Pendiente</span>')+'</div>'+
-       (e.descripcion?'<div style="font-size:12.5px;color:var(--sub);line-height:1.55;margin-bottom:12px">'+esc(e.descripcion)+'</div>':'')+
-       (e.respondida?'':'<button class="btn b-gold b-sm" onclick="abrirEncuesta(\''+e.id+'\')">Responder</button>')+
-     '</div>';
-   }).join('') : vacio('No hay encuestas abiertas','?'));
-}
-function abrirEncuesta(id){
-  var e=S.encuestas.filter(function(x){return x.id===id;})[0]; if(!e) return;
-  abrirModal('<div class="mtitle">'+esc(e.titulo)+'</div>'+
-    '<div class="msub">'+(e.anonima?'Respuesta anónima: no se guarda quién ha contestado qué.':'Respuesta identificada.')+'</div>'+
-    e.preguntas.map(function(p,i){
-      if(p.tipo==='escala') return '<div class="fld"><label class="lbl">'+esc(p.texto)+'</label>'+
-        '<div class="row" style="gap:6px">'+[1,2,3,4,5].map(function(n){
-          return '<button class="btn b-ghost b-sm" style="flex:1" data-q="'+i+'" data-v="'+n+'" onclick="marcarEscala(this)">'+n+'</button>';
-        }).join('')+'</div><input type="hidden" id="enq_'+i+'"></div>';
-      return '<div class="fld"><label class="lbl">'+esc(p.texto)+'</label><textarea class="inp" id="enq_'+i+'"></textarea></div>';
-    }).join('')+
-    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
-    '<button class="btn b-gold" style="flex:1" onclick="enviarEncuesta(\''+id+'\')">Enviar</button></div>');
-}
-function marcarEscala(btn){
-  var q=btn.getAttribute('data-q');
-  Array.prototype.forEach.call(document.querySelectorAll('[data-q="'+q+'"]'),function(b){
-    b.className='btn b-ghost b-sm'; b.style.flex='1';
-  });
-  btn.className='btn b-gold b-sm'; btn.style.flex='1';
-  $('enq_'+q).value=btn.getAttribute('data-v');
-}
-function enviarEncuesta(id){
-  var e=S.encuestas.filter(function(x){return x.id===id;})[0];
-  var resp=e.preguntas.map(function(p,i){ return {texto:p.texto,tipo:p.tipo,valor:$('enq_'+i).value}; });
-  if(resp.some(function(r){return !r.valor;})) return toast('Responde todas las preguntas','err');
-  api('responderEncuesta',{id:id,respuestas:resp}).then(function(r){
-    cerrarModal();
-    if(r.ok){ toast('Gracias por responder','ok'); ir('encuestas'); }
-    else toast(r.error==='YA_RESPONDIDA'?'Ya habías respondido':'Error','err');
-  });
-}
 
 /* ── Tablón ── */
 function vTablon(){
@@ -1497,32 +1485,6 @@ function borrarPub(id){
 }
 
 /* ── Mi checklist ── */
-function vChecklist(){
-  var mios=S.checklist.filter(function(c){return c.trabajador===S.emp.nombre;});
-  var ajenos=S.checklist.filter(function(c){return c.trabajador!==S.emp.nombre;});
-  return cab('Mi checklist','Tareas de incorporación y salida')+
-   (mios.length? bloqueChecklist('Mis tareas',mios) : '')+
-   (ajenos.length? bloqueChecklist('Tareas de las que eres responsable',ajenos) : '')+
-   (!mios.length&&!ajenos.length? vacio('No tienes checklists asignados','☑') : '');
-}
-function bloqueChecklist(titulo,items){
-  var hechas=items.filter(function(c){return c.hecho;}).length;
-  return '<div class="sec">'+esc(titulo)+' · '+hechas+'/'+items.length+'</div>'+
-   '<div class="card">'+
-   '<div class="bar-row"><div class="bar-lbl">Progreso</div><div class="bar-track">'+
-   '<div class="bar-fill" style="width:'+(items.length?hechas/items.length*100:0)+'%"></div></div>'+
-   '<div class="bar-val">'+Math.round(items.length?hechas/items.length*100:0)+'%</div></div>'+
-   items.sort(function(a,b){return a.orden-b.orden;}).map(function(c){
-     return '<div class="row" style="padding:11px 0;border-top:1px solid var(--line-soft)">'+
-       '<input type="checkbox" '+(c.hecho?'checked':'')+' onchange="marcarTarea(\''+c.id+'\',this.checked)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">'+
-       '<div style="flex:1;min-width:0"><div style="font-size:13px'+(c.hecho?';text-decoration:line-through;color:var(--sub)':'')+'">'+esc(c.tarea)+'</div>'+
-       '<div class="li-s">'+esc(c.trabajador)+' · '+esc(c.tipo.toLowerCase())+(c.hechoPor?' · hecho por '+esc(c.hechoPor):'')+'</div></div>'+
-       '</div>';
-   }).join('')+'</div>';
-}
-function marcarTarea(id,hecho){
-  api('marcarChecklist',{id:id,hecho:hecho}).then(function(r){ if(!r.ok) toast('Error','err'); });
-}
 
 /* ── Mi perfil ── */
 function vPerfil(){
@@ -1791,18 +1753,47 @@ function informePDF(){
 }
 
 function vPlantilla(){
-  return cab('Plantilla','Personas dadas de alta en el sistema')+
-   '<button class="btn b-gold" style="margin-bottom:14px" onclick="modalAlta()">+ Añadir persona</button>'+
-   '<div class="scroll-x"><table class="tbl"><tr><th>Nombre</th><th>Email</th><th>Departamento</th><th>Oficina</th><th>Horario</th><th>Vac.</th><th></th></tr>'+
-   S.empleados.map(function(e){
-     var n=esc(e.nombre).replace(/'/g,"\\'");
-     return '<tr><td>'+esc(e.nombre)+(String(e.rol).toUpperCase()==='DIRECCION'?' <span class="pill p-info">Admin</span>':'')+'</td>'+
-       '<td>'+esc(e.email||'')+'</td><td>'+esc(e.departamento||'')+'</td><td>'+esc(e.oficina||'')+'</td>'+
-       '<td>'+esc(e.horario_id||'')+'</td><td>'+e.vacaciones_anuales+'</td>'+
-       '<td style="white-space:nowrap"><button class="btn b-ghost b-sm" onclick="modalEditar(\''+n+'\')">Editar</button> '+
-       '<button class="btn b-ghost b-sm" onclick="modalResetPin(\''+n+'\')">PIN</button></td></tr>';
-   }).join('')+'</table></div>';
+  var activos=S.empleados.filter(function(e){return String(e.activo).toUpperCase()!=='NO';});
+  var roles={ADMIN:'Administrador',DIRECCION:'Administrador',MANAGER:'Manager'};
+  return cab('Plantilla','Personas dadas de alta y su configuración')+
+   '<button class="btn b-gold" style="margin-bottom:16px" onclick="modalAlta()">+ Añadir persona</button>'+
+   tabla(['Nombre','Rol','Email','Departamento','Oficina','Alta','Jornada','Vac.'],
+     activos.map(function(e){
+       var n=esc(e.nombre).replace(/'/g,"\\'");
+       var r=String(e.rol||'EMPLEADO').toUpperCase();
+       return {celdas:[
+         esc(e.nombre),
+         '<span class="pill '+({ADMIN:'p-info',DIRECCION:'p-info',MANAGER:'p-warn'}[r]||'p-grey')+'">'+(roles[r]||'Empleado')+'</span>',
+         esc(e.email||''), esc(e.departamento||''), esc(e.oficina||''),
+         esc(String(e.fecha_alta||'').slice(0,10)||'—'),
+         esc(e.horario_id||''), e.vacaciones_anuales],
+        acciones:[{t:'PIN', fn:"modalResetPin('"+n+"')"}],
+        editar:"modalEditar('"+n+"')",
+        eliminar:"darDeBaja('"+n+"')"};
+     }))+
+   '<div style="font-size:11.5px;color:var(--sub);margin-top:14px;line-height:1.6">'+
+     'Dar de baja no borra a nadie: la persona deja de acceder y de contar en la plantilla, '+
+     'pero su registro de jornada se conserva, como exige la ley.</div>';
 }
+function darDeBaja(nombre){
+  abrirModal('<div class="mtitle">Dar de baja</div>'+
+    '<div class="msub">'+esc(nombre)+' dejará de acceder y de contar en la plantilla</div>'+
+    '<div class="fld"><label class="lbl">Fecha de baja</label>'+
+      '<input class="inp" type="date" id="bj_f" value="'+hoyISO()+'"></div>'+
+    '<div style="font-size:12.5px;color:var(--sub);line-height:1.65;margin-bottom:18px">'+
+      'Sus vacaciones se prorratean hasta esa fecha. <b>Su registro de jornada se conserva</b>: '+
+      'la ley obliga a guardarlo cuatro años, así que la persona se archiva, no se borra.</div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-no" style="flex:1" onclick="enviarBaja(\''+esc(nombre).replace(/'/g,"\\'")+'\')">Dar de baja</button></div>');
+}
+function enviarBaja(nombre){
+  api('eliminar',{tabla:'empleados',id:nombre,fechaBaja:$('bj_f').value}).then(function(r){
+    cerrarModal();
+    if(r.ok){ toast(nombre.split(' ')[0]+' dado de baja','ok'); refrescar(); }
+    else toast(r.error==='NO_TE_PUEDES_BORRAR'?'No puedes darte de baja a ti mismo':'Error','err');
+  });
+}
+
 function modalEditar(nombre){
   var e=S.empleados.filter(function(x){return x.nombre===nombre;})[0]; if(!e) return;
   abrirModal('<div class="mtitle">'+esc(nombre)+'</div><div class="msub">Los cambios quedan registrados en Auditoría</div>'+
@@ -1813,18 +1804,24 @@ function modalEditar(nombre){
       S.horarios.map(function(h){return '<option value="'+esc(h.horario_id)+'"'+(String(h.horario_id)===String(e.horario_id)?' selected':'')+'>'+esc(h.nombre)+'</option>';}).join('')+'</select></div>'+
     '<div class="fld"><label class="lbl">Días de vacaciones</label><input class="inp" type="number" id="ed_v" value="'+(e.vacaciones_anuales||0)+'"></div></div>'+
     '<div class="grid g2 tight"><div class="fld"><label class="lbl">Rol</label><select class="inp" id="ed_r">'+
-      '<option value="EMPLEADO"'+(String(e.rol).toUpperCase()!=='DIRECCION'?' selected':'')+'>Empleado</option>'+
-      '<option value="DIRECCION"'+(String(e.rol).toUpperCase()==='DIRECCION'?' selected':'')+'>Administrador</option></select></div>'+
+      [['EMPLEADO','Empleado'],['MANAGER','Manager'],['ADMIN','Administrador']].map(function(r){
+        var actual=String(e.rol||'EMPLEADO').toUpperCase();
+        return '<option value="'+r[0]+'"'+((actual===r[0]||(actual==='DIRECCION'&&r[0]==='ADMIN'))?' selected':'')+'>'+r[1]+'</option>';
+      }).join('')+'</select></div>'+
     '<div class="fld"><label class="lbl">Estado</label><select class="inp" id="ed_a">'+
       '<option value="SI">Activo</option><option value="NO">De baja</option></select></div></div>'+
-    '<div class="fld"><label class="lbl">Coste por hora (€) · para Analytics</label><input class="inp" type="number" id="ed_c" value="'+(e.coste_hora||0)+'"></div>'+
+    '<div class="grid g2 tight"><div class="fld"><label class="lbl">Fecha de alta</label>'+
+      '<input class="inp" type="date" id="ed_alta" value="'+esc(String(e.fecha_alta||'').slice(0,10))+'"></div>'+
+    '<div class="fld"><label class="lbl">Coste por hora (€)</label><input class="inp" type="number" id="ed_c" value="'+(e.coste_hora||0)+'"></div></div>'+
+    '<div style="font-size:11.5px;color:var(--sub);margin-bottom:14px">La fecha de alta prorratea las vacaciones del primer año.</div>'+
     '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
     '<button class="btn b-gold" style="flex:1" onclick="enviarEdicion(\''+esc(nombre).replace(/'/g,"\\'")+'\')">Guardar</button></div>');
 }
 function enviarEdicion(nombre){
   api('editarEmpleado',{nombre:nombre,email:$('ed_e').value,departamento:$('ed_d').value,
       oficina:$('ed_o').value,horario_id:$('ed_h').value,vacaciones_anuales:Number($('ed_v').value),
-      rol:$('ed_r').value,activo:$('ed_a').value,coste_hora:Number($('ed_c').value)}).then(function(r){
+      rol:$('ed_r').value,activo:$('ed_a').value,coste_hora:Number($('ed_c').value),
+      fecha_alta:$('ed_alta').value}).then(function(r){
     cerrarModal();
     if(r.ok){ toast(r.cambios? r.cambios+' cambio(s) guardados':'Sin cambios','ok'); refrescar(); }
     else toast('Error','err');
@@ -1855,14 +1852,17 @@ function modalAlta(){
     '<div class="fld"><label class="lbl">Oficina</label><input class="inp" id="al_o"></div></div>'+
     '<div class="grid g2 tight"><div class="fld"><label class="lbl">Horario</label><select class="inp" id="al_h">'+
       S.horarios.map(function(h){return '<option value="'+esc(h.horario_id)+'">'+esc(h.nombre)+'</option>';}).join('')+'</select></div>'+
-    '<div class="fld"><label class="lbl">Rol</label><select class="inp" id="al_r"><option value="EMPLEADO">Empleado</option><option value="DIRECCION">Dirección</option></select></div></div>'+
+    '<div class="fld"><label class="lbl">Rol</label><select class="inp" id="al_r">'+
+      '<option value="EMPLEADO">Empleado</option><option value="MANAGER">Manager</option>'+
+      '<option value="ADMIN">Administrador</option></select></div></div>'+
+    '<div class="fld"><label class="lbl">Fecha de alta</label><input class="inp" type="date" id="al_f" value="'+hoyISO()+'"></div>'+
     '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
     '<button class="btn b-gold" style="flex:1" onclick="enviarAlta()">Crear</button></div>');
 }
 function enviarAlta(){
   var p={nombre:$('al_n').value.trim(),email:$('al_e').value.trim(),pin:$('al_p').value.trim(),
          vacaciones_anuales:Number($('al_v').value),departamento:$('al_d').value,oficina:$('al_o').value,
-         horario_id:$('al_h').value,rol:$('al_r').value};
+         horario_id:$('al_h').value,rol:$('al_r').value,fecha_alta:$('al_f').value};
   if(!p.nombre||!/^\d{4}$/.test(p.pin)) return toast('Nombre y PIN de 4 dígitos obligatorios','err');
   api('altaEmpleado',p).then(function(r){
     cerrarModal();
@@ -1939,373 +1939,16 @@ function borrarTurno(id){
 }
 
 /* ── Bolsa de horas ── */
-function vBolsa(){
-  var b=S.bolsaEquipo||{compensado:{},detalle:[]};
-  var total=Object.keys(b.compensado).reduce(function(a,k){return a+b.compensado[k];},0);
-  return cab('Bolsa de horas','Saldo acumulado y compensaciones del equipo · '+S.year)+
-   '<div class="grid g3" style="margin-bottom:6px">'+
-     kpi(hhmmSigned(total),'Compensado total','')+
-     kpi(b.detalle.filter(function(d){return d.tipo==='DIA_LIBRE';}).length,'En días libres','')+
-     kpi(b.detalle.filter(function(d){return d.tipo==='ECONOMICA';}).length,'Económicas','')+
-   '</div>'+
-   '<button class="btn b-gold" style="margin:16px 0" onclick="modalCompensar()">+ Registrar compensación</button>'+
-   '<div class="sec">Saldo por persona</div>'+
-   '<div class="scroll-x"><table class="tbl"><tr><th>Persona</th><th>Compensado</th><th></th></tr>'+
-   S.empleados.map(function(e){
-     var m=b.compensado[e.nombre]||0;
-     return '<tr><td>'+esc(e.nombre)+'</td><td class="'+(m>=0?'pos':'neg')+'">'+hhmmSigned(m)+'</td>'+
-       '<td><button class="btn b-ghost b-sm" onclick="modalCompensar(\''+esc(e.nombre).replace(/'/g,"\\'")+'\')">Compensar</button></td></tr>';
-   }).join('')+'</table></div>'+
-   '<div class="sec">Movimientos</div>'+
-   (b.detalle.length? '<div class="scroll-x"><table class="tbl"><tr><th>Fecha</th><th>Persona</th><th>Tipo</th><th>Minutos</th><th>Nota</th></tr>'+
-     b.detalle.slice().sort(function(x,y){return x.fecha<y.fecha?1:-1;}).map(function(d){
-       return '<tr><td>'+fBonita(d.fecha)+'</td><td>'+esc(d.trabajador)+'</td>'+
-         '<td><span class="pill '+(d.tipo==='ECONOMICA'?'p-info':'p-grey')+'">'+esc(d.tipo.replace('_',' '))+'</span></td>'+
-         '<td class="'+(d.minutos>=0?'pos':'neg')+'">'+hhmmSigned(d.minutos)+'</td><td>'+esc(d.nota||'')+'</td></tr>';
-     }).join('')+'</table></div>' : vacio('Sin compensaciones registradas','∑'));
-}
-function modalCompensar(quien){
-  abrirModal('<div class="mtitle">Registrar compensación</div>'+
-    '<div class="msub">Descuenta o añade saldo a la bolsa de horas de una persona</div>'+
-    '<div class="fld"><label class="lbl">Persona</label><select class="inp" id="co_p">'+
-      S.empleados.map(function(e){return '<option'+(quien===e.nombre?' selected':'')+'>'+esc(e.nombre)+'</option>';}).join('')+'</select></div>'+
-    '<div class="grid g2 tight"><div class="fld"><label class="lbl">Minutos (negativo = consume)</label><input class="inp" type="number" id="co_m" value="-480" step="30"></div>'+
-    '<div class="fld"><label class="lbl">Fecha</label><input class="inp" type="date" id="co_f" value="'+hoyISO()+'"></div></div>'+
-    '<div class="fld"><label class="lbl">Tipo</label><select class="inp" id="co_t">'+
-      '<option value="DIA_LIBRE">Compensado con día libre</option>'+
-      '<option value="ECONOMICA">Compensado económicamente</option>'+
-      '<option value="AJUSTE">Ajuste manual</option></select></div>'+
-    '<div class="fld"><label class="lbl">Nota</label><input class="inp" id="co_n" placeholder="Opcional"></div>'+
-    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
-    '<button class="btn b-gold" style="flex:1" onclick="enviarCompensacion()">Guardar</button></div>');
-}
-function enviarCompensacion(){
-  api('compensar',{trabajador:$('co_p').value,minutos:Number($('co_m').value),fecha:$('co_f').value,
-      tipo:$('co_t').value,nota:$('co_n').value}).then(function(r){
-    cerrarModal(); if(r.ok){toast('Compensación registrada','ok');ir('bolsa');} else toast('Error','err');
-  });
-}
 
 /* ── Objetivos del equipo ── */
-function vObjEquipo(){
-  var act=S.objEquipo.filter(function(o){return o.estado==='ACTIVO';});
-  var porPersona={}; S.objEquipo.forEach(function(o){ (porPersona[o.trabajador]=porPersona[o.trabajador]||[]).push(o); });
-  return cab('Objetivos','Metas asignadas al equipo y su seguimiento')+
-   '<button class="btn b-gold" style="margin-bottom:18px" onclick="modalObjetivo()">+ Asignar objetivo</button>'+
-   '<div class="grid g3" style="margin-bottom:6px">'+
-     kpi(act.length,'Activos','')+
-     kpi(Object.keys(porPersona).length,'Personas con objetivos','')+
-     kpi(S.objEquipo.filter(function(o){return o.estado!=='ACTIVO';}).length,'Cerrados','')+
-   '</div>'+
-   (Object.keys(porPersona).length? Object.keys(porPersona).sort().map(function(p){
-     return '<div class="sec">'+esc(p)+'</div>'+porPersona[p].map(function(o){
-       var pct=o.meta?Math.min(100,Math.round(o.actual/o.meta*100)):0;
-       return '<div class="card" style="margin-bottom:8px">'+
-         '<div class="row" style="margin-bottom:11px"><div style="flex:1;min-width:0">'+
-         '<div class="li-t">'+esc(o.titulo)+'</div><div class="li-s">'+esc(o.periodo)+(o.peso?' · peso '+o.peso+'%':'')+'</div></div>'+
-         '<span class="pill '+(o.estado==='ACTIVO'?'p-info':'p-ok')+'">'+(o.estado==='ACTIVO'?pct+'%':'Valorado '+(o.valoracion==null?'—':o.valoracion)+'/10')+'</span></div>'+
-         '<div class="bar-row" style="margin-bottom:0"><div class="bar-lbl">Progreso</div>'+
-         '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%"></div></div>'+
-         '<div class="bar-val">'+o.actual+'/'+o.meta+'</div></div>'+
-         (o.estado==='ACTIVO'?'<button class="btn b-ghost b-sm" style="margin-top:12px" onclick="modalValorar(\''+o.id+'\')">Cerrar y valorar</button>':'')+
-       '</div>';
-     }).join('');
-   }).join('') : vacio('Nadie tiene objetivos asignados todavía','◎'));
-}
-function modalObjetivo(){
-  abrirModal('<div class="mtitle">Asignar objetivo</div><div class="msub">La persona verá el avance en su portal</div>'+
-    '<div class="fld"><label class="lbl">Persona</label><select class="inp" id="ob_p">'+
-      S.empleados.map(function(e){return '<option>'+esc(e.nombre)+'</option>';}).join('')+'</select></div>'+
-    '<div class="fld"><label class="lbl">Título</label><input class="inp" id="ob_t" placeholder="Ej.: Cerrar 12 operaciones"></div>'+
-    '<div class="fld"><label class="lbl">Descripción</label><textarea class="inp" id="ob_d"></textarea></div>'+
-    '<div class="grid g3"><div class="fld"><label class="lbl">Métrica</label><input class="inp" id="ob_m" placeholder="operaciones"></div>'+
-    '<div class="fld"><label class="lbl">Meta</label><input class="inp" type="number" id="ob_g" value="10"></div>'+
-    '<div class="fld"><label class="lbl">Peso %</label><input class="inp" type="number" id="ob_w" value="25"></div></div>'+
-    '<div class="fld"><label class="lbl">Periodo</label><input class="inp" id="ob_pe" value="'+new Date().getFullYear()+'"></div>'+
-    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
-    '<button class="btn b-gold" style="flex:1" onclick="enviarObjetivo()">Asignar</button></div>');
-}
-function enviarObjetivo(){
-  var p={trabajador:$('ob_p').value,titulo:$('ob_t').value.trim(),descripcion:$('ob_d').value,
-         metrica:$('ob_m').value,meta:Number($('ob_g').value),peso:Number($('ob_w').value),periodo:$('ob_pe').value};
-  if(!p.titulo) return toast('El título es obligatorio','err');
-  api('guardarObjetivo',p).then(function(r){ cerrarModal(); if(r.ok){toast('Objetivo asignado','ok');ir('objequipo');} else toast('Error','err'); });
-}
-function modalValorar(id){
-  abrirModal('<div class="mtitle">Cerrar y valorar</div><div class="msub">La valoración queda visible para la persona</div>'+
-    '<div class="fld"><label class="lbl">Valoración (1-10)</label><input class="inp" type="number" min="1" max="10" id="vo_n" value="7"></div>'+
-    '<div class="fld"><label class="lbl">Comentario</label><textarea class="inp" id="vo_c"></textarea></div>'+
-    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
-    '<button class="btn b-gold" style="flex:1" onclick="enviarValoracion(\''+id+'\')">Guardar</button></div>');
-}
-function enviarValoracion(id){
-  api('valorarObjetivo',{id:id,valoracion:Number($('vo_n').value),comentario:$('vo_c').value}).then(function(r){
-    cerrarModal(); if(r.ok){toast('Objetivo cerrado','ok');ir('objequipo');} else toast('Error','err');
-  });
-}
 
 /* ── Evaluaciones ── */
-function vEvaluaciones(){
-  var d=S.evalEquipo||{evaluaciones:[],campanas:[],competencias:[]};
-  var porPersona={};
-  d.evaluaciones.forEach(function(e){ (porPersona[e.trabajador]=porPersona[e.trabajador]||[]).push(e); });
-  return cab('Evaluaciones','Campañas de desempeño y sus resultados')+
-   '<button class="btn b-gold" style="margin-bottom:18px" onclick="modalCampana()">+ Lanzar campaña</button>'+
-   (d.campanas.length? '<div class="sec">Campañas</div><div class="row wrap" style="margin-bottom:8px">'+
-     d.campanas.map(function(c){return '<span class="pill p-info">'+esc(c)+'</span>';}).join('')+'</div>' : '')+
-   '<div class="sec">Resultados por persona</div>'+
-   (Object.keys(porPersona).length? Object.keys(porPersona).sort().map(function(p){
-     var filas=porPersona[p];
-     var auto=media(filas.map(function(e){return e.notaAuto;}));
-     var mgr=media(filas.map(function(e){return e.notaManager;}));
-     var pend=filas.filter(function(e){return e.estado!=='CERRADA';}).length;
-     return '<div class="card" style="margin-bottom:8px">'+
-       '<div class="row" style="margin-bottom:12px"><div class="ava sm">'+esc(ini(p))+'</div>'+
-       '<div style="flex:1"><div class="li-t">'+esc(p)+'</div>'+
-       '<div class="li-s">'+filas[0].campana+' · '+(pend?pend+' sin cerrar':'completada')+'</div></div>'+
-       '<span class="pill p-grey">Auto '+(auto==null?'—':auto.toFixed(1))+'</span>'+
-       '<span class="pill '+(mgr>=7?'p-ok':mgr>=5?'p-warn':mgr==null?'p-grey':'p-err')+'">Resp. '+(mgr==null?'—':mgr.toFixed(1))+'</span></div>'+
-       filas.map(function(e){
-         return '<div class="row" style="padding:9px 0;border-top:1px solid var(--line-soft);font-size:12.5px">'+
-           '<span style="flex:1">'+esc(e.competencia)+'</span>'+
-           '<span style="color:var(--sub);width:64px;text-align:right">auto '+(e.notaAuto==null?'—':e.notaAuto)+'</span>'+
-           '<input class="inp" type="number" min="1" max="10" id="em_'+e.id+'" value="'+(e.notaManager==null?'':e.notaManager)+'" style="width:74px;padding:6px 8px">'+
-         '</div>';
-       }).join('')+
-       '<button class="btn b-pri b-sm" style="margin-top:14px" onclick="guardarEvalManager(\''+esc(p).replace(/'/g,"\\'")+'\')">Guardar valoración</button>'+
-     '</div>';
-   }).join('') : vacio('No hay ninguna campaña lanzada','★'));
-}
-function media(v){
-  var n=v.filter(function(x){return x!=null&&!isNaN(x);});
-  return n.length? n.reduce(function(a,b){return a+b;},0)/n.length : null;
-}
-function modalCampana(){
-  abrirModal('<div class="mtitle">Lanzar campaña</div><div class="msub">Se crea una autoevaluación para cada persona seleccionada</div>'+
-    '<div class="fld"><label class="lbl">Nombre de la campaña</label><input class="inp" id="ca_n" value="Desempeño '+new Date().getFullYear()+'"></div>'+
-    '<div class="fld"><label class="lbl">Personas</label>'+
-      '<div style="max-height:190px;overflow-y:auto;border:1px solid var(--line);border-radius:2px;padding:10px">'+
-      S.empleados.map(function(e,i){
-        return '<label style="display:flex;align-items:center;gap:9px;padding:5px 0;font-size:13px;cursor:pointer">'+
-          '<input type="checkbox" class="ca_e" value="'+esc(e.nombre)+'" checked style="accent-color:var(--accent)"> '+esc(e.nombre)+'</label>';
-      }).join('')+'</div></div>'+
-    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
-    '<button class="btn b-gold" style="flex:1" onclick="enviarCampana()">Lanzar</button></div>');
-}
-function enviarCampana(){
-  var sel=Array.prototype.filter.call(document.querySelectorAll('.ca_e'),function(c){return c.checked;})
-    .map(function(c){return c.value;});
-  if(!sel.length) return toast('Selecciona al menos una persona','err');
-  api('lanzarEvaluacion',{campana:$('ca_n').value.trim(),trabajadores:sel}).then(function(r){
-    cerrarModal();
-    if(r.ok){ toast('Campaña lanzada · '+r.creadas+' evaluaciones','ok'); ir('evaluaciones'); }
-    else toast(r.error==='YA_LANZADA'?'Esa campaña ya existe para esas personas':'Error','err');
-  });
-}
-function guardarEvalManager(persona){
-  var notas={};
-  (S.evalEquipo.evaluaciones||[]).filter(function(e){return e.trabajador===persona;}).forEach(function(e){
-    var n=$('em_'+e.id); if(n&&n.value) notas[e.id]={nota:Number(n.value),comentario:''};
-  });
-  if(!Object.keys(notas).length) return toast('Pon al menos una nota','err');
-  api('evaluarManager',{notas:notas}).then(function(r){
-    if(r.ok){ toast('Valoración guardada','ok'); ir('evaluaciones'); } else toast('Error','err');
-  });
-}
 
 /* ── Encuestas (dirección) ── */
-function vEncuestasAdm(){
-  return cab('Encuestas','Clima laboral y consultas al equipo')+
-   '<button class="btn b-gold" style="margin-bottom:18px" onclick="modalEncuesta()">+ Nueva encuesta</button>'+
-   (S.encuestasAdmin.length? S.encuestasAdmin.map(function(e){
-     return '<div class="card" style="margin-bottom:8px">'+
-       '<div class="row" style="margin-bottom:10px"><div style="flex:1"><div class="li-t">'+esc(e.titulo)+'</div>'+
-       '<div class="li-s">'+e.preguntas.length+' preguntas · '+(e.anonima?'anónima':'identificada')+
-       (e.hasta?' · hasta '+fBonita(e.hasta):'')+'</div></div>'+
-       '<span class="pill '+(e.activa?'p-ok':'p-grey')+'">'+(e.activa?'Activa':'Cerrada')+'</span></div>'+
-       '<button class="btn b-ghost b-sm" onclick="verResultados(\''+e.id+'\')">Ver resultados</button>'+
-       '<div id="res_'+e.id+'"></div></div>';
-   }).join('') : vacio('No has creado ninguna encuesta','?'));
-}
-function modalEncuesta(){
-  abrirModal('<div class="mtitle">Nueva encuesta</div><div class="msub">Una pregunta por línea. Empieza con «#» para respuesta abierta.</div>'+
-    '<div class="fld"><label class="lbl">Título</label><input class="inp" id="en_t" value="Clima laboral"></div>'+
-    '<div class="fld"><label class="lbl">Descripción</label><input class="inp" id="en_d" placeholder="Opcional"></div>'+
-    '<div class="fld"><label class="lbl">Preguntas</label><textarea class="inp" id="en_q" style="min-height:140px">'+
-      'Estoy satisfecho con mi trabajo\nMe siento reconocido por mi responsable\nLa comunicación interna es clara\nRecomendaría trabajar aquí\n#¿Qué cambiarías de la empresa?</textarea></div>'+
-    '<div class="grid g2 tight"><div class="fld"><label class="lbl">Abierta hasta</label><input class="inp" type="date" id="en_h"></div>'+
-    '<div class="fld"><label class="lbl">&nbsp;</label><label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 0">'+
-      '<input type="checkbox" id="en_a" checked style="accent-color:var(--accent)"> Anónima</label></div></div>'+
-    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
-    '<button class="btn b-gold" style="flex:1" onclick="enviarEncuestaNueva()">Crear</button></div>');
-}
-function enviarEncuestaNueva(){
-  var preguntas=$('en_q').value.split('\n').map(function(l){return l.trim();}).filter(Boolean)
-    .map(function(l){ return l[0]==='#'? {texto:l.slice(1).trim(),tipo:'texto'} : {texto:l,tipo:'escala'}; });
-  if(!preguntas.length) return toast('Añade alguna pregunta','err');
-  api('guardarEncuesta',{titulo:$('en_t').value.trim(),descripcion:$('en_d').value,
-      preguntas:preguntas,hasta:$('en_h').value,anonima:$('en_a').checked}).then(function(r){
-    cerrarModal(); if(r.ok){toast('Encuesta creada','ok');ir('encuestasadm');} else toast('Error','err');
-  });
-}
-function verResultados(id){
-  var cont=$('res_'+id);
-  cont.innerHTML='<div class="loading"><span class="spinner"></span></div>';
-  api('resultadosEncuesta',{id:id}).then(function(r){
-    if(!r.ok) return cont.innerHTML='';
-    if(!r.total) return cont.innerHTML='<div style="font-size:12.5px;color:var(--sub);margin-top:14px">Sin respuestas todavía.</div>';
-    var preg=r.encuesta.preguntas;
-    cont.innerHTML='<div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line-soft)">'+
-      '<div style="font-size:11.5px;color:var(--sub);margin-bottom:14px">'+r.total+' respuestas</div>'+
-      preg.map(function(p,i){
-        var vals=r.respuestas.map(function(res){return res[i]?res[i].valor:null;}).filter(Boolean);
-        if(p.tipo==='texto'){
-          return '<div style="margin-bottom:16px"><div style="font-size:12.5px;font-weight:500;margin-bottom:8px">'+esc(p.texto)+'</div>'+
-            vals.map(function(v){return '<div style="font-size:12.5px;color:var(--sub);background:var(--bg);border-radius:2px;padding:8px 10px;margin-bottom:5px">'+esc(v)+'</div>';}).join('')+'</div>';
-        }
-        var nums=vals.map(Number).filter(function(n){return !isNaN(n);});
-        var med=nums.length?nums.reduce(function(a,b){return a+b;},0)/nums.length:0;
-        return '<div class="bar-row"><div class="bar-lbl" title="'+esc(p.texto)+'">'+esc(p.texto.slice(0,18))+'</div>'+
-          '<div class="bar-track"><div class="bar-fill" style="width:'+(med/5*100)+'%"></div></div>'+
-          '<div class="bar-val">'+med.toFixed(1)+'/5</div></div>';
-      }).join('')+'</div>';
-  });
-}
 
 /* ── Reclutamiento ── */
-function vReclutamiento(){
-  var d=S.reclut||{vacantes:[],candidatos:[],fases:[]};
-  var abiertas=d.vacantes.filter(function(v){return v.estado==='ABIERTA';});
-  return cab('Reclutamiento','Vacantes y proceso de selección')+
-   '<div class="row wrap" style="margin-bottom:18px">'+
-     '<button class="btn b-gold" onclick="modalVacante()">+ Nueva vacante</button>'+
-     (d.vacantes.length?'<button class="btn b-ghost" onclick="modalCandidato()">+ Añadir candidato</button>':'')+
-   '</div>'+
-   '<div class="grid g3" style="margin-bottom:6px">'+
-     kpi(abiertas.length,'Vacantes abiertas','')+
-     kpi(d.candidatos.length,'Candidatos','')+
-     kpi(d.candidatos.filter(function(c){return c.fase==='Contratado';}).length,'Contratados','')+
-   '</div>'+
-   (d.vacantes.length? d.vacantes.map(function(v){
-     var cands=d.candidatos.filter(function(c){return c.vacante_id===v.id;});
-     return '<div class="sec">'+esc(v.titulo)+' · '+cands.length+' candidatos</div>'+
-       '<div class="scroll-x"><div style="display:flex;gap:9px;min-width:760px">'+
-       d.fases.map(function(f){
-         var col=cands.filter(function(c){return c.fase===f;});
-         return '<div style="flex:1;min-width:104px">'+
-           '<div style="font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--sub);font-weight:600;padding-bottom:8px;border-bottom:1px solid var(--line);margin-bottom:8px">'+
-             esc(f)+' <span style="color:var(--gold)">'+col.length+'</span></div>'+
-           col.map(function(c){
-             return '<div class="card" style="padding:11px 12px;margin-bottom:6px;cursor:pointer" onclick="modalMover(\''+c.id+'\')">'+
-               '<div style="font-size:12.5px;font-weight:500;color:var(--navy)">'+esc(c.nombre)+'</div>'+
-               (c.valoracion?'<div style="font-size:10.5px;color:var(--gold);margin-top:3px">'+'★'.repeat(c.valoracion)+'</div>':'')+
-               (c.email?'<div class="li-s" style="font-size:10.5px">'+esc(c.email)+'</div>':'')+'</div>';
-           }).join('')+'</div>';
-       }).join('')+'</div></div>';
-   }).join('') : vacio('No hay vacantes abiertas','⚑'));
-}
-function modalVacante(){
-  abrirModal('<div class="mtitle">Nueva vacante</div><div class="msub">Proceso interno de selección</div>'+
-    '<div class="fld"><label class="lbl">Título</label><input class="inp" id="va_t" placeholder="Ej.: Comercial senior Sitges"></div>'+
-    '<div class="grid g2 tight"><div class="fld"><label class="lbl">Departamento</label><input class="inp" id="va_d" value="Comercial"></div>'+
-    '<div class="fld"><label class="lbl">Oficina</label><input class="inp" id="va_o"></div></div>'+
-    '<div class="fld"><label class="lbl">Descripción</label><textarea class="inp" id="va_x"></textarea></div>'+
-    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
-    '<button class="btn b-gold" style="flex:1" onclick="enviarVacante()">Crear</button></div>');
-}
-function enviarVacante(){
-  if(!$('va_t').value.trim()) return toast('El título es obligatorio','err');
-  api('guardarVacante',{titulo:$('va_t').value.trim(),departamento:$('va_d').value,
-      oficina:$('va_o').value,descripcion:$('va_x').value}).then(function(r){
-    cerrarModal(); if(r.ok){toast('Vacante creada','ok');ir('reclutamiento');} else toast('Error','err');
-  });
-}
-function modalCandidato(){
-  var d=S.reclut||{vacantes:[]};
-  abrirModal('<div class="mtitle">Añadir candidato</div><div class="msub">Entra en la fase «Recibido»</div>'+
-    '<div class="fld"><label class="lbl">Vacante</label><select class="inp" id="cn_v">'+
-      d.vacantes.map(function(v){return '<option value="'+esc(v.id)+'">'+esc(v.titulo)+'</option>';}).join('')+'</select></div>'+
-    '<div class="fld"><label class="lbl">Nombre</label><input class="inp" id="cn_n"></div>'+
-    '<div class="grid g2 tight"><div class="fld"><label class="lbl">Email</label><input class="inp" type="email" id="cn_e"></div>'+
-    '<div class="fld"><label class="lbl">Teléfono</label><input class="inp" id="cn_t"></div></div>'+
-    '<div class="fld"><label class="lbl">Enlace al CV</label><input class="inp" id="cn_c" placeholder="URL de Drive"></div>'+
-    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
-    '<button class="btn b-gold" style="flex:1" onclick="enviarCandidato()">Añadir</button></div>');
-}
-function enviarCandidato(){
-  if(!$('cn_n').value.trim()) return toast('El nombre es obligatorio','err');
-  api('guardarCandidato',{vacante_id:$('cn_v').value,nombre:$('cn_n').value.trim(),email:$('cn_e').value,
-      telefono:$('cn_t').value,cv_url:$('cn_c').value}).then(function(r){
-    cerrarModal(); if(r.ok){toast('Candidato añadido','ok');ir('reclutamiento');} else toast('Error','err');
-  });
-}
-function modalMover(id){
-  var d=S.reclut, c=d.candidatos.filter(function(x){return x.id===id;})[0]; if(!c) return;
-  abrirModal('<div class="mtitle">'+esc(c.nombre)+'</div>'+
-    '<div class="msub">'+esc(c.email||'')+(c.telefono?' · '+esc(c.telefono):'')+'</div>'+
-    (c.cv_url?'<div class="fld"><a class="btn b-ghost b-sm" href="'+esc(c.cv_url)+'" target="_blank" rel="noopener">Abrir CV</a></div>':'')+
-    '<div class="fld"><label class="lbl">Fase</label><select class="inp" id="mv_f">'+
-      d.fases.map(function(f){return '<option'+(f===c.fase?' selected':'')+'>'+esc(f)+'</option>';}).join('')+'</select></div>'+
-    '<div class="fld"><label class="lbl">Valoración (0-5)</label><input class="inp" type="number" min="0" max="5" id="mv_v" value="'+(c.valoracion||0)+'"></div>'+
-    '<div class="fld"><label class="lbl">Notas</label><textarea class="inp" id="mv_n">'+esc(c.nota||'')+'</textarea></div>'+
-    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
-    '<button class="btn b-gold" style="flex:1" onclick="enviarMover(\''+id+'\')">Guardar</button></div>');
-}
-function enviarMover(id){
-  api('moverCandidato',{id:id,fase:$('mv_f').value,valoracion:Number($('mv_v').value),nota:$('mv_n').value}).then(function(r){
-    cerrarModal(); if(r.ok){toast('Candidato actualizado','ok');ir('reclutamiento');} else toast('Error','err');
-  });
-}
 
 /* ── Onboarding / offboarding ── */
-function vOnboarding(){
-  var d=S.checklistEquipo||{checklist:[],plantillas:{}};
-  var porPersona={};
-  d.checklist.forEach(function(c){ (porPersona[c.trabajador+'|'+c.tipo]=porPersona[c.trabajador+'|'+c.tipo]||[]).push(c); });
-  return cab('Onboarding','Incorporaciones y salidas del equipo')+
-   '<div class="row wrap" style="margin-bottom:18px">'+
-     '<button class="btn b-gold" onclick="modalChecklist(\'ONBOARDING\')">+ Incorporación</button>'+
-     '<button class="btn b-ghost" onclick="modalChecklist(\'OFFBOARDING\')">+ Salida</button>'+
-   '</div>'+
-   (Object.keys(porPersona).length? Object.keys(porPersona).map(function(k){
-     var items=porPersona[k], p=k.split('|'), hechas=items.filter(function(c){return c.hecho;}).length;
-     var pct=Math.round(hechas/items.length*100);
-     return '<div class="card" style="margin-bottom:8px">'+
-       '<div class="row" style="margin-bottom:13px"><div class="ava sm">'+esc(ini(p[0]))+'</div>'+
-       '<div style="flex:1"><div class="li-t">'+esc(p[0])+'</div>'+
-       '<div class="li-s">'+(p[1]==='ONBOARDING'?'Incorporación':'Salida')+' · '+hechas+' de '+items.length+'</div></div>'+
-       '<span class="pill '+(pct===100?'p-ok':'p-warn')+'">'+pct+'%</span></div>'+
-       items.sort(function(a,b){return a.orden-b.orden;}).map(function(c){
-         return '<div class="row" style="padding:9px 0;border-top:1px solid var(--line-soft)">'+
-           '<input type="checkbox" '+(c.hecho?'checked':'')+' onchange="marcarTareaAdmin(\''+c.id+'\',this.checked)" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent)">'+
-           '<span style="flex:1;font-size:12.5px'+(c.hecho?';text-decoration:line-through;color:var(--sub)':'')+'">'+esc(c.tarea)+'</span>'+
-           (c.hechoPor?'<span style="font-size:10.5px;color:var(--sub)">'+esc(c.hechoPor)+'</span>':'')+'</div>';
-       }).join('')+'</div>';
-   }).join('') : vacio('No hay procesos de incorporación abiertos','☑'));
-}
-function modalChecklist(tipo){
-  var d=S.checklistEquipo||{plantillas:{}};
-  var tareas=(d.plantillas&&d.plantillas[tipo])||[];
-  abrirModal('<div class="mtitle">'+(tipo==='ONBOARDING'?'Nueva incorporación':'Proceso de salida')+'</div>'+
-    '<div class="msub">Se crea la checklist estándar; puedes editarla antes de crearla</div>'+
-    '<div class="fld"><label class="lbl">Persona</label><select class="inp" id="ck_p">'+
-      S.empleados.map(function(e){return '<option>'+esc(e.nombre)+'</option>';}).join('')+'</select></div>'+
-    '<div class="fld"><label class="lbl">Responsable</label><select class="inp" id="ck_r">'+
-      S.empleados.map(function(e){return '<option'+(e.nombre===S.emp.nombre?' selected':'')+'>'+esc(e.nombre)+'</option>';}).join('')+'</select></div>'+
-    '<div class="fld"><label class="lbl">Tareas (una por línea)</label><textarea class="inp" id="ck_t" style="min-height:170px">'+esc(tareas.join('\n'))+'</textarea></div>'+
-    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
-    '<button class="btn b-gold" style="flex:1" onclick="enviarChecklist(\''+tipo+'\')">Crear</button></div>');
-}
-function enviarChecklist(tipo){
-  var tareas=$('ck_t').value.split('\n').map(function(l){return l.trim();}).filter(Boolean);
-  if(!tareas.length) return toast('Añade alguna tarea','err');
-  api('crearChecklist',{trabajador:$('ck_p').value,responsable:$('ck_r').value,tipo:tipo,tareas:tareas}).then(function(r){
-    cerrarModal(); if(r.ok){toast('Checklist creada · '+r.creadas+' tareas','ok');ir('onboarding');} else toast('Error','err');
-  });
-}
-function marcarTareaAdmin(id,hecho){
-  api('marcarChecklist',{id:id,hecho:hecho}).then(function(r){ if(!r.ok) toast('Error','err'); });
-}
 
 /* ── Analytics ── */
 function vAnalytics(){
@@ -2362,32 +2005,37 @@ function repartoHTML(obj){
 }
 
 /* ── Centros de trabajo ── */
-function vCentros(){
-  return cab('Centros de trabajo','Geovallas que validan desde dónde se ficha')+
-   '<button class="btn b-gold" style="margin-bottom:18px" onclick="modalCentro()">+ Añadir centro</button>'+
-   '<div class="card" style="margin-bottom:16px"><div style="font-size:12.5px;color:var(--sub);line-height:1.65">'+
-     'Cuando alguien ficha, la app compara sus coordenadas con estos centros y guarda en qué centro estaba. '+
-     'Para <b>impedir</b> el fichaje fuera de un centro, pon la propiedad <code>EXIGIR_CENTRO</code> a <code>SI</code> '+
-     'en las Propiedades del script. Ahora mismo está en <b>'+(S.exigirCentro?'SI':'NO')+'</b>.</div></div>'+
-   (S.centrosAdmin.length? '<div class="scroll-x"><table class="tbl"><tr><th>Centro</th><th>Dirección</th><th>Coordenadas</th><th>Radio</th><th>Activo</th></tr>'+
-     S.centrosAdmin.map(function(c){
-       return '<tr><td>'+esc(c.nombre)+'</td><td>'+esc(c.direccion||'')+'</td>'+
-         '<td>'+Number(c.lat).toFixed(4)+', '+Number(c.lng).toFixed(4)+'</td><td>'+c.radio_m+' m</td>'+
-         '<td><span class="pill '+(String(c.activo).toUpperCase()==='NO'?'p-grey':'p-ok')+'">'+
-         (String(c.activo).toUpperCase()==='NO'?'No':'Sí')+'</span></td></tr>';
-     }).join('')+'</table></div>' : vacio('No hay centros definidos','⌖'));
-}
-function modalCentro(){
-  abrirModal('<div class="mtitle">Añadir centro</div>'+
-    '<div class="msub">Usa «Mi ubicación» estando en la oficina para capturar las coordenadas exactas</div>'+
-    '<div class="fld"><label class="lbl">Nombre</label><input class="inp" id="ce_n" placeholder="Ej.: Oficina Sitges"></div>'+
-    '<div class="fld"><label class="lbl">Dirección</label><input class="inp" id="ce_d"></div>'+
-    '<div class="grid g3"><div class="fld"><label class="lbl">Latitud</label><input class="inp" id="ce_la"></div>'+
-    '<div class="fld"><label class="lbl">Longitud</label><input class="inp" id="ce_lo"></div>'+
-    '<div class="fld"><label class="lbl">Radio (m)</label><input class="inp" type="number" id="ce_r" value="150"></div></div>'+
+function modalCentro(id){
+  var c=(S.config&&S.config.centros||[]).filter(function(x){return String(x.id)===String(id);})[0]||{};
+  abrirModal('<div class="mtitle">'+(id?'Editar centro':'Añadir centro')+'</div>'+
+    '<div class="msub">Estando en la oficina, «Usar mi ubicación» captura las coordenadas exactas</div>'+
+    '<div class="grid g2 tight">'+
+      '<div class="fld"><label class="lbl">Nombre</label><input class="inp" id="ce_n" value="'+esc(c.nombre||'')+'" placeholder="Oficina Sitges"></div>'+
+      '<div class="fld"><label class="lbl">Localidad</label><input class="inp" id="ce_loc" value="'+esc(c.localidad||'')+'" placeholder="Sitges"></div>'+
+    '</div>'+
+    '<div class="fld"><label class="lbl">Dirección</label><input class="inp" id="ce_d" value="'+esc(c.direccion||'')+'"></div>'+
+    '<div class="grid g3">'+
+      '<div class="fld"><label class="lbl">Latitud</label><input class="inp" id="ce_la" value="'+esc(c.lat||'')+'"></div>'+
+      '<div class="fld"><label class="lbl">Longitud</label><input class="inp" id="ce_lo" value="'+esc(c.lng||'')+'"></div>'+
+      '<div class="fld"><label class="lbl">Radio (m)</label><input class="inp" type="number" id="ce_r" value="'+(c.radio_m||150)+'"></div>'+
+    '</div>'+
     '<button class="btn b-ghost b-sm" style="margin-bottom:16px" onclick="capturarUbicacion()">Usar mi ubicación actual</button>'+
+    '<div class="grid g2 tight">'+
+      '<div class="fld"><label class="lbl">País</label><select class="inp" id="ce_pais" onchange="regionesDe()">'+
+        [['ES','España'],['AD','Andorra'],['FR','Francia'],['PT','Portugal']].map(function(x){
+          return '<option value="'+x[0]+'"'+(String(c.pais||'ES')===x[0]?' selected':'')+'>'+x[1]+'</option>';}).join('')+'</select></div>'+
+      '<div class="fld"><label class="lbl">Región</label><input class="inp" id="ce_reg" value="'+esc(c.region||'ES-CT')+'" placeholder="ES-CT"></div>'+
+    '</div>'+
+    '<div style="font-size:11.5px;color:var(--sub);margin-bottom:16px;line-height:1.6">'+
+      'El país y la región sirven para importar los festivos oficiales. Cataluña es <code>ES-CT</code>, '+
+      'Madrid <code>ES-MD</code>. Andorra no tiene regiones: déjalo vacío.</div>'+
     '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
-    '<button class="btn b-gold" style="flex:1" onclick="enviarCentro()">Guardar</button></div>');
+    '<button class="btn b-gold" style="flex:1" onclick="enviarCentro(\''+(id||'')+'\')">Guardar</button></div>');
+}
+function regionesDe(){
+  var pais=$('ce_pais').value;
+  if(pais==='AD') $('ce_reg').value='';
+  else if(!$('ce_reg').value) $('ce_reg').value=pais+'-';
 }
 function capturarUbicacion(){
   if(!navigator.geolocation) return toast('Tu navegador no da ubicación','err');
@@ -2398,11 +2046,15 @@ function capturarUbicacion(){
     toast('Ubicación capturada · precisión '+Math.round(p.coords.accuracy)+' m','ok');
   },function(){ toast('No se pudo obtener la ubicación','err'); },{enableHighAccuracy:true,timeout:8000});
 }
-function enviarCentro(){
-  var p={nombre:$('ce_n').value.trim(),direccion:$('ce_d').value,lat:Number($('ce_la').value),
-         lng:Number($('ce_lo').value),radio_m:Number($('ce_r').value)};
+function enviarCentro(id){
+  var p={id:id||'',nombre:$('ce_n').value.trim(),direccion:$('ce_d').value,
+         localidad:$('ce_loc').value.trim(),lat:Number($('ce_la').value),
+         lng:Number($('ce_lo').value),radio_m:Number($('ce_r').value),
+         pais:$('ce_pais').value,region:$('ce_reg').value.trim()};
   if(!p.nombre||!p.lat||!p.lng) return toast('Nombre y coordenadas obligatorios','err');
-  api('guardarCentro',p).then(function(r){ cerrarModal(); if(r.ok){toast('Centro guardado','ok');ir('centros');} else toast('Error','err'); });
+  api('guardarCentro',p).then(function(r){
+    cerrarModal(); if(r.ok){toast('Centro guardado','ok');ir('configuracion');} else toast('Error','err');
+  });
 }
 
 /* ── Quiosco y QR ── */
@@ -2554,24 +2206,6 @@ function exportarAuditoria(){
 }
 
 /* ── Tipos de ausencia y sus cupos ── */
-function vTiposAusencia(){
-  var t=tiposAusencia();
-  return cab('Tipos de ausencia','Cuántos días da cada tipo y cómo se controlan')+
-   '<button class="btn b-gold" style="margin-bottom:18px" onclick="modalTipo()">+ Nuevo tipo</button>'+
-   '<div class="card" style="margin-bottom:16px"><div style="font-size:12.5px;color:var(--sub);line-height:1.65">'+
-     '<b>Cuenta saldo</b>: descuenta de un cupo anual y bloquea la solicitud si no quedan días.<br>'+
-     '<b>Arrastrable</b>: los días no gastados pasan al año siguiente y se consumen antes que los nuevos.<br>'+
-     'La fecha de caducidad del arrastre se fija en la propiedad <code>LIMITE_ARRASTRE</code> (por defecto 31 de marzo).</div></div>'+
-   '<div class="scroll-x"><table class="tbl"><tr><th>Tipo</th><th>Días/año</th><th>Cuenta saldo</th><th>Justificante</th><th>Arrastrable</th><th></th></tr>'+
-   t.map(function(x){
-     return '<tr><td>'+esc(x.tipo)+'</td>'+
-       '<td>'+(x.dias||'—')+'</td>'+
-       '<td>'+(x.cuentaSaldo?'<span class="pill p-ok">Sí</span>':'<span class="pill p-grey">No</span>')+'</td>'+
-       '<td>'+(x.requiereJustificante?'<span class="pill p-warn">Obligatorio</span>':'<span class="pill p-grey">No</span>')+'</td>'+
-       '<td>'+(x.arrastrable?'<span class="pill p-info">Sí</span>':'<span class="pill p-grey">No</span>')+'</td>'+
-       '<td><button class="btn b-ghost b-sm" onclick="modalTipo(\'' + esc(x.tipo).replace(/'/g,"\\'") + '\')">Editar</button></td></tr>';
-   }).join('')+'</table></div>';
-}
 function modalTipo(nombre){
   var x=nombre? tipoDef(nombre) : {tipo:'',dias:0,cuentaSaldo:false,requiereJustificante:false,arrastrable:false};
   abrirModal('<div class="mtitle">'+(nombre?'Editar tipo':'Nuevo tipo de ausencia')+'</div>'+
@@ -2592,7 +2226,7 @@ function enviarTipo(){
          requiereJustificante:$('ta_j').checked,arrastrable:$('ta_a').checked};
   if(!p.tipo) return toast('El nombre es obligatorio','err');
   api('guardarTipoAusencia',p).then(function(r){
-    cerrarModal(); if(r.ok){toast('Tipo guardado','ok');ir('tiposaus');} else toast('Error','err');
+    cerrarModal(); if(r.ok){toast('Tipo guardado','ok');ir('configuracion');} else toast('Error','err');
   });
 }
 
@@ -2606,14 +2240,370 @@ function descargarCSV(nombre,cabecera,filas){
   a.download=nombre; document.body.appendChild(a); a.click(); a.remove();
 }
 
+/* ══ CONFIGURACIÓN ══════════════════════════════════════════════════════ */
+var SECCIONES_CONF = [
+  {id:'empresa',   grupo:'Empresa',     t:'General'},
+  {id:'centros',   grupo:'Empresa',     t:'Centros'},
+  {id:'roles',     grupo:'Empresa',     t:'Roles y accesos'},
+  {id:'horarios',  grupo:'Horarios',    t:'Horarios'},
+  {id:'descansos', grupo:'Horarios',    t:'Descansos'},
+  {id:'festivos',  grupo:'Calendarios', t:'Festivos'},
+  {id:'vacaciones',grupo:'Calendarios', t:'Vacaciones'},
+  {id:'ausencias', grupo:'Calendarios', t:'Ausencias'}
+];
+var confTab = 'empresa';
+
+function vConfiguracion(){
+  if(!S.config) return cab('Configuración','')+vacio('Cargando…','⚙');
+  var grupos = SECCIONES_CONF.reduce(function(a,x){ (a[x.grupo]=a[x.grupo]||[]).push(x); return a; },{});
+  var panel = {empresa:confEmpresa,centros:confCentros,roles:confRoles,horarios:confHorarios,
+               descansos:confDescansos,festivos:confFestivos,vacaciones:confVacaciones,
+               ausencias:confAusencias}[confTab]||confEmpresa;
+
+  return cab('Configuración','Cómo está montada la empresa dentro del sistema')+
+   '<div class="conf">'+
+     '<nav class="conf-nav">'+Object.keys(grupos).map(function(g){
+        return '<div class="conf-g">'+esc(g)+'</div>'+grupos[g].map(function(x){
+          return '<button class="conf-i'+(confTab===x.id?' on':'')+'" onclick="confTab=\''+x.id+'\';render()">'+esc(x.t)+'</button>';
+        }).join('');
+      }).join('')+'</nav>'+
+     '<div class="conf-panel">'+panel()+'</div>'+
+   '</div>';
+}
+
+/* ── Empresa ── */
+function confEmpresa(){
+  var e=S.config.empresa||{};
+  return tituloConf('Datos de la empresa','Se usan en los informes, los correos y el cálculo del convenio')+
+   '<div class="card">'+
+     '<div class="grid g2 tight">'+
+       campoConf('Nombre comercial','ce_nombre',e.nombre)+
+       campoConf('Razón social','ce_razon',e.razon_social)+
+       campoConf('CIF','ce_cif',e.cif)+
+       campoConf('Dominio de correo','ce_dominio',e.dominio_email)+
+     '</div>'+
+     '<div class="grid g3">'+
+       '<div class="fld"><label class="lbl">Moneda</label><select class="inp" id="ce_moneda">'+
+         ['EUR','USD','GBP','CHF'].map(function(m){return '<option'+(e.moneda===m?' selected':'')+'>'+m+'</option>';}).join('')+'</select></div>'+
+       '<div class="fld"><label class="lbl">Industria</label><select class="inp" id="ce_industria" onchange="sugerirConvenio()">'+
+         ['Inmobiliaria','Construcción','Servicios','Comercio','Hostelería','Oficinas y despachos'].map(function(m){
+           return '<option'+(e.industria===m?' selected':'')+'>'+m+'</option>';}).join('')+'</select></div>'+
+       '<div class="fld"><label class="lbl">Horario por defecto</label><select class="inp" id="ce_horario">'+
+         (S.config.horarios||[]).map(function(h){
+           return '<option value="'+esc(h.horario_id)+'"'+(e.horario_defecto===h.horario_id?' selected':'')+'>'+esc(h.nombre)+'</option>';}).join('')+'</select></div>'+
+     '</div>'+
+     '<div class="grid g2 tight">'+
+       campoConf('Convenio colectivo','ce_convenio',e.convenio)+
+       campoConf('Días de vacaciones por convenio','ce_vac',e.dias_vacaciones,'number')+
+     '</div>'+
+     campoConf('Correo para peticiones de corrección','ce_correcciones',e.email_correcciones,'email')+
+     '<div class="fld"><label class="lbl">Logotipo</label>'+
+       '<div class="row"><div style="background:var(--bg);border:1px solid var(--line);padding:14px 18px">'+logo('pequeno')+'</div>'+
+       '<input class="inp" id="ce_logo" value="'+esc(e.logo_url||'')+'" placeholder="URL del logo · vacío usa el oficial embebido"></div></div>'+
+     '<button class="btn b-gold" onclick="guardarEmpresa()">Guardar cambios</button>'+
+   '</div>';
+}
+function campoConf(l,id,v,tipo){
+  return '<div class="fld"><label class="lbl">'+esc(l)+'</label>'+
+    '<input class="inp" type="'+(tipo||'text')+'" id="'+id+'" value="'+esc(v==null?'':v)+'"></div>';
+}
+function tituloConf(t,s){
+  return '<div class="conf-t">'+esc(t)+'</div>'+(s?'<div class="conf-s">'+esc(s)+'</div>':'');
+}
+function sugerirConvenio(){
+  var mapa={'Inmobiliaria':'Oficinas y despachos de Cataluña','Construcción':'Construcción y obras públicas',
+            'Hostelería':'Hostelería y turismo','Comercio':'Comercio general',
+            'Servicios':'Empresas de servicios','Oficinas y despachos':'Oficinas y despachos de Cataluña'};
+  var v=mapa[$('ce_industria').value]; if(v) $('ce_convenio').value=v;
+}
+function guardarEmpresa(){
+  api('guardarEmpresa',{datos:{
+    nombre:$('ce_nombre').value, razon_social:$('ce_razon').value, cif:$('ce_cif').value,
+    dominio_email:$('ce_dominio').value, moneda:$('ce_moneda').value, industria:$('ce_industria').value,
+    horario_defecto:$('ce_horario').value, convenio:$('ce_convenio').value,
+    dias_vacaciones:$('ce_vac').value, email_correcciones:$('ce_correcciones').value,
+    logo_url:$('ce_logo').value
+  }}).then(function(r){
+    if(r.ok){ toast('Configuración guardada','ok'); ir('configuracion'); } else toast('Error','err');
+  });
+}
+
+/* ── Centros ── */
+function confCentros(){
+  var c=S.config.centros||[];
+  return tituloConf('Centros de trabajo','La geolocalización del fichaje se cruza con estas direcciones')+
+   '<button class="btn b-gold" style="margin-bottom:14px" onclick="modalCentro()">+ Añadir centro</button>'+
+   (c.length? tabla(
+      ['Centro','Dirección','Localidad','Coordenadas','Radio','Estado'],
+      c.map(function(x){
+        return {celdas:[esc(x.nombre), esc(x.direccion||''), esc(x.localidad||''),
+                Number(x.lat).toFixed(4)+', '+Number(x.lng).toFixed(4), x.radio_m+' m',
+                String(x.activo).toUpperCase()==='NO'?'<span class="pill p-grey">Inactivo</span>':'<span class="pill p-ok">Activo</span>'],
+                editar:"modalCentro('"+esc(x.id)+"')", eliminar:"eliminar('centros','"+esc(x.id)+"','"+esc(x.nombre)+"')"};
+      })) : vacio('No hay centros definidos','⌖'));
+}
+
+/* ── Roles y accesos ── */
+function confRoles(){
+  var permisos=[
+    ['Fichar y ver lo suyo',        true, true, true],
+    ['Pedir ausencias',             true, true, true],
+    ['Ver el estado del equipo',    true, true, true],
+    ['Validar ausencias',           false,true, true],
+    ['Corregir fichajes',           false,true, true],
+    ['Planificar turnos',           false,true, true],
+    ['Descargar informes',          false,true, true],
+    ['Gestionar la plantilla',      false,false,true],
+    ['Ver analítica y auditoría',   false,false,true],
+    ['Configurar la empresa',       false,false,true]
+  ];
+  var marca=function(v){ return v? '<span style="color:var(--green)">●</span>' : '<span style="color:#C9D0D2">○</span>'; };
+  return tituloConf('Roles y accesos','Qué puede hacer cada rol. El nivel se asigna en la ficha de cada persona')+
+   '<div class="card" style="margin-bottom:14px">'+
+     (S.config.roles||[]).map(function(r){
+       return '<div style="padding:11px 0;border-bottom:1px solid var(--line-soft)">'+
+         '<div class="li-t">'+esc(r.nombre)+'</div><div class="li-s">'+esc(r.descripcion)+'</div></div>';
+     }).join('')+'</div>'+
+   '<div class="scroll-x"><table class="tbl"><tr><th>Permiso</th><th style="text-align:center">Empleado</th>'+
+     '<th style="text-align:center">Manager</th><th style="text-align:center">Administrador</th></tr>'+
+     permisos.map(function(p){
+       return '<tr><td>'+p[0]+'</td><td style="text-align:center">'+marca(p[1])+'</td>'+
+         '<td style="text-align:center">'+marca(p[2])+'</td><td style="text-align:center">'+marca(p[3])+'</td></tr>';
+     }).join('')+'</table></div>'+
+   '<div class="sec">Quién es qué</div>'+
+   '<div class="scroll-x"><table class="tbl"><tr><th>Persona</th><th>Rol</th><th></th></tr>'+
+     (S.config.personas||[]).filter(function(p){return p.activo;}).map(function(p){
+       var n=esc(p.nombre).replace(/'/g,"\\'");
+       return '<tr><td>'+esc(p.nombre)+'</td><td><span class="pill '+
+         ({ADMIN:'p-info',DIRECCION:'p-info',MANAGER:'p-warn'}[p.rol]||'p-grey')+'">'+
+         ({ADMIN:'Administrador',DIRECCION:'Administrador',MANAGER:'Manager'}[p.rol]||'Empleado')+'</span></td>'+
+         '<td><button class="btn b-ghost b-sm" onclick="modalRol(\'' + n + '\',\'' + p.rol + '\')">Cambiar</button></td></tr>';
+     }).join('')+'</table></div>';
+}
+function modalRol(nombre,actual){
+  abrirModal('<div class="mtitle">Rol de '+esc(nombre)+'</div>'+
+    '<div class="msub">Cambia lo que esa persona puede ver y hacer</div>'+
+    '<div class="fld"><label class="lbl">Rol</label><select class="inp" id="rl_r">'+
+      [['EMPLEADO','Empleado'],['MANAGER','Manager'],['ADMIN','Administrador']].map(function(r){
+        return '<option value="'+r[0]+'"'+((actual===r[0]||(actual==='DIRECCION'&&r[0]==='ADMIN'))?' selected':'')+'>'+r[1]+'</option>';
+      }).join('')+'</select></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarRol(\'' + esc(nombre).replace(/'/g,"\\'") + '\')">Guardar</button></div>');
+}
+function enviarRol(nombre){
+  api('editarEmpleado',{nombre:nombre,rol:$('rl_r').value}).then(function(r){
+    cerrarModal(); if(r.ok){toast('Rol actualizado','ok');ir('configuracion');} else toast('Error','err');
+  });
+}
+
+/* ── Horarios ── */
+function confHorarios(){
+  var h=S.config.horarios||[];
+  return tituloConf('Jornadas laborales','Se asignan a cada persona y los turnos pueden sustituirlas por periodos')+
+   '<button class="btn b-gold" style="margin-bottom:14px" onclick="modalHorario()">+ Nueva jornada</button>'+
+   (h.length? tabla(
+     ['Jornada','Tipo','Días','Horas/semana','Pausa','Lunes a viernes'],
+     h.map(function(x){
+       return {celdas:[esc(x.nombre)+' <span style="color:var(--sub);font-size:11px">'+esc(x.horario_id)+'</span>',
+                       esc(x.tipo||'Fijo'), (x.dias_semana||'—'), (x.horas_semana||'—')+' h',
+                       (x.pausa_min||0)+' min',
+                       ['lun','mar','mie','jue','vie'].map(function(d){return x[d]||'—';}).join(' · ')],
+               editar:"modalHorario('"+esc(x.horario_id)+"')",
+               eliminar:"eliminar('horarios','"+esc(x.horario_id)+"','"+esc(x.nombre)+"')"};
+     })) : vacio('No hay jornadas definidas','▤'));
+}
+function modalHorario(id){
+  var h=(S.config.horarios||[]).filter(function(x){return String(x.horario_id)===String(id);})[0]||{};
+  var dias=[['lun','Lunes'],['mar','Martes'],['mie','Miércoles'],['jue','Jueves'],['vie','Viernes'],['sab','Sábado'],['dom','Domingo']];
+  abrirModal('<div class="mtitle">'+(id?'Editar jornada':'Nueva jornada')+'</div>'+
+    '<div class="msub">Formato HH:MM-HH:MM. Deja vacío el día que no se trabaja.</div>'+
+    '<div class="grid g2 tight">'+
+      '<div class="fld"><label class="lbl">Código</label><input class="inp" id="ho_id" value="'+esc(h.horario_id||'')+'"'+(id?' readonly':'')+' placeholder="STD"></div>'+
+      '<div class="fld"><label class="lbl">Nombre</label><input class="inp" id="ho_n" value="'+esc(h.nombre||'')+'" placeholder="Jornada estándar"></div>'+
+    '</div>'+
+    '<div class="grid g2 tight">'+
+      '<div class="fld"><label class="lbl">Tipo</label><select class="inp" id="ho_t">'+
+        ['Fijo','Flexible','Turnos','Partido','Intensivo'].map(function(t){
+          return '<option'+(h.tipo===t?' selected':'')+'>'+t+'</option>';}).join('')+'</select></div>'+
+      '<div class="fld"><label class="lbl">Pausa diaria (min)</label><input class="inp" type="number" id="ho_p" value="'+(h.pausa_min||60)+'"></div>'+
+    '</div>'+
+    dias.map(function(d){
+      return '<div class="row" style="margin-bottom:7px"><span style="width:88px;font-size:12.5px;color:var(--sub)">'+d[1]+'</span>'+
+        '<input class="inp" id="ho_'+d[0]+'" value="'+esc(h[d[0]]||'')+'" placeholder="09:00-18:00"></div>';
+    }).join('')+
+    '<div class="row" style="margin-top:16px"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarHorario()">Guardar</button></div>');
+}
+function enviarHorario(){
+  var p={horario_id:$('ho_id').value.trim().toUpperCase(),nombre:$('ho_n').value.trim(),
+         tipo:$('ho_t').value,pausa_min:Number($('ho_p').value)};
+  ['lun','mar','mie','jue','vie','sab','dom'].forEach(function(d){ p[d]=$('ho_'+d).value.trim(); });
+  if(!p.horario_id||!p.nombre) return toast('Código y nombre obligatorios','err');
+  var mal=['lun','mar','mie','jue','vie','sab','dom'].filter(function(d){
+    return p[d] && !/^\d{2}:\d{2}-\d{2}:\d{2}$/.test(p[d]); });
+  if(mal.length) return toast('Formato incorrecto en: '+mal.join(', '),'err');
+  api('guardarHorario',p).then(function(r){
+    cerrarModal(); if(r.ok){toast('Jornada guardada','ok');ir('configuracion');} else toast('Error','err');
+  });
+}
+
+/* ── Descansos ── */
+function confDescansos(){
+  var d=S.config.descansos||[];
+  return tituloConf('Tipos de descanso','Al pausar la jornada se elige uno de estos')+
+   '<button class="btn b-gold" style="margin-bottom:14px" onclick="modalDescanso()">+ Nuevo descanso</button>'+
+   (d.length? tabla(
+     ['Descanso','Duración','Franja','Remunerado','Computa jornada'],
+     d.map(function(x){
+       return {celdas:[esc(x.nombre), (x.minutos? x.minutos+' min':'libre'),
+                       (x.desde? x.desde+' – '+x.hasta : '—'),
+                       String(x.remunerado).toUpperCase()==='SI'?'<span class="pill p-ok">Sí</span>':'<span class="pill p-grey">No</span>',
+                       String(x.computa).toUpperCase()==='SI'?'<span class="pill p-ok">Sí</span>':'<span class="pill p-grey">No</span>'],
+               editar:"modalDescanso('"+esc(x.id)+"')",
+               eliminar:"eliminar('descansos','"+esc(x.id)+"','"+esc(x.nombre)+"')"};
+     })) : vacio('No hay descansos definidos','◷'));
+}
+function modalDescanso(id){
+  var d=(S.config.descansos||[]).filter(function(x){return String(x.id)===String(id);})[0]||{};
+  abrirModal('<div class="mtitle">'+(id?'Editar descanso':'Nuevo descanso')+'</div>'+
+    '<div class="msub">La pausa de comida no computa como jornada; un café corto sí puede computar.</div>'+
+    '<div class="grid g2 tight">'+
+      '<div class="fld"><label class="lbl">Nombre</label><input class="inp" id="de_n" value="'+esc(d.nombre||'')+'" placeholder="Comida"></div>'+
+      '<div class="fld"><label class="lbl">Duración prevista (min)</label><input class="inp" type="number" id="de_m" value="'+(d.minutos||0)+'"></div>'+
+    '</div>'+
+    '<div class="grid g2 tight">'+
+      '<div class="fld"><label class="lbl">Desde</label><input class="inp" type="time" id="de_d" value="'+esc(d.desde||'')+'"></div>'+
+      '<div class="fld"><label class="lbl">Hasta</label><input class="inp" type="time" id="de_h" value="'+esc(d.hasta||'')+'"></div>'+
+    '</div>'+
+    '<label style="font-size:13px;display:flex;align-items:center;gap:9px;cursor:pointer;padding:6px 0">'+
+      '<input type="checkbox" id="de_r" '+(String(d.remunerado).toUpperCase()==='SI'?'checked':'')+' style="accent-color:var(--accent)"> Remunerado</label>'+
+    '<label style="font-size:13px;display:flex;align-items:center;gap:9px;cursor:pointer;padding:6px 0;margin-bottom:14px">'+
+      '<input type="checkbox" id="de_c" '+(String(d.computa).toUpperCase()==='SI'?'checked':'')+' style="accent-color:var(--accent)"> Cuenta como tiempo trabajado</label>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarDescanso(\'' + (id||'') + '\')">Guardar</button></div>');
+}
+function enviarDescanso(id){
+  var p={id:id||'',nombre:$('de_n').value.trim(),minutos:Number($('de_m').value),
+         desde:$('de_d').value,hasta:$('de_h').value,
+         remunerado:$('de_r').checked,computa:$('de_c').checked};
+  if(!p.nombre) return toast('El nombre es obligatorio','err');
+  api('guardarDescanso',p).then(function(r){
+    cerrarModal(); if(r.ok){toast('Descanso guardado','ok');ir('configuracion');} else toast('Error','err');
+  });
+}
+
+/* ── Festivos ── */
+function confFestivos(){
+  var f=(S.config.festivos||[]).slice().sort(function(a,b){return a.fecha<b.fecha?-1:1;});
+  var year=S.year;
+  var delAno=f.filter(function(x){return x.fecha.slice(0,4)===String(year);});
+  return tituloConf('Calendario laboral','Los oficiales se importan solos; los locales de cada municipio se añaden a mano')+
+   '<div class="card" style="margin-bottom:14px"><div class="row wrap">'+
+     '<button class="btn b-pri" onclick="importarFestivos()">Importar festivos oficiales de '+year+'</button>'+
+     '<button class="btn b-gold" onclick="modalFestivo()">+ Añadir festivo</button>'+
+     '<div class="sp"></div>'+
+     '<button class="btn b-ghost b-sm" onclick="S.year--;render()">←</button>'+
+     '<b style="min-width:48px;text-align:center">'+year+'</b>'+
+     '<button class="btn b-ghost b-sm" onclick="S.year++;render()">→</button>'+
+   '</div>'+
+   '<div style="font-size:11.5px;color:var(--sub);margin-top:12px;line-height:1.6">'+
+     'La importación trae los festivos nacionales y autonómicos de los países y regiones donde tenéis '+
+     'centros, a partir de sus códigos (ES-CT para Cataluña, AD para Andorra). '+
+     'Los <b>locales</b> —la fiesta mayor de Sitges, por ejemplo— no están en ningún registro público '+
+     'fiable: esos los añadís vosotros.</div></div>'+
+   (delAno.length? tabla(['Fecha','Festivo','Ámbito'],
+     delAno.map(function(x){
+       var d=new Date(x.fecha+'T00:00:00');
+       return {celdas:[fBonita(x.fecha)+' <span style="color:var(--sub);font-size:11px">'+
+                       ['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]+'</span>',
+                       esc(x.nombre),
+                       '<span class="pill '+(/Nacional/.test(x.ambito)?'p-info':/Auton/.test(x.ambito)?'p-warn':'p-grey')+'">'+esc(x.ambito||'Local')+'</span>'],
+               editar:"modalFestivo('"+x.fecha+"')",
+               eliminar:"eliminar('festivos','"+x.fecha+"','"+esc(x.nombre)+"')"};
+     })) : vacio('Sin festivos cargados para '+year,'▤'));
+}
+function importarFestivos(){
+  toast('Consultando el calendario oficial…');
+  api('importarFestivos',{year:S.year}).then(function(r){
+    if(!r.ok) return toast(r.error==='SIN_CENTROS'?'Define antes algún centro de trabajo':'Error','err');
+    toast(r.importados? r.importados+' festivos importados' : 'Ya estaban todos cargados','ok');
+    ir('configuracion');
+  });
+}
+function modalFestivo(fecha){
+  var f=(S.config.festivos||[]).filter(function(x){return x.fecha===fecha;})[0]||{};
+  abrirModal('<div class="mtitle">'+(fecha?'Editar festivo':'Añadir festivo')+'</div>'+
+    '<div class="msub">Un día marcado como festivo no computa jornada prevista</div>'+
+    '<div class="fld"><label class="lbl">Fecha</label><input class="inp" type="date" id="fe_f" value="'+esc(f.fecha||S.year+'-01-01')+'"></div>'+
+    '<div class="fld"><label class="lbl">Nombre</label><input class="inp" id="fe_n" value="'+esc(f.nombre||'')+'" placeholder="Fiesta mayor de Sitges"></div>'+
+    '<div class="fld"><label class="lbl">Ámbito</label><select class="inp" id="fe_a">'+
+      ['Local','Autonómico','Nacional ES','Nacional AD'].map(function(a){
+        return '<option'+(f.ambito===a?' selected':'')+'>'+a+'</option>';}).join('')+'</select></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarFestivo()">Guardar</button></div>');
+}
+function enviarFestivo(){
+  if(!$('fe_n').value.trim()) return toast('Pon un nombre','err');
+  api('guardarFestivo',{fecha:$('fe_f').value,nombre:$('fe_n').value.trim(),ambito:$('fe_a').value}).then(function(r){
+    cerrarModal(); if(r.ok){toast('Festivo guardado','ok');ir('configuracion');} else toast('Error','err');
+  });
+}
+
+/* ── Vacaciones ── */
+function confVacaciones(){
+  var e=S.config.empresa||{};
+  return tituloConf('Vacaciones','Días por convenio y cómo se arrastran de un año a otro')+
+   '<div class="card" style="margin-bottom:14px">'+
+     '<div class="grid g2 tight">'+
+       campoConf('Días por convenio','cv_dias',e.dias_vacaciones,'number')+
+       campoConf('Convenio aplicable','cv_convenio',e.convenio)+
+     '</div>'+
+     '<div style="font-size:12.5px;color:var(--sub);line-height:1.7;margin-bottom:14px">'+
+       'Este valor es el que se pone por defecto al dar de alta a alguien. Cada ficha puede tener '+
+       'los suyos si el contrato lo dice.<br>'+
+       'Los días se <b>prorratean solos</b> según la fecha de alta: quien entra el 1 de julio con 23 días '+
+       'tiene 11,5 ese año.<br>'+
+       'Lo que sobra de un año se puede gastar hasta el <b>31 de marzo</b> del siguiente y se consume '+
+       'antes que los nuevos. La fecha se cambia en la propiedad <code>LIMITE_ARRASTRE</code>.</div>'+
+     '<button class="btn b-gold" onclick="guardarVacaciones()">Guardar</button>'+
+   '</div>'+
+   '<div class="sec">Días asignados por persona</div>'+
+   '<div class="scroll-x"><table class="tbl"><tr><th>Persona</th><th>Alta</th><th>Días</th></tr>'+
+     S.empleados.map(function(p){
+       return '<tr><td>'+esc(p.nombre)+'</td><td>'+esc(p.fecha_alta||'—')+'</td><td>'+p.vacaciones_anuales+'</td></tr>';
+     }).join('')+'</table></div>';
+}
+function guardarVacaciones(){
+  api('guardarEmpresa',{datos:{dias_vacaciones:$('cv_dias').value,convenio:$('cv_convenio').value}}).then(function(r){
+    if(r.ok){ toast('Guardado','ok'); ir('configuracion'); } else toast('Error','err');
+  });
+}
+
+/* ── Tipos de ausencia ── */
+function confAusencias(){
+  var t=S.config.tipos||tiposAusencia();
+  return tituloConf('Tipos de ausencia','Cuántos días da cada uno y cómo se controlan')+
+   '<button class="btn b-gold" style="margin-bottom:14px" onclick="modalTipo()">+ Nuevo tipo</button>'+
+   tabla(['Tipo','Días/año','Cuenta saldo','Justificante','Arrastrable'],
+     t.map(function(x){
+       return {celdas:[esc(x.tipo), (x.dias||'—'),
+               x.cuentaSaldo?'<span class="pill p-ok">Sí</span>':'<span class="pill p-grey">No</span>',
+               x.requiereJustificante?'<span class="pill p-warn">Obligatorio</span>':'<span class="pill p-grey">No</span>',
+               x.arrastrable?'<span class="pill p-info">Sí</span>':'<span class="pill p-grey">No</span>'],
+               editar:"modalTipo('"+esc(x.tipo).replace(/'/g,"\\'")+"')",
+               eliminar:"eliminar('tiposAusencia','"+esc(x.tipo).replace(/'/g,"\\'")+"','"+esc(x.tipo)+"')"};
+     }));
+}
+
 /* ══ MODO DEMO (sin backend) ════════════════════════════════════════════
    Persiste en localStorage para que puedas probar toda la app antes de
    desplegar el Apps Script. Al rellenar SCRIPT_URL se desactiva solo.    */
 var DEMO_SEED = {
   empleados:[
-    {nombre:'Admin de pruebas',    email:'admin@durancarasso.com',   pin:'0000', rol:'DIRECCION', departamento:'Dirección', oficina:'Barcelona', horario_id:'STD', vacaciones_anuales:23},
-    {nombre:'Empleado de pruebas', email:'empleado@durancarasso.com',pin:'1234', rol:'EMPLEADO',  departamento:'Comercial', oficina:'Sitges',    horario_id:'STD', vacaciones_anuales:23},
-    {nombre:'Adrià Pintat',   email:'adriapintat@durancarasso.com', pin:'0000', rol:'DIRECCION', departamento:'Marketing',  oficina:'Barcelona', horario_id:'STD', vacaciones_anuales:23},
+    {nombre:'Admin de pruebas',    email:'admin@durancarasso.com',   pin:'0000', rol:'ADMIN',    departamento:'Dirección', oficina:'Barcelona', horario_id:'STD', vacaciones_anuales:23, fecha_alta:'2021-01-11'},
+    {nombre:'Manager de pruebas',  email:'manager@durancarasso.com', pin:'2222', rol:'MANAGER',  departamento:'Comercial', oficina:'Barcelona', horario_id:'STD', vacaciones_anuales:23, fecha_alta:'2022-03-01'},
+    {nombre:'Empleado de pruebas', email:'empleado@durancarasso.com',pin:'1234', rol:'EMPLEADO', departamento:'Comercial', oficina:'Sitges',    horario_id:'STD', vacaciones_anuales:23, fecha_alta:'2023-09-04', responsable:'Manager de pruebas'},
+    {nombre:'Adrià Pintat',   email:'adriapintat@durancarasso.com', pin:'0000', rol:'ADMIN', departamento:'Marketing',  oficina:'Barcelona', horario_id:'STD', vacaciones_anuales:23},
     {nombre:'Alex Sellés',    email:'aselles@durancarasso.com',     pin:'1234', rol:'EMPLEADO',  departamento:'Comercial',  oficina:'Sitges',    horario_id:'STD', vacaciones_anuales:23},
     {nombre:'Anna Pallarés',  email:'apallares@durancarasso.com',   pin:'1234', rol:'EMPLEADO',  departamento:'Comercial',  oficina:'Barcelona', horario_id:'STD', vacaciones_anuales:23},
     {nombre:'Javier Carasso', email:'jcarasso@durancarasso.com',    pin:'1234', rol:'EMPLEADO',  departamento:'Dirección',  oficina:'Barcelona', horario_id:'INT', vacaciones_anuales:25},
@@ -2650,6 +2640,14 @@ function dbGet(){
     {id:'CT-BCN',nombre:'Barcelona',direccion:'Av. Diagonal',lat:41.3947,lng:2.1503,radio_m:150,activo:'SI'},
     {id:'CT-SIT',nombre:'Sitges',direccion:'Sitges',lat:41.2371,lng:1.8055,radio_m:150,activo:'SI'},
     {id:'CT-AND',nombre:'Andorra',direccion:'Andorra la Vella',lat:42.5063,lng:1.5218,radio_m:150,activo:'SI'}];
+  if(!db.empresa) db.empresa={nombre:'Durán Carasso',razon_social:'Durán Carasso Barcelona S.L.',cif:'',
+    logo_url:'',moneda:'EUR',industria:'Inmobiliaria',convenio:'Oficinas y despachos de Cataluña',
+    horario_defecto:'STD',dias_vacaciones:'23',dominio_email:'durancarasso.com',
+    email_correcciones:'mabad@durancarasso.com'};
+  if(!Array.isArray(db.descansos) || !db.descansos.length) db.descansos=[
+    {id:'D-COM',nombre:'Comida',minutos:60,desde:'14:00',hasta:'15:00',remunerado:'NO',computa:'NO',activo:'SI'},
+    {id:'D-CAF',nombre:'Café',minutos:15,desde:'',hasta:'',remunerado:'SI',computa:'SI',activo:'SI'},
+    {id:'D-PER',nombre:'Personal',minutos:0,desde:'',hasta:'',remunerado:'NO',computa:'NO',activo:'SI'}];
   if(!Array.isArray(db.publicaciones) || !db.publicaciones.length) db.publicaciones=[
     {id:'PU-1',ts:new Date().toISOString(),autor:'Adrià Pintat',categoria:'Aviso importante',
      titulo:'Estrenamos DC · Personas',fijado:true,
@@ -2680,13 +2678,22 @@ function demoApiInterno(action,p){
       r={ok:true,empleados:db.empleados.map(function(e){return {nombre:e.nombre,departamento:e.departamento,rol:e.rol};})}; break;
     case 'auth':
       var e=demoEmp(p.nombre);
-      r = (e && e.pin===p.pin) ? {ok:true,token:'demo.'+p.nombre,empleado:e} : {ok:false,error:'PIN_INCORRECTO'};
+      if(e && e.pin===p.pin){
+        var copia=JSON.parse(JSON.stringify(e)); copia.nivel=demoNivel(e);
+        r={ok:true,token:'demo.'+p.nombre,empleado:copia};
+      } else r={ok:false,error:'PIN_INCORRECTO'};
       break;
     case 'bootstrap':
       r={ok:true,empleados:db.empleados,horarios:db.horarios,festivos:db.festivos,
-         centros:db.centros,exigirCentro:false,tiposAusencia:db.tipos||TIPOS_AUSENCIA_DEF,
+         centros:db.centros.map(function(c){return {id:c.id,nombre:c.nombre,direccion:c.direccion,
+           lat:Number(c.lat),lng:Number(c.lng),radio_m:Number(c.radio_m||150),localidad:c.localidad||''};}),
+         exigirCentro:false,tiposAusencia:db.tipos||TIPOS_AUSENCIA_DEF,
+         empresa:db.empresa,descansos:db.descansos.map(function(d){
+           return {id:d.id,nombre:d.nombre,minutos:Number(d.minutos||0),desde:d.desde,hasta:d.hasta,
+                   remunerado:String(d.remunerado).toUpperCase()==='SI',computa:String(d.computa).toUpperCase()==='SI'};}),
+         nivel:demoNivel(yo),rol:String(yo&&yo.rol||'EMPLEADO').toUpperCase(),
          turnos:db.turnos.filter(function(t){return t.trabajador===(yo&&yo.nombre);}),
-         esDireccion:yo&&yo.rol==='DIRECCION'}; break;
+         esDireccion:demoNivel(yo)>=2}; break;
     case 'fichar':
       var evs=db.fichajes.filter(function(f){return f.trabajador===yo.nombre&&f.fecha===hoyISO();});
       var est=evs.length?({ENTRADA:'TRABAJANDO',PAUSA_INI:'PAUSA',PAUSA_FIN:'TRABAJANDO',SALIDA:'FUERA'}[evs[evs.length-1].tipo]):'FUERA';
@@ -2758,10 +2765,6 @@ function demoApiInterno(action,p){
                       tarea:p.tarea,minutos:p.minutos,nota:p.nota}); dbSet(db); r={ok:true}; break;
     case 'misTareas':
       r={ok:true,tareas:db.tareas.filter(function(t){return t.trabajador===yo.nombre&&t.fecha>=p.desde&&t.fecha<=p.hasta;})}; break;
-    case 'misDocumentos':
-      r={ok:true,documentos:db.documentos.filter(function(d){return d.trabajador===yo.nombre||d.trabajador==='*';})}; break;
-    case 'firmarDocumento':
-      db.documentos.forEach(function(d){ if(d.id===p.id) d.firmado=new Date().toISOString(); }); dbSet(db); r={ok:true}; break;
     case 'altaEmpleado':
       if(demoEmp(p.nombre)){ r={ok:false,error:'YA_EXISTE'}; break; }
       db.empleados.push(p); dbSet(db); r={ok:true}; break;
@@ -2809,87 +2812,12 @@ function demoApiInterno(action,p){
     case 'turnosEquipo': r={ok:true,turnos:db.turnos}; break;
     case 'centros': r={ok:true,centros:db.centros}; break;
     case 'guardarCentro':
-      db.centros.push({id:demoId('CT'),nombre:p.nombre,direccion:p.direccion||'',lat:p.lat,lng:p.lng,
-                       radio_m:p.radio_m||150,activo:'SI'}); dbSet(db); r={ok:true}; break;
-
-    /* ── Bolsa de horas ── */
-    case 'compensar':
-      db.compensaciones.push({id:demoId('CO'),trabajador:p.trabajador,fecha:p.fecha,minutos:p.minutos,
-                              tipo:p.tipo,nota:p.nota||''}); dbSet(db); r={ok:true}; break;
-    case 'miBolsa':
-      r={ok:true,compensaciones:db.compensaciones.filter(function(c){return c.trabajador===yo.nombre;})}; break;
-    case 'bolsaEquipo':
-      var comp={}; db.compensaciones.forEach(function(c){ comp[c.trabajador]=(comp[c.trabajador]||0)+c.minutos; });
-      r={ok:true,compensado:comp,detalle:db.compensaciones}; break;
-
-    /* ── Objetivos ── */
-    case 'misObjetivos':
-      r={ok:true,objetivos:db.objetivos.filter(function(o){return o.trabajador===yo.nombre;})}; break;
-    case 'objetivosEquipo': r={ok:true,objetivos:db.objetivos}; break;
-    case 'guardarObjetivo':
-      db.objetivos.push({id:demoId('OB'),trabajador:p.trabajador,titulo:p.titulo,descripcion:p.descripcion||'',
-        metrica:p.metrica||'',meta:p.meta||0,actual:0,periodo:p.periodo,peso:p.peso||0,
-        estado:'ACTIVO',valoracion:null,comentario:''}); dbSet(db); r={ok:true}; break;
-    case 'avanzarObjetivo':
-      db.objetivos.forEach(function(o){ if(o.id===p.id&&o.trabajador===yo.nombre) o.actual=p.actual; });
-      dbSet(db); r={ok:true}; break;
-    case 'valorarObjetivo':
-      db.objetivos.forEach(function(o){ if(o.id===p.id){o.estado='CERRADO';o.valoracion=p.valoracion;o.comentario=p.comentario;} });
-      dbSet(db); r={ok:true}; break;
-
-    /* ── Evaluaciones ── */
-    case 'lanzarEvaluacion':
-      var comps=['Orientación a resultados','Trato con el cliente','Trabajo en equipo',
-                 'Autonomía e iniciativa','Conocimiento del producto','Comunicación'];
-      var creadas=0;
-      (p.trabajadores||[]).forEach(function(t){
-        comps.forEach(function(c){
-          if(db.evaluaciones.some(function(e){return e.campana===p.campana&&e.trabajador===t&&e.competencia===c;})) return;
-          db.evaluaciones.push({id:demoId('EV'),campana:p.campana,trabajador:t,evaluador:yo.nombre,
-            competencia:c,notaAuto:null,notaManager:null,comentarioAuto:'',comentarioManager:'',estado:'PENDIENTE'});
-          creadas++;
-        });
-      });
-      if(!creadas){ r={ok:false,error:'YA_LANZADA'}; break; }
-      dbSet(db); r={ok:true,creadas:creadas}; break;
-    case 'miEvaluacion':
-      r={ok:true,evaluacion:db.evaluaciones.filter(function(e){return e.trabajador===yo.nombre;})}; break;
-    case 'autoevaluar':
-      db.evaluaciones.forEach(function(e){
-        var v=(p.notas||{})[e.id];
-        if(v&&e.trabajador===yo.nombre){ e.notaAuto=v.nota; e.comentarioAuto=v.comentario||'';
-          if(e.estado==='PENDIENTE') e.estado='AUTOEVALUADA'; }
-      }); dbSet(db); r={ok:true}; break;
-    case 'evaluarManager':
-      db.evaluaciones.forEach(function(e){
-        var v=(p.notas||{})[e.id];
-        if(v){ e.notaManager=v.nota; e.comentarioManager=v.comentario||''; e.estado='CERRADA'; }
-      }); dbSet(db); r={ok:true}; break;
-    case 'evaluacionesEquipo':
-      var camps={}; db.evaluaciones.forEach(function(e){camps[e.campana]=true;});
-      r={ok:true,evaluaciones:db.evaluaciones,campanas:Object.keys(camps),
-         competencias:['Orientación a resultados','Trato con el cliente','Trabajo en equipo',
-                       'Autonomía e iniciativa','Conocimiento del producto','Comunicación']}; break;
-
-    /* ── Encuestas ── */
-    case 'guardarEncuesta':
-      db.encuestas.push({id:demoId('EN'),titulo:p.titulo,descripcion:p.descripcion||'',preguntas:p.preguntas,
-        desde:hoyISO(),hasta:p.hasta||'',anonima:p.anonima!==false,activa:true}); dbSet(db); r={ok:true}; break;
-    case 'encuestasTodas': r={ok:true,encuestas:db.encuestas}; break;
-    case 'encuestasAbiertas':
-      r={ok:true,encuestas:db.encuestas.filter(function(e){return e.activa;}).map(function(e){
-        var c=JSON.parse(JSON.stringify(e));
-        c.respondida=db.respuestas.some(function(x){return x.encuesta_id===e.id&&x.quien===yo.nombre;});
-        return c;
-      })}; break;
-    case 'responderEncuesta':
-      if(db.respuestas.some(function(x){return x.encuesta_id===p.id&&x.quien===yo.nombre;})){ r={ok:false,error:'YA_RESPONDIDA'}; break; }
-      db.respuestas.push({id:demoId('RE'),encuesta_id:p.id,quien:yo.nombre,respuestas:p.respuestas});
-      dbSet(db); r={ok:true}; break;
-    case 'resultadosEncuesta':
-      var enc=db.encuestas.filter(function(e){return e.id===p.id;})[0];
-      var res=db.respuestas.filter(function(x){return x.encuesta_id===p.id;}).map(function(x){return x.respuestas;});
-      r={ok:true,encuesta:enc,respuestas:res,total:res.length}; break;
+      var nc={id:p.id||demoId('CT'),nombre:p.nombre,direccion:p.direccion||'',lat:p.lat,lng:p.lng,
+              radio_m:p.radio_m||150,pais:p.pais||'ES',region:p.region||'',
+              localidad:p.localidad||'',activo:'SI'};
+      var ic=db.centros.findIndex(function(x){return x.id===p.id;});
+      if(ic>=0) db.centros[ic]=nc; else db.centros.push(nc);
+      demoAudit(db,yo,'CONFIG_CENTRO',p.nombre); dbSet(db); r={ok:true}; break;
 
     /* ── Tablón ── */
     case 'publicaciones': r={ok:true,publicaciones:db.publicaciones}; break;
@@ -2900,39 +2828,8 @@ function demoApiInterno(action,p){
       db.publicaciones=db.publicaciones.filter(function(x){return x.id!==p.id;}); dbSet(db); r={ok:true}; break;
 
     /* ── Reclutamiento ── */
-    case 'vacantes':
-      r={ok:true,fases:['Recibido','Cribado','Entrevista','Prueba','Oferta','Contratado','Descartado'],
-         vacantes:db.vacantes,candidatos:db.candidatos}; break;
-    case 'guardarVacante':
-      db.vacantes.push({id:demoId('VA'),titulo:p.titulo,departamento:p.departamento||'',oficina:p.oficina||'',
-        descripcion:p.descripcion||'',estado:'ABIERTA',ts:new Date().toISOString()}); dbSet(db); r={ok:true}; break;
-    case 'guardarCandidato':
-      db.candidatos.push({id:demoId('CA'),vacante_id:p.vacante_id,nombre:p.nombre,email:p.email||'',
-        telefono:p.telefono||'',fase:'Recibido',valoracion:0,nota:'',cv_url:p.cv_url||''}); dbSet(db); r={ok:true}; break;
-    case 'moverCandidato':
-      db.candidatos.forEach(function(c){ if(c.id===p.id){ if(p.fase)c.fase=p.fase;
-        if(p.valoracion!==undefined)c.valoracion=p.valoracion; if(p.nota!==undefined)c.nota=p.nota; } });
-      dbSet(db); r={ok:true}; break;
 
     /* ── Checklists ── */
-    case 'crearChecklist':
-      (p.tareas||[]).forEach(function(t,i){
-        db.checklists.push({id:demoId('CK'),trabajador:p.trabajador,tipo:p.tipo,tarea:t,
-          responsable:p.responsable,fechaLimite:'',hecho:false,hechoTs:'',hechoPor:'',orden:i+1});
-      }); dbSet(db); r={ok:true,creadas:(p.tareas||[]).length}; break;
-    case 'miChecklist':
-      r={ok:true,checklist:db.checklists.filter(function(c){return c.trabajador===yo.nombre||c.responsable===yo.nombre;})}; break;
-    case 'marcarChecklist':
-      db.checklists.forEach(function(c){ if(c.id===p.id){ c.hecho=p.hecho!==false;
-        c.hechoPor=c.hecho?yo.nombre:''; c.hechoTs=c.hecho?new Date().toISOString():''; } });
-      dbSet(db); r={ok:true}; break;
-    case 'checklistEquipo':
-      r={ok:true,checklist:db.checklists,plantillas:{
-        ONBOARDING:['Contrato firmado','Alta en Seguridad Social','Email corporativo creado',
-                    'Equipo informático entregado','Accesos al CRM','Tarjeta de visita',
-                    'Formación de producto','Presentación al equipo','Manual de acogida entregado'],
-        OFFBOARDING:['Entrevista de salida','Devolución de equipo','Revocación de accesos',
-                     'Traspaso de cartera de clientes','Finiquito calculado','Baja en Seguridad Social']}}; break;
 
     /* ── Tipos de ausencia, saldos y arrastre ── */
     case 'tiposAusencia': r={ok:true,tipos:db.tipos||TIPOS_AUSENCIA_DEF}; break;
@@ -2964,6 +2861,83 @@ function demoApiInterno(action,p){
       db.empleados.forEach(function(e){ if(e.nombre===p.nombre) e.pin=p.pin; });
       demoAudit(db,yo,'RESET_PIN',p.nombre); dbSet(db); r={ok:true}; break;
 
+    /* ── Configuración ── */
+    case 'configuracion':
+      r={ok:true, empresa:db.empresa, centros:db.centros, horarios:db.horarios,
+         descansos:db.descansos, festivos:db.festivos, tipos:db.tipos||TIPOS_AUSENCIA_DEF,
+         roles:[{rol:'EMPLEADO',nombre:'Empleado',descripcion:'Ficha, pide ausencias y consulta lo suyo.'},
+                {rol:'MANAGER',nombre:'Manager',descripcion:'Además valida ausencias, corrige incidencias y planifica turnos de su equipo.'},
+                {rol:'ADMIN',nombre:'Administrador',descripcion:'Además configura la empresa, gestiona la plantilla y ve la auditoría.'}],
+         personas:db.empleados.map(function(e){
+           return {nombre:e.nombre,rol:String(e.rol||'EMPLEADO').toUpperCase(),
+                   activo:String(e.activo||'SI').toUpperCase()!=='NO'};})};
+      break;
+    case 'guardarEmpresa':
+      Object.keys(p.datos||{}).forEach(function(k){ db.empresa[k]=p.datos[k]; });
+      demoAudit(db,yo,'CONFIG_EMPRESA',Object.keys(p.datos||{}).join(', ')); dbSet(db); r={ok:true}; break;
+    case 'guardarHorario':
+      var dias=['lun','mar','mie','jue','vie','sab','dom'];
+      var trab=dias.filter(function(d){return (p[d]||'').indexOf('-')>0;});
+      var mins=trab.reduce(function(a,d){var q=p[d].split('-'),x=q[0].split(':'),y=q[1].split(':');
+        return a+(+y[0]*60+ +y[1])-(+x[0]*60+ +x[1]);},0)-trab.length*Number(p.pausa_min||0);
+      var nh={horario_id:p.horario_id,nombre:p.nombre,pausa_min:p.pausa_min,tipo:p.tipo,
+              dias_semana:trab.length,horas_semana:Math.round(mins/60*10)/10,activo:'SI'};
+      dias.forEach(function(d){ nh[d]=p[d]||''; });
+      var ih=db.horarios.findIndex(function(x){return x.horario_id===p.horario_id;});
+      if(ih>=0) db.horarios[ih]=nh; else db.horarios.push(nh);
+      demoAudit(db,yo,'CONFIG_HORARIO',p.nombre); dbSet(db); r={ok:true}; break;
+    case 'guardarDescanso':
+      var nd={id:p.id||demoId('D'),nombre:p.nombre,minutos:p.minutos,desde:p.desde,hasta:p.hasta,
+              remunerado:p.remunerado?'SI':'NO',computa:p.computa?'SI':'NO',activo:'SI'};
+      var idd=db.descansos.findIndex(function(x){return x.id===p.id;});
+      if(idd>=0) db.descansos[idd]=nd; else db.descansos.push(nd);
+      demoAudit(db,yo,'CONFIG_DESCANSO',p.nombre); dbSet(db); r={ok:true}; break;
+    case 'guardarFestivo':
+      var iff=db.festivos.findIndex(function(x){return x.fecha===p.fecha;});
+      var nf={fecha:p.fecha,nombre:p.nombre,ambito:p.ambito||'Local'};
+      if(iff>=0) db.festivos[iff]=nf; else db.festivos.push(nf);
+      demoAudit(db,yo,'ALTA_FESTIVO',p.fecha+' '+p.nombre); dbSet(db); r={ok:true}; break;
+    case 'importarFestivos':
+      // En la demo no hay red: se siembra el calendario oficial español de ejemplo
+      var oficiales=[['01-01','Año Nuevo','Nacional ES'],['01-06','Reyes','Nacional ES'],
+        ['04-03','Viernes Santo','Nacional ES'],['04-06','Lunes de Pascua','Autonómico'],
+        ['05-01','Fiesta del Trabajo','Nacional ES'],['06-24','San Juan','Autonómico'],
+        ['08-15','Asunción','Nacional ES'],['09-11','Diada de Catalunya','Autonómico'],
+        ['10-12','Fiesta Nacional','Nacional ES'],['11-01','Todos los Santos','Nacional ES'],
+        ['12-06','Constitución','Nacional ES'],['12-08','Inmaculada','Nacional ES'],
+        ['12-25','Navidad','Nacional ES'],['12-26','Sant Esteve','Autonómico']];
+      var n=0;
+      oficiales.forEach(function(o){
+        var f=p.year+'-'+o[0];
+        if(db.festivos.some(function(x){return x.fecha===f;})) return;
+        db.festivos.push({fecha:f,nombre:o[1],ambito:o[2]}); n++;
+      });
+      db.festivos.sort(function(a,b){return a.fecha<b.fecha?-1:1;});
+      demoAudit(db,yo,'IMPORTA_FESTIVOS',p.year+' · '+n); dbSet(db);
+      r={ok:true,importados:n,errores:[]}; break;
+    case 'eliminar':
+      var mapa={centros:'centros',horarios:'horarios',descansos:'descansos',turnos:'turnos',
+                publicaciones:'publicaciones'};
+      if(p.tabla==='empleados'){
+        if(yo && p.id===yo.nombre){ r={ok:false,error:'NO_TE_PUEDES_BORRAR'}; break; }
+        db.empleados.forEach(function(e){ if(e.nombre===p.id){ e.activo='NO'; e.fecha_baja=p.fechaBaja||hoyISO(); } });
+        demoAudit(db,yo,'BAJA_EMPLEADO',p.id); dbSet(db); r={ok:true}; break;
+      }
+      if(p.tabla==='festivos'){ db.festivos=db.festivos.filter(function(x){return x.fecha!==p.id;});
+        demoAudit(db,yo,'ELIMINA_FESTIVOS',p.id); dbSet(db); r={ok:true}; break; }
+      if(p.tabla==='tiposAusencia'){ db.tipos=(db.tipos||TIPOS_AUSENCIA_DEF).filter(function(x){return x.tipo!==p.id;});
+        demoAudit(db,yo,'ELIMINA_TIPO',p.id); dbSet(db); r={ok:true}; break; }
+      if(p.tabla==='horarios' && db.empleados.some(function(e){return e.horario_id===p.id&&e.activo!=='NO';})){
+        r={ok:false,error:'HORARIO_EN_USO'}; break; }
+      if(p.tabla==='centros' && db.centros.length<=1){ r={ok:false,error:'ULTIMO_CENTRO'}; break; }
+      if(!mapa[p.tabla]){ r={ok:false,error:'TABLA_NO_BORRABLE'}; break; }
+      var clave = p.tabla==='horarios'?'horario_id':'id';
+      db[mapa[p.tabla]]=db[mapa[p.tabla]].filter(function(x){return String(x[clave])!==String(p.id);});
+      demoAudit(db,yo,'ELIMINA_'+p.tabla.toUpperCase(),p.id); dbSet(db); r={ok:true}; break;
+    case 'solicitarCorreccion':
+      demoAudit(db,yo,'PIDE_CORRECCION',p.tipo+' — '+p.motivo); dbSet(db);
+      r={ok:true,avisados:1}; break;
+
     /* ── Analytics ── */
     case 'analytics':
       var hrs={},dias={},porK2={};
@@ -2986,6 +2960,12 @@ function demoApiInterno(action,p){
          absentismo:absx,diasAusencia:diasAus,proyectos:prj,porDepartamento:dep,porOficina:ofi}; break;
   }
   return new Promise(function(res){ setTimeout(function(){res(r);},120); });
+}
+function demoNivel(e){
+  var r=String(e&&e.rol||'EMPLEADO').toUpperCase();
+  if(r==='ADMIN'||r==='ADMINISTRADOR'||r==='DIRECCION') return 2;
+  if(r==='MANAGER'||r==='RESPONSABLE') return 1;
+  return 0;
 }
 function demoAudit(db,yo,accion,detalle){
   db.auditoria=db.auditoria||[];
@@ -3068,7 +3048,7 @@ function initLogin(){
   $('lg_logo').innerHTML=logo('grande');
   $('sel_trig').onclick=function(){ this.classList.toggle('open'); $('sel_drop').classList.toggle('open'); $('sel_q').focus(); };
   $('sel_q').oninput=pintarSelect;
-  if(DEMO) $('lg_hint').innerHTML='Modo demo · <b>Admin de pruebas</b> PIN 0000 · <b>Empleado de pruebas</b> PIN 1234'+
+  if(DEMO) $('lg_hint').innerHTML='Modo demo · <b>Admin</b> 0000 · <b>Manager</b> 2222 · <b>Empleado</b> 1234'+
     '<br><span style="font-size:11px">Para probar los dos a la vez, abre el segundo en una ventana de incógnito</span>'+
     '<br><a href="#" onclick="reiniciarDemo();return false" style="color:var(--accent);font-size:11px">Reiniciar datos de la demo</a>';
   api('listaEmpleados').then(function(r){

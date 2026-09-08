@@ -56,7 +56,12 @@ En la hoja **Empleados**, una fila por persona:
 | Alex Sellés | aselles@durancarasso.com | 4821 | EMPLEADO | Comercial | Sitges | STD | 2021-03-01 | 23 | SI |
 | Adrià Pintat | adriapintat@durancarasso.com | 6921 | DIRECCION | Marketing | Barcelona | STD | 2022-01-10 | 23 | SI |
 
-- `rol`: `EMPLEADO` o `DIRECCION` (dirección ve validaciones, incidencias, informes y plantilla).
+- `rol`: `EMPLEADO`, `MANAGER` o `ADMIN`. El manager valida ausencias, corrige
+  incidencias y planifica turnos de su equipo; el administrador además configura
+  la empresa, gestiona la plantilla y ve la auditoría. `DIRECCION` sigue valiendo
+  como sinónimo de `ADMIN` para las fichas ya creadas.
+- `fecha_alta`: obligatoria. De ella salen las vacaciones prorrateadas del primer año.
+- `responsable`: nombre de su manager. A quien le llegan sus solicitudes.
 - `activo`: `SI` / `NO`. Una baja se marca `NO`, nunca se borra la fila.
 - Los PIN solo viven en esta hoja. **Nunca** llegan al navegador.
 
@@ -87,6 +92,8 @@ Desde el móvil: **Compartir → Añadir a pantalla de inicio**. Funciona como u
 | `Tareas` | Imputación de tiempo | App |
 | `Documentos` | Documentos compartidos y su firma | App / manual |
 | `Auditoria` | Accesos, validaciones y correcciones | Automática |
+| `Empresa` | Datos de la empresa, en pares clave/valor | App |
+| `Descansos` | Tipos de pausa: comida, café… | App |
 | `Turnos` | Jornadas asignadas por periodo | App |
 | `Centros` | Geovallas de los centros de trabajo | App |
 | `Compensaciones` | Movimientos de la bolsa de horas | App |

@@ -26,45 +26,31 @@ var HOJAS = {
   horarios:   'Horarios',
   festivos:   'Festivos',
   tareas:     'Tareas',
-  documentos: 'Documentos',
   auditoria:  'Auditoria',
   turnos:        'Turnos',
   centros:       'Centros',
-  compensaciones:'Compensaciones',
-  objetivos:     'Objetivos',
-  evaluaciones:  'Evaluaciones',
-  encuestas:     'Encuestas',
-  respuestas:    'Respuestas',
   publicaciones: 'Publicaciones',
-  vacantes:      'Vacantes',
-  candidatos:    'Candidatos',
-  checklists:    'Checklists',
   tiposAusencia: 'TiposAusencia',
-  intentos:      'Intentos'
+  intentos:      'Intentos',
+  empresa:       'Empresa',
+  descansos:     'Descansos'
 };
 
 var CABECERAS = {
   Empleados:  ['nombre','email','pin','rol','departamento','oficina','horario_id','fecha_alta','vacaciones_anuales','activo','telefono','dni','coste_hora','empresa','responsable','fecha_baja'],
-  Fichajes:   ['id','ts_iso','fecha','hora','trabajador','email','tipo','lat','lng','precision_m','dispositivo','origen','motivo','autor','modalidad','centro','hash_prev','hash'],
+  Fichajes:   ['id','ts_iso','fecha','hora','trabajador','email','tipo','lat','lng','precision_m','dispositivo','origen','motivo','autor','modalidad','centro','descanso','hash_prev','hash'],
   Ausencias:  ['id','ts_solicitud','trabajador','email','tipo','fecha_inicio','fecha_fin','dias','medio_dia','motivo','estado','validador','ts_validacion','comentario','justificante','dias_arrastre'],
-  Horarios:   ['horario_id','nombre','lun','mar','mie','jue','vie','sab','dom','pausa_min','horas_semana'],
+  Horarios:   ['horario_id','nombre','lun','mar','mie','jue','vie','sab','dom','pausa_min','horas_semana','tipo','dias_semana','activo'],
   Festivos:   ['fecha','nombre','ambito'],
   Tareas:     ['id','ts','trabajador','fecha','proyecto','tarea','minutos','nota'],
-  Documentos: ['id','trabajador','tipo','nombre','url','fecha','requiere_firma','firmado_ts'],
   Auditoria:  ['ts','actor','accion','detalle','ip'],
   Turnos:         ['id','trabajador','desde','hasta','horario_id','nota','autor','ts'],
-  Centros:        ['id','nombre','direccion','lat','lng','radio_m','activo'],
-  Compensaciones: ['id','trabajador','fecha','minutos','tipo','nota','autor','ts'],
-  Objetivos:      ['id','trabajador','titulo','descripcion','metrica','meta','actual','periodo','peso','estado','valoracion','comentario','autor','ts'],
-  Evaluaciones:   ['id','campana','trabajador','evaluador','competencia','nota_auto','nota_manager','comentario_auto','comentario_manager','estado','ts'],
-  Encuestas:      ['id','titulo','descripcion','preguntas','desde','hasta','anonima','activa','autor','ts'],
-  Respuestas:     ['id','encuesta_id','trabajador','respuestas','ts'],
+  Centros:        ['id','nombre','direccion','lat','lng','radio_m','pais','region','localidad','activo'],
   Publicaciones:  ['id','ts','autor','categoria','titulo','cuerpo','fijado','destinatarios'],
-  Vacantes:       ['id','titulo','departamento','oficina','descripcion','estado','autor','ts'],
-  Candidatos:     ['id','vacante_id','nombre','email','telefono','fase','valoracion','nota','cv_url','ts'],
-  Checklists:     ['id','trabajador','tipo','tarea','responsable','fecha_limite','hecho_ts','hecho_por','orden'],
   TiposAusencia:  ['tipo','dias_anuales','cuenta_saldo','requiere_justificante','arrastrable','color','activo'],
-  Intentos:       ['ts','nombre','ip','resultado']
+  Intentos:       ['ts','nombre','ip','resultado'],
+  Empresa:        ['clave','valor'],
+  Descansos:      ['id','nombre','minutos','desde','hasta','remunerado','computa','activo']
 };
 
 var TIPOS_FICHAJE = ['ENTRADA','PAUSA_INI','PAUSA_FIN','SALIDA'];
@@ -182,7 +168,9 @@ function router(b) {
   if (!ses.ok) return { ok: false, error: 'SESION_CADUCADA' };
   var emp = buscarEmpleado(ses.nombre);
   if (!emp) return { ok: false, error: 'EMPLEADO_NO_ENCONTRADO' };
-  var esDir = String(emp.rol || '').toUpperCase() === 'DIRECCION';
+  var nivelUsuario = nivel(emp);
+  var esGestor = nivelUsuario >= 1;      // manager o administrador
+  var esDir = nivelUsuario >= 2;         // solo administrador
 
   switch (a) {
     case 'bootstrap':       return bootstrap(emp, esDir);
@@ -195,54 +183,26 @@ function router(b) {
     case 'ausenciasEquipo': return ausenciasEquipo(b);
     case 'imputarTarea':    return imputarTarea(emp, b);
     case 'misTareas':       return misTareas(emp, b);
-    case 'misDocumentos':   return misDocumentos(emp);
-    case 'firmarDocumento': return firmarDocumento(emp, b);
     case 'miPerfil':        return miPerfil(emp);
     case 'actualizarPerfil':return actualizarPerfil(emp, b);
     case 'cambiarPin':      return cambiarPin(emp, b);
-    case 'misObjetivos':    return misObjetivos(emp);
-    case 'avanzarObjetivo': return avanzarObjetivo(emp, b);
-    case 'miEvaluacion':    return miEvaluacion(emp, b);
-    case 'autoevaluar':     return autoevaluar(emp, b);
-    case 'encuestasAbiertas': return encuestasAbiertas(emp);
-    case 'responderEncuesta': return responderEncuesta(emp, b);
     case 'publicaciones':   return publicaciones(emp);
-    case 'miChecklist':     return miChecklist(emp);
-    case 'marcarChecklist': return marcarChecklist(emp, b);
-    case 'miBolsa':         return miBolsa(emp, b);
+    case 'solicitarCorreccion': return solicitarCorreccion(emp, b);
 
     // ── Solo dirección ──
-    case 'validarAusencia': return esDir ? validarAusencia(emp, b) : denegado();
-    case 'corregirFichaje': return esDir ? corregirFichaje(emp, b)  : denegado();
-    case 'informe':         return esDir ? informe(b)               : denegado();
-    case 'incidencias':     return esDir ? incidencias(b)           : denegado();
+    case 'validarAusencia': return esGestor ? validarAusencia(emp, b) : denegado();
+    case 'corregirFichaje': return esGestor ? corregirFichaje(emp, b) : denegado();
+    case 'informe':         return esGestor ? informe(b)            : denegado();
+    case 'incidencias':     return esGestor ? incidencias(b)        : denegado();
     case 'verificarCadena': return esDir ? verificarCadena()        : denegado();
     case 'altaEmpleado':    return esDir ? altaEmpleado(emp, b)     : denegado();
-    case 'subirDocumento':  return esDir ? subirDocumento(emp, b)   : denegado();
-    case 'guardarTurno':    return esDir ? guardarTurno(emp, b)     : denegado();
-    case 'borrarTurno':     return esDir ? borrarTurno(emp, b)      : denegado();
-    case 'turnosEquipo':    return esDir ? turnosEquipo(b)          : denegado();
+    case 'guardarTurno':    return esGestor ? guardarTurno(emp, b)  : denegado();
+    case 'borrarTurno':     return esGestor ? borrarTurno(emp, b)   : denegado();
+    case 'turnosEquipo':    return esGestor ? turnosEquipo(b)       : denegado();
     case 'guardarCentro':   return esDir ? guardarCentro(emp, b)    : denegado();
     case 'centros':         return esDir ? { ok: true, centros: leer(HOJAS.centros) } : denegado();
-    case 'compensar':       return esDir ? compensar(emp, b)        : denegado();
-    case 'bolsaEquipo':     return esDir ? bolsaEquipo(b)           : denegado();
-    case 'guardarObjetivo': return esDir ? guardarObjetivo(emp, b)  : denegado();
-    case 'valorarObjetivo': return esDir ? valorarObjetivo(emp, b)  : denegado();
-    case 'objetivosEquipo': return esDir ? objetivosEquipo(b)       : denegado();
-    case 'lanzarEvaluacion':return esDir ? lanzarEvaluacion(emp, b) : denegado();
-    case 'evaluarManager':  return esDir ? evaluarManager(emp, b)   : denegado();
-    case 'evaluacionesEquipo': return esDir ? evaluacionesEquipo(b) : denegado();
-    case 'guardarEncuesta': return esDir ? guardarEncuesta(emp, b)  : denegado();
-    case 'encuestasTodas':  return esDir ? { ok: true, encuestas: leerEncuestas() } : denegado();
-    case 'resultadosEncuesta': return esDir ? resultadosEncuesta(b) : denegado();
     case 'publicar':        return esDir ? publicar(emp, b)         : denegado();
     case 'borrarPublicacion': return esDir ? borrarPublicacion(emp, b) : denegado();
-    case 'vacantes':        return esDir ? vacantesYcandidatos()    : denegado();
-    case 'guardarVacante':  return esDir ? guardarVacante(emp, b)   : denegado();
-    case 'guardarCandidato':return esDir ? guardarCandidato(emp, b) : denegado();
-    case 'moverCandidato':  return esDir ? moverCandidato(emp, b)   : denegado();
-    case 'checklistEquipo': return esDir ? checklistEquipo(b)       : denegado();
-    case 'crearChecklist':  return esDir ? crearChecklist(emp, b)   : denegado();
     case 'analytics':       return esDir ? analytics(b)             : denegado();
     case 'tokenCalendario': return tokenCalendario(emp, b);
     case 'auditoria':       return esDir ? auditoria(b)           : denegado();
@@ -250,11 +210,37 @@ function router(b) {
     case 'resetPin':        return esDir ? resetPin(emp, b)       : denegado();
     case 'guardarTipoAusencia': return esDir ? guardarTipoAusencia(emp, b) : denegado();
     case 'tiposAusencia':   return { ok: true, tipos: tiposAusencia() };
+    case 'configuracion':   return esDir ? configuracion()             : denegado();
+    case 'guardarEmpresa':  return esDir ? guardarEmpresa(emp, b)      : denegado();
+    case 'guardarHorario':  return esDir ? guardarHorario(emp, b)      : denegado();
+    case 'guardarDescanso': return esDir ? guardarDescanso(emp, b)     : denegado();
+    case 'guardarFestivo':  return esDir ? guardarFestivo(emp, b)      : denegado();
+    case 'importarFestivos':return esDir ? importarFestivos(emp, b)    : denegado();
+    case 'eliminar':        return esDir ? eliminarFila(emp, b)        : denegado();
   }
   return { ok: false, error: 'ACCION_DESCONOCIDA: ' + a };
 }
 
 function denegado() { return { ok: false, error: 'SIN_PERMISOS' }; }
+
+/**
+ * Tres niveles de acceso:
+ *   0 EMPLEADO      ve y gestiona lo suyo
+ *   1 MANAGER       además valida, planifica turnos y ve a su equipo
+ *   2 ADMINISTRADOR además configura la empresa y gestiona la plantilla
+ * DIRECCION se mantiene como sinónimo de ADMIN por las fichas ya creadas.
+ */
+function nivel(emp) {
+  var r = String(emp && emp.rol || 'EMPLEADO').toUpperCase();
+  if (r === 'ADMIN' || r === 'ADMINISTRADOR' || r === 'DIRECCION') return 2;
+  if (r === 'MANAGER' || r === 'RESPONSABLE') return 1;
+  return 0;
+}
+function esEquipoDe(jefe, nombre) {
+  if (nivel(jefe) >= 2) return true;                 // el admin ve a todos
+  var e = buscarEmpleado(nombre);
+  return !!e && String(e.responsable || '').trim() === jefe.nombre;
+}
 
 /**
  * Estado del equipo para el widget del CRM. Devuelve solo nombre y estado,
@@ -385,7 +371,8 @@ function auth(b) {
       nombre: emp.nombre, email: emp.email, rol: emp.rol,
       departamento: emp.departamento, oficina: emp.oficina,
       horario_id: emp.horario_id, vacaciones_anuales: Number(emp.vacaciones_anuales || 0),
-      fecha_alta: emp.fecha_alta ? String(emp.fecha_alta) : ''
+      fecha_alta: emp.fecha_alta ? String(emp.fecha_alta).slice(0, 10) : '',
+      nivel: nivel(emp)
     }
   };
 }
@@ -440,10 +427,15 @@ function bootstrap(emp, esDir) {
     }),
     centros: leer(HOJAS.centros).filter(function (c) { return String(c.activo).toUpperCase() !== 'NO'; })
       .map(function (c) { return { id: c.id, nombre: c.nombre, direccion: c.direccion,
-                                   lat: Number(c.lat), lng: Number(c.lng), radio_m: Number(c.radio_m || 150) }; }),
+                                   lat: Number(c.lat), lng: Number(c.lng), radio_m: Number(c.radio_m || 150),
+                                   localidad: c.localidad || '' }; }),
     turnos: turnosDe(emp.nombre),
     tiposAusencia: tiposAusencia(),
     exigirCentro: exigeCentro(),
+    empresa: datosEmpresa(),
+    descansos: descansos(),
+    nivel: nivel(emp),
+    rol: String(emp.rol || 'EMPLEADO').toUpperCase(),
     esDireccion: esDir,
     servidorHora: new Date().toISOString()
   };
@@ -459,7 +451,7 @@ function ultimoHash() {
   var h = hoja(HOJAS.fichajes);
   var n = h.getLastRow();
   if (n < 2) return 'GENESIS';
-  return String(h.getRange(n, 18).getValue() || 'GENESIS');
+  return String(h.getRange(n, 19).getValue() || 'GENESIS');
 }
 
 function ultimoEstado(nombre) {
@@ -506,7 +498,7 @@ function fichar(emp, b) {
     hoja(HOJAS.fichajes).appendRow([
       id, d.toISOString(), fmtFecha(d), fmtHora(d), emp.nombre, emp.email, tipo,
       b.lat || '', b.lng || '', b.acc || '', b.dispositivo || '', 'APP', '', '',
-      String(b.modalidad || 'OFICINA'), centro ? centro.nombre : '',
+      String(b.modalidad || 'OFICINA'), centro ? centro.nombre : '', String(b.descanso || ''),
       prev, hash
     ]);
 
@@ -533,7 +525,7 @@ function limpiarFichaje(f) {
     id: f.id, ts: String(f.ts_iso), fecha: normFecha(f.fecha), hora: String(f.hora),
     trabajador: f.trabajador, tipo: String(f.tipo).trim(),
     lat: f.lat, lng: f.lng, origen: f.origen, motivo: f.motivo, autor: f.autor,
-    modalidad: f.modalidad || 'OFICINA', centro: f.centro || ''
+    modalidad: f.modalidad || 'OFICINA', centro: f.centro || '', descanso: f.descanso || ''
   };
 }
 
@@ -556,6 +548,40 @@ function distanciaM(la1, lo1, la2, lo2) {
   var a = Math.sin(dLa / 2) * Math.sin(dLa / 2) +
           Math.cos(la1 * rad) * Math.cos(la2 * rad) * Math.sin(dLo / 2) * Math.sin(dLo / 2);
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * Petición de corrección de un fichaje. No toca el registro: avisa a quien
+ * lleva el control horario para que la aplique con su motivo y su autor.
+ */
+function solicitarCorreccion(emp, b) {
+  var motivo = String(b.motivo || '').trim();
+  var ts = String(b.ts || '');
+  var tipo = String(b.tipo || '').toUpperCase();
+  if (!motivo || !ts || TIPOS_FICHAJE.indexOf(tipo) < 0) return { ok: false, error: 'DATOS_INCOMPLETOS' };
+
+  var d = new Date(ts);
+  if (isNaN(d.getTime())) return { ok: false, error: 'FECHA_INVALIDA' };
+
+  var etiqueta = { ENTRADA: 'entrada', SALIDA: 'salida',
+                   PAUSA_INI: 'inicio de pausa', PAUSA_FIN: 'fin de pausa' }[tipo];
+  var cuando = Utilities.formatDate(d, TZ, 'dd/MM/yyyy HH:mm');
+
+  var destinos = [datosEmpresa().email_correcciones].filter(Boolean);
+  if (emp.responsable) {
+    var jefe = buscarEmpleado(emp.responsable);
+    if (jefe && jefe.email) destinos.push(String(jefe.email));
+  }
+
+  enviar(destinos, 'Corrección de fichaje · ' + emp.nombre,
+    '<b>' + emp.nombre + '</b> pide corregir un fichaje:<br><br>' +
+    'Tipo: <b>' + etiqueta + '</b><br>Hora correcta: <b>' + cuando + '</b><br>' +
+    'Motivo: ' + motivo + '<br><br>' +
+    'Aplícala desde <b>Incidencias → Corregir</b>. Quedará registrada con tu nombre y el motivo, ' +
+    'sin borrar el fichaje original.');
+
+  auditar(emp.nombre, 'PIDE_CORRECCION', tipo + ' ' + cuando + ' — ' + motivo);
+  return { ok: true, avisados: destinos.length };
 }
 
 function estadoEquipo() {
@@ -598,7 +624,7 @@ function corregirFichaje(dir, b) {
 
   hoja(HOJAS.fichajes).appendRow([
     id, d.toISOString(), fmtFecha(d), fmtHora(d), trabajador, emp ? emp.email : '', tipo,
-    '', '', '', '', 'CORRECCION', motivo, dir.nombre, '', '', prev, hash
+    '', '', '', '', 'CORRECCION', motivo, dir.nombre, '', '', '', prev, hash
   ]);
   auditar(dir.nombre, 'CORRECCION_FICHAJE', trabajador + ' ' + tipo + ' ' + d.toISOString() + ' — ' + motivo);
   return { ok: true, id: id };
@@ -969,43 +995,6 @@ function misTareas(emp, b) {
   return { ok: true, tareas: filas };
 }
 
-// ── DOCUMENTOS ───────────────────────────────────────────────────────────────
-function misDocumentos(emp) {
-  var filas = leer(HOJAS.documentos).filter(function (d) {
-    var t = String(d.trabajador).trim();
-    return t === emp.nombre || t === '*' || t === 'TODOS';
-  }).map(function (d) {
-    return { id: d.id, tipo: d.tipo, nombre: d.nombre, url: d.url, fecha: normFecha(d.fecha),
-             requiereFirma: String(d.requiere_firma).toUpperCase() === 'SI',
-             firmado: d.firmado_ts ? String(d.firmado_ts) : '' };
-  });
-  return { ok: true, documentos: filas };
-}
-
-function firmarDocumento(emp, b) {
-  var id = String(b.id || '');
-  var filas = leer(HOJAS.documentos);
-  for (var i = 0; i < filas.length; i++) {
-    if (String(filas[i].id) !== id) continue;
-    var t = String(filas[i].trabajador).trim();
-    if (t !== emp.nombre && t !== '*' && t !== 'TODOS') return denegado();
-    hoja(HOJAS.documentos).getRange(filas[i]._fila, 8).setValue(new Date().toISOString());
-    auditar(emp.nombre, 'FIRMA_DOCUMENTO', id);
-    return { ok: true };
-  }
-  return { ok: false, error: 'NO_ENCONTRADO' };
-}
-
-function subirDocumento(dir, b) {
-  var id = uid('D');
-  hoja(HOJAS.documentos).appendRow([
-    id, String(b.trabajador || '*'), String(b.tipo || 'General'), String(b.nombre || ''),
-    String(b.url || ''), fmtFecha(ahora()), b.requiereFirma ? 'SI' : 'NO', ''
-  ]);
-  auditar(dir.nombre, 'ALTA_DOCUMENTO', id + ' → ' + b.trabajador);
-  return { ok: true, id: id };
-}
-
 // ── DIRECCIÓN: informes e incidencias ────────────────────────────────────────
 function informe(b) {
   var desde = String(b.desde || '1900-01-01'), hasta = String(b.hasta || '2999-12-31');
@@ -1126,6 +1115,253 @@ function guardarTipoAusencia(dir, b) {
   return { ok: true };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONFIGURACIÓN
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+var EMPRESA_POR_DEFECTO = {
+  nombre: 'Durán Carasso', razon_social: '', cif: '',
+  logo_url: '', moneda: 'EUR', industria: 'Inmobiliaria',
+  convenio: 'Oficinas y despachos de Cataluña',
+  horario_defecto: 'STD', dias_vacaciones: '23', dominio_email: 'durancarasso.com',
+  email_correcciones: 'mabad@durancarasso.com'
+};
+
+function datosEmpresa() {
+  var filas = leer(HOJAS.empresa);
+  if (!filas.length) {
+    var h = hoja(HOJAS.empresa);
+    Object.keys(EMPRESA_POR_DEFECTO).forEach(function (k) { h.appendRow([k, EMPRESA_POR_DEFECTO[k]]); });
+    filas = leer(HOJAS.empresa);
+  }
+  var out = {};
+  Object.keys(EMPRESA_POR_DEFECTO).forEach(function (k) { out[k] = EMPRESA_POR_DEFECTO[k]; });
+  filas.forEach(function (f) { out[String(f.clave).trim()] = String(f.valor); });
+  return out;
+}
+
+function guardarEmpresa(dir, b) {
+  var datos = b.datos || {};
+  var h = hoja(HOJAS.empresa);
+  var filas = leer(HOJAS.empresa);
+  var indice = {};
+  filas.forEach(function (f) { indice[String(f.clave).trim()] = f._fila; });
+  var cambios = [];
+  Object.keys(datos).forEach(function (k) {
+    var v = String(datos[k]);
+    if (indice[k]) {
+      if (String(h.getRange(indice[k], 2).getValue()) === v) return;
+      h.getRange(indice[k], 2).setValue(v);
+    } else h.appendRow([k, v]);
+    cambios.push(k);
+  });
+  if (cambios.length) auditar(dir.nombre, 'CONFIG_EMPRESA', cambios.join(', '));
+  return { ok: true, cambios: cambios.length };
+}
+
+/* ── Descansos ───────────────────────────────────────────────────────────── */
+var DESCANSOS_POR_DEFECTO = [
+  ['D-COM', 'Comida',   60, '14:00', '15:00', 'NO', 'NO', 'SI'],
+  ['D-CAF', 'Café',     15, '',      '',      'SI', 'SI', 'SI'],
+  ['D-PER', 'Personal', 0,  '',      '',      'NO', 'NO', 'SI']
+];
+
+function descansos() {
+  var filas = leer(HOJAS.descansos);
+  if (!filas.length) {
+    hoja(HOJAS.descansos).getRange(2, 1, DESCANSOS_POR_DEFECTO.length, 8).setValues(DESCANSOS_POR_DEFECTO);
+    filas = leer(HOJAS.descansos);
+  }
+  return filas.filter(function (d) { return String(d.activo).toUpperCase() !== 'NO'; })
+    .map(function (d) {
+      return { id: d.id, nombre: d.nombre, minutos: Number(d.minutos || 0),
+               desde: d.desde || '', hasta: d.hasta || '',
+               remunerado: String(d.remunerado).toUpperCase() === 'SI',
+               computa: String(d.computa).toUpperCase() === 'SI' };
+    });
+}
+
+function guardarDescanso(dir, b) {
+  if (!b.nombre) return { ok: false, error: 'DATOS_INCOMPLETOS' };
+  var fila = [String(b.id || uid('D')), String(b.nombre), Number(b.minutos || 0),
+              String(b.desde || ''), String(b.hasta || ''),
+              b.remunerado ? 'SI' : 'NO', b.computa ? 'SI' : 'NO', 'SI'];
+  var filas = leer(HOJAS.descansos);
+  for (var i = 0; i < filas.length; i++) {
+    if (String(filas[i].id) !== String(b.id)) continue;
+    hoja(HOJAS.descansos).getRange(filas[i]._fila, 1, 1, 8).setValues([fila]);
+    auditar(dir.nombre, 'CONFIG_DESCANSO', String(b.nombre));
+    return { ok: true, id: fila[0] };
+  }
+  hoja(HOJAS.descansos).appendRow(fila);
+  auditar(dir.nombre, 'ALTA_DESCANSO', String(b.nombre));
+  return { ok: true, id: fila[0] };
+}
+
+/* ── Horarios ────────────────────────────────────────────────────────────── */
+function guardarHorario(dir, b) {
+  if (!b.horario_id || !b.nombre) return { ok: false, error: 'DATOS_INCOMPLETOS' };
+  var dias = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'];
+  var trabajados = dias.filter(function (d) { return String(b[d] || '').indexOf('-') > 0; });
+  var minutos = trabajados.reduce(function (a, d) {
+    var p = String(b[d]).split('-'), x = p[0].split(':'), y = p[1].split(':');
+    return a + (+y[0] * 60 + +y[1]) - (+x[0] * 60 + +x[1]);
+  }, 0) - trabajados.length * Number(b.pausa_min || 0);
+
+  var fila = [String(b.horario_id), String(b.nombre)]
+    .concat(dias.map(function (d) { return String(b[d] || ''); }))
+    .concat([Number(b.pausa_min || 0), Math.round(minutos / 60 * 10) / 10,
+             String(b.tipo || 'Fijo'), trabajados.length, 'SI']);
+
+  var filas = leer(HOJAS.horarios);
+  for (var i = 0; i < filas.length; i++) {
+    if (String(filas[i].horario_id) !== String(b.horario_id)) continue;
+    hoja(HOJAS.horarios).getRange(filas[i]._fila, 1, 1, fila.length).setValues([fila]);
+    auditar(dir.nombre, 'CONFIG_HORARIO', String(b.nombre));
+    return { ok: true };
+  }
+  hoja(HOJAS.horarios).appendRow(fila);
+  auditar(dir.nombre, 'ALTA_HORARIO', String(b.nombre));
+  return { ok: true };
+}
+
+/* ── Festivos ────────────────────────────────────────────────────────────── */
+function guardarFestivo(dir, b) {
+  if (!b.fecha || !b.nombre) return { ok: false, error: 'DATOS_INCOMPLETOS' };
+  var filas = leer(HOJAS.festivos);
+  for (var i = 0; i < filas.length; i++) {
+    if (normFecha(filas[i].fecha) !== String(b.fecha).slice(0, 10)) continue;
+    hoja(HOJAS.festivos).getRange(filas[i]._fila, 1, 1, 3)
+      .setValues([[String(b.fecha).slice(0, 10), String(b.nombre), String(b.ambito || 'Local')]]);
+    return { ok: true };
+  }
+  hoja(HOJAS.festivos).appendRow([String(b.fecha).slice(0, 10), String(b.nombre), String(b.ambito || 'Local')]);
+  auditar(dir.nombre, 'ALTA_FESTIVO', b.fecha + ' ' + b.nombre);
+  return { ok: true };
+}
+
+/**
+ * Trae los festivos oficiales del año para los países y regiones donde hay
+ * centros, usando date.nager.at (abierto, sin clave). Los locales de cada
+ * municipio no están en ningún registro público fiable: esos se añaden a mano.
+ */
+function importarFestivos(dir, b) {
+  var year = Number(b.year || new Date().getFullYear());
+  var centros = leer(HOJAS.centros).filter(function (c) { return String(c.activo).toUpperCase() !== 'NO'; });
+  if (!centros.length) return { ok: false, error: 'SIN_CENTROS' };
+
+  var paises = {};
+  centros.forEach(function (c) {
+    var p = String(c.pais || 'ES').toUpperCase().trim();
+    (paises[p] = paises[p] || {})[String(c.region || '').toUpperCase().trim()] = true;
+  });
+
+  var existentes = {};
+  leer(HOJAS.festivos).forEach(function (f) { existentes[normFecha(f.fecha)] = true; });
+
+  var nuevos = [], errores = [];
+  Object.keys(paises).forEach(function (pais) {
+    try {
+      var res = UrlFetchApp.fetch('https://date.nager.at/api/v3/PublicHolidays/' + year + '/' + pais,
+                                  { muteHttpExceptions: true });
+      if (res.getResponseCode() !== 200) { errores.push(pais + ': HTTP ' + res.getResponseCode()); return; }
+      JSON.parse(res.getContentText()).forEach(function (f) {
+        var regiones = Object.keys(paises[pais]);
+        var aplica = f.global || !f.counties ||
+          f.counties.some(function (c) { return regiones.indexOf(String(c).toUpperCase()) >= 0; });
+        if (!aplica || existentes[f.date]) return;
+        existentes[f.date] = true;
+        nuevos.push([f.date, f.localName || f.name, f.global ? 'Nacional ' + pais : 'Autonómico']);
+      });
+    } catch (e) { errores.push(pais + ': ' + e.message); }
+  });
+
+  if (nuevos.length) {
+    nuevos.sort();
+    hoja(HOJAS.festivos).getRange(hoja(HOJAS.festivos).getLastRow() + 1, 1, nuevos.length, 3).setValues(nuevos);
+    auditar(dir.nombre, 'IMPORTA_FESTIVOS', year + ' · ' + nuevos.length + ' festivos');
+  }
+  return { ok: true, importados: nuevos.length, errores: errores,
+           aviso: 'Los festivos locales de cada municipio hay que añadirlos a mano.' };
+}
+
+/* ── Borrado genérico con trazabilidad ───────────────────────────────────── */
+var BORRABLES = {
+  centros:       { hoja: 'Centros',       clave: 'id' },
+  horarios:      { hoja: 'Horarios',      clave: 'horario_id' },
+  descansos:     { hoja: 'Descansos',     clave: 'id' },
+  festivos:      { hoja: 'Festivos',      clave: 'fecha' },
+  tiposAusencia: { hoja: 'TiposAusencia', clave: 'tipo' },
+  turnos:        { hoja: 'Turnos',        clave: 'id' },
+  publicaciones: { hoja: 'Publicaciones', clave: 'id' }
+};
+
+/**
+ * Borra una fila de una tabla de configuración. Las personas nunca se borran:
+ * se marcan de baja para no romper el histórico de fichajes ni las ausencias.
+ */
+function eliminarFila(dir, b) {
+  if (String(b.tabla) === 'empleados') return darDeBaja(dir, b);
+  var def = BORRABLES[String(b.tabla)];
+  if (!def) return { ok: false, error: 'TABLA_NO_BORRABLE' };
+  if (def.hoja === 'Centros' && leer(HOJAS.centros).length <= 1) {
+    return { ok: false, error: 'ULTIMO_CENTRO' };
+  }
+  var filas = leer(def.hoja);
+  for (var i = 0; i < filas.length; i++) {
+    if (String(filas[i][def.clave]).trim() !== String(b.id).trim() &&
+        normFecha(filas[i][def.clave]) !== String(b.id).slice(0, 10)) continue;
+    if (def.hoja === 'Horarios' && enUso(String(b.id))) return { ok: false, error: 'HORARIO_EN_USO' };
+    hoja(def.hoja).deleteRow(filas[i]._fila);
+    auditar(dir.nombre, 'ELIMINA_' + def.hoja.toUpperCase(), String(b.id));
+    return { ok: true };
+  }
+  return { ok: false, error: 'NO_ENCONTRADO' };
+}
+
+function enUso(horarioId) {
+  return leer(HOJAS.empleados).some(function (e) {
+    return String(e.horario_id).trim() === horarioId && String(e.activo).toUpperCase() !== 'NO';
+  });
+}
+
+function darDeBaja(dir, b) {
+  var emp = buscarEmpleado(b.id || b.nombre);
+  if (!emp) return { ok: false, error: 'NO_ENCONTRADO' };
+  if (emp.nombre === dir.nombre) return { ok: false, error: 'NO_TE_PUEDES_BORRAR' };
+  var h = hoja(HOJAS.empleados);
+  var cols = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0].map(String);
+  h.getRange(emp._fila, cols.indexOf('activo') + 1).setValue('NO');
+  var colBaja = cols.indexOf('fecha_baja') + 1;
+  if (colBaja > 0 && !h.getRange(emp._fila, colBaja).getValue()) {
+    h.getRange(emp._fila, colBaja).setValue(String(b.fechaBaja || fmtFecha(ahora())));
+  }
+  auditar(dir.nombre, 'BAJA_EMPLEADO', emp.nombre);
+  return { ok: true, baja: true };
+}
+
+function configuracion() {
+  return { ok: true,
+    empresa: datosEmpresa(),
+    centros: leer(HOJAS.centros),
+    horarios: leer(HOJAS.horarios),
+    descansos: leer(HOJAS.descansos),
+    festivos: leer(HOJAS.festivos).map(function (f) {
+      return { fecha: normFecha(f.fecha), nombre: f.nombre, ambito: f.ambito };
+    }),
+    tipos: tiposAusencia(),
+    roles: [
+      { rol: 'EMPLEADO', nombre: 'Empleado',       descripcion: 'Ficha, pide ausencias y consulta lo suyo.' },
+      { rol: 'MANAGER',  nombre: 'Manager',        descripcion: 'Además valida ausencias, corrige incidencias y planifica turnos de su equipo.' },
+      { rol: 'ADMIN',    nombre: 'Administrador',  descripcion: 'Además configura la empresa, gestiona la plantilla y ve la auditoría.' }
+    ],
+    personas: leer(HOJAS.empleados).map(function (e) {
+      return { nombre: e.nombre, rol: String(e.rol || 'EMPLEADO').toUpperCase(),
+               activo: String(e.activo).toUpperCase() !== 'NO' };
+    })
+  };
+}
+
 // ── SETUP INICIAL ────────────────────────────────────────────────────────────
 /**
  * Ejecutar UNA VEZ desde el editor de Apps Script (Ejecutar → setupInicial).
@@ -1141,6 +1377,8 @@ function setupInicial() {
     hHor.appendRow(['STD', 'Jornada estándar', '09:00-18:00', '09:00-18:00', '09:00-18:00', '09:00-18:00', '09:00-15:00', '', '', 60, 40]);
     hHor.appendRow(['INT', 'Jornada intensiva', '08:00-15:00', '08:00-15:00', '08:00-15:00', '08:00-15:00', '08:00-15:00', '', '', 30, 35]);
   }
+  datosEmpresa();   // siembra la ficha de empresa
+  descansos();      // y los tipos de descanso
   var props = PropertiesService.getScriptProperties();
   if (!props.getProperty('SECRET'))  props.setProperty('SECRET', Utilities.getUuid() + Utilities.getUuid());
   if (!props.getProperty('API_KEY')) props.setProperty('API_KEY', Utilities.getUuid());
@@ -1150,9 +1388,9 @@ function setupInicial() {
 
   var hCen = hoja(HOJAS.centros);
   if (hCen.getLastRow() < 2) {
-    hCen.appendRow(['CT-BCN', 'Barcelona', 'Av. Diagonal, Barcelona', 41.3947, 2.1503, 150, 'SI']);
-    hCen.appendRow(['CT-SIT', 'Sitges',    'Sitges',                  41.2371, 1.8055, 150, 'SI']);
-    hCen.appendRow(['CT-AND', 'Andorra',   'Andorra la Vella',        42.5063, 1.5218, 150, 'SI']);
+    hCen.appendRow(['CT-BCN', 'Barcelona', 'Av. Diagonal, Barcelona', 41.3947, 2.1503, 150, 'ES', 'ES-CT', 'Barcelona', 'SI']);
+    hCen.appendRow(['CT-SIT', 'Sitges',    'Sitges',                  41.2371, 1.8055, 150, 'ES', 'ES-CT', 'Sitges',    'SI']);
+    hCen.appendRow(['CT-AND', 'Andorra',   'Andorra la Vella',        42.5063, 1.5218, 150, 'AD', '',      'Andorra la Vella', 'SI']);
   }
   return 'Hojas creadas. Rellena Empleados, revisa Centros y despliega como Aplicación web.';
 }
@@ -1246,266 +1484,20 @@ function guardarCentro(dir, b) {
     for (var i = 0; i < filas.length; i++) {
       if (String(filas[i].id) !== String(b.id)) continue;
       var h = hoja(HOJAS.centros);
-      h.getRange(filas[i]._fila, 2, 1, 6).setValues([[String(b.nombre), String(b.direccion || ''),
-        Number(b.lat), Number(b.lng), Number(b.radio_m || 150), b.activo === false ? 'NO' : 'SI']]);
+      h.getRange(filas[i]._fila, 2, 1, 9).setValues([[String(b.nombre), String(b.direccion || ''),
+        Number(b.lat), Number(b.lng), Number(b.radio_m || 150),
+        String(b.pais || 'ES').toUpperCase(), String(b.region || '').toUpperCase(),
+        String(b.localidad || ''), b.activo === false ? 'NO' : 'SI']]);
       return { ok: true, id: b.id };
     }
   }
   var id = uid('CT');
   hoja(HOJAS.centros).appendRow([id, String(b.nombre), String(b.direccion || ''),
-    Number(b.lat), Number(b.lng), Number(b.radio_m || 150), 'SI']);
+    Number(b.lat), Number(b.lng), Number(b.radio_m || 150),
+    String(b.pais || 'ES').toUpperCase(), String(b.region || '').toUpperCase(),
+    String(b.localidad || ''), 'SI']);
   auditar(dir.nombre, 'ALTA_CENTRO', String(b.nombre));
   return { ok: true, id: id };
-}
-
-// ── BOLSA DE HORAS Y COMPENSACIONES ──────────────────────────────────────────
-function compensar(dir, b) {
-  var minutos = Number(b.minutos || 0);
-  if (!b.trabajador || !minutos) return { ok: false, error: 'DATOS_INCOMPLETOS' };
-  var tipo = String(b.tipo || 'DIA_LIBRE').toUpperCase(); // DIA_LIBRE | ECONOMICA | AJUSTE
-  var id = uid('CO');
-  hoja(HOJAS.compensaciones).appendRow([id, String(b.trabajador), String(b.fecha || fmtFecha(ahora())),
-    minutos, tipo, String(b.nota || ''), dir.nombre, new Date().toISOString()]);
-  auditar(dir.nombre, 'COMPENSA_HORAS', b.trabajador + ' ' + minutos + 'min ' + tipo);
-  return { ok: true, id: id };
-}
-
-function compensacionesDe(nombre, year) {
-  return leer(HOJAS.compensaciones).filter(function (c) {
-    return String(c.trabajador).trim() === nombre &&
-           (!year || normFecha(c.fecha).slice(0, 4) === String(year));
-  }).map(function (c) {
-    return { id: c.id, fecha: normFecha(c.fecha), minutos: Number(c.minutos || 0),
-             tipo: String(c.tipo).toUpperCase(), nota: c.nota, autor: c.autor };
-  });
-}
-
-function miBolsa(emp, b) {
-  var year = String(b.year || new Date().getFullYear());
-  return { ok: true, compensaciones: compensacionesDe(emp.nombre, year) };
-}
-
-function bolsaEquipo(b) {
-  var year = String(b.year || new Date().getFullYear());
-  var out = {};
-  leer(HOJAS.compensaciones).forEach(function (c) {
-    if (normFecha(c.fecha).slice(0, 4) !== year) return;
-    var k = String(c.trabajador).trim();
-    out[k] = (out[k] || 0) + Number(c.minutos || 0);
-  });
-  return { ok: true, compensado: out,
-           detalle: leer(HOJAS.compensaciones).filter(function (c) {
-             return normFecha(c.fecha).slice(0, 4) === year;
-           }).map(function (c) {
-             return { id: c.id, trabajador: c.trabajador, fecha: normFecha(c.fecha),
-                      minutos: Number(c.minutos || 0), tipo: c.tipo, nota: c.nota };
-           }) };
-}
-
-// ── OBJETIVOS ────────────────────────────────────────────────────────────────
-function limpiarObjetivo(o) {
-  return { id: o.id, trabajador: o.trabajador, titulo: o.titulo, descripcion: o.descripcion,
-           metrica: o.metrica, meta: Number(o.meta || 0), actual: Number(o.actual || 0),
-           periodo: o.periodo, peso: Number(o.peso || 0), estado: String(o.estado).toUpperCase(),
-           valoracion: o.valoracion === '' ? null : Number(o.valoracion),
-           comentario: o.comentario, autor: o.autor };
-}
-
-function misObjetivos(emp) {
-  return { ok: true, objetivos: leer(HOJAS.objetivos)
-    .filter(function (o) { return String(o.trabajador).trim() === emp.nombre; })
-    .map(limpiarObjetivo) };
-}
-
-function avanzarObjetivo(emp, b) {
-  var filas = leer(HOJAS.objetivos);
-  for (var i = 0; i < filas.length; i++) {
-    if (String(filas[i].id) !== String(b.id)) continue;
-    if (String(filas[i].trabajador).trim() !== emp.nombre) return denegado();
-    hoja(HOJAS.objetivos).getRange(filas[i]._fila, 7).setValue(Number(b.actual || 0));
-    return { ok: true };
-  }
-  return { ok: false, error: 'NO_ENCONTRADO' };
-}
-
-function guardarObjetivo(dir, b) {
-  if (!b.trabajador || !b.titulo) return { ok: false, error: 'DATOS_INCOMPLETOS' };
-  var id = uid('OB');
-  hoja(HOJAS.objetivos).appendRow([id, String(b.trabajador), String(b.titulo), String(b.descripcion || ''),
-    String(b.metrica || ''), Number(b.meta || 0), Number(b.actual || 0),
-    String(b.periodo || new Date().getFullYear()), Number(b.peso || 0), 'ACTIVO', '', '',
-    dir.nombre, new Date().toISOString()]);
-  auditar(dir.nombre, 'ALTA_OBJETIVO', b.trabajador + ' — ' + b.titulo);
-  return { ok: true, id: id };
-}
-
-function valorarObjetivo(dir, b) {
-  var filas = leer(HOJAS.objetivos);
-  for (var i = 0; i < filas.length; i++) {
-    if (String(filas[i].id) !== String(b.id)) continue;
-    var h = hoja(HOJAS.objetivos);
-    h.getRange(filas[i]._fila, 10).setValue('CERRADO');
-    h.getRange(filas[i]._fila, 11).setValue(Number(b.valoracion || 0));
-    h.getRange(filas[i]._fila, 12).setValue(String(b.comentario || ''));
-    auditar(dir.nombre, 'VALORA_OBJETIVO', String(b.id));
-    return { ok: true };
-  }
-  return { ok: false, error: 'NO_ENCONTRADO' };
-}
-
-function objetivosEquipo(b) {
-  var filas = leer(HOJAS.objetivos).map(limpiarObjetivo);
-  if (b.periodo) filas = filas.filter(function (o) { return String(o.periodo) === String(b.periodo); });
-  return { ok: true, objetivos: filas };
-}
-
-// ── EVALUACIÓN DE DESEMPEÑO ──────────────────────────────────────────────────
-var COMPETENCIAS = ['Orientación a resultados', 'Trato con el cliente', 'Trabajo en equipo',
-                    'Autonomía e iniciativa', 'Conocimiento del producto', 'Comunicación'];
-
-function lanzarEvaluacion(dir, b) {
-  var campana = String(b.campana || '').trim();
-  var personas = b.trabajadores || [];
-  var comps = (b.competencias && b.competencias.length) ? b.competencias : COMPETENCIAS;
-  if (!campana || !personas.length) return { ok: false, error: 'DATOS_INCOMPLETOS' };
-
-  var existentes = {};
-  leer(HOJAS.evaluaciones).forEach(function (e) {
-    existentes[String(e.campana) + '|' + String(e.trabajador) + '|' + String(e.competencia)] = true;
-  });
-
-  var filas = [];
-  personas.forEach(function (p) {
-    var emp = buscarEmpleado(p);
-    comps.forEach(function (c) {
-      if (existentes[campana + '|' + p + '|' + c]) return;
-      filas.push([uid('EV'), campana, p, (emp && emp.responsable) || dir.nombre, c,
-                  '', '', '', '', 'PENDIENTE', new Date().toISOString()]);
-    });
-  });
-  if (!filas.length) return { ok: false, error: 'YA_LANZADA' };
-  hoja(HOJAS.evaluaciones).getRange(hoja(HOJAS.evaluaciones).getLastRow() + 1, 1, filas.length, 11).setValues(filas);
-  auditar(dir.nombre, 'LANZA_EVALUACION', campana + ' · ' + personas.length + ' personas');
-  return { ok: true, creadas: filas.length };
-}
-
-function limpiarEvaluacion(e) {
-  return { id: e.id, campana: e.campana, trabajador: e.trabajador, evaluador: e.evaluador,
-           competencia: e.competencia,
-           notaAuto: e.nota_auto === '' ? null : Number(e.nota_auto),
-           notaManager: e.nota_manager === '' ? null : Number(e.nota_manager),
-           comentarioAuto: e.comentario_auto, comentarioManager: e.comentario_manager,
-           estado: String(e.estado).toUpperCase() };
-}
-
-function miEvaluacion(emp, b) {
-  var filas = leer(HOJAS.evaluaciones).filter(function (e) {
-    return String(e.trabajador).trim() === emp.nombre &&
-           (!b.campana || String(e.campana) === String(b.campana));
-  }).map(limpiarEvaluacion);
-  return { ok: true, evaluacion: filas };
-}
-
-function autoevaluar(emp, b) {
-  var notas = b.notas || {};       // { id: {nota, comentario} }
-  var filas = leer(HOJAS.evaluaciones);
-  var h = hoja(HOJAS.evaluaciones), n = 0;
-  filas.forEach(function (e) {
-    var v = notas[String(e.id)];
-    if (!v || String(e.trabajador).trim() !== emp.nombre) return;
-    h.getRange(e._fila, 6).setValue(Number(v.nota));
-    h.getRange(e._fila, 8).setValue(String(v.comentario || ''));
-    if (String(e.estado).toUpperCase() === 'PENDIENTE') h.getRange(e._fila, 10).setValue('AUTOEVALUADA');
-    n++;
-  });
-  auditar(emp.nombre, 'AUTOEVALUACION', n + ' competencias');
-  return { ok: true, guardadas: n };
-}
-
-function evaluarManager(dir, b) {
-  var notas = b.notas || {};
-  var filas = leer(HOJAS.evaluaciones);
-  var h = hoja(HOJAS.evaluaciones), n = 0;
-  filas.forEach(function (e) {
-    var v = notas[String(e.id)];
-    if (!v) return;
-    h.getRange(e._fila, 7).setValue(Number(v.nota));
-    h.getRange(e._fila, 9).setValue(String(v.comentario || ''));
-    h.getRange(e._fila, 10).setValue('CERRADA');
-    n++;
-  });
-  auditar(dir.nombre, 'EVALUA_MANAGER', n + ' competencias');
-  return { ok: true, guardadas: n };
-}
-
-function evaluacionesEquipo(b) {
-  var filas = leer(HOJAS.evaluaciones).filter(function (e) {
-    return !b.campana || String(e.campana) === String(b.campana);
-  }).map(limpiarEvaluacion);
-  var campanas = {};
-  leer(HOJAS.evaluaciones).forEach(function (e) { campanas[String(e.campana)] = true; });
-  return { ok: true, evaluaciones: filas, campanas: Object.keys(campanas), competencias: COMPETENCIAS };
-}
-
-// ── ENCUESTAS DE CLIMA ───────────────────────────────────────────────────────
-function leerEncuestas() {
-  return leer(HOJAS.encuestas).map(function (e) {
-    var preguntas = [];
-    try { preguntas = JSON.parse(e.preguntas || '[]'); } catch (err) {}
-    return { id: e.id, titulo: e.titulo, descripcion: e.descripcion, preguntas: preguntas,
-             desde: normFecha(e.desde), hasta: normFecha(e.hasta),
-             anonima: String(e.anonima).toUpperCase() === 'SI',
-             activa: String(e.activa).toUpperCase() !== 'NO' };
-  });
-}
-
-function guardarEncuesta(dir, b) {
-  if (!b.titulo || !b.preguntas || !b.preguntas.length) return { ok: false, error: 'DATOS_INCOMPLETOS' };
-  var id = uid('EN');
-  hoja(HOJAS.encuestas).appendRow([id, String(b.titulo), String(b.descripcion || ''),
-    JSON.stringify(b.preguntas), String(b.desde || fmtFecha(ahora())),
-    String(b.hasta || ''), b.anonima === false ? 'NO' : 'SI', 'SI', dir.nombre, new Date().toISOString()]);
-  auditar(dir.nombre, 'ALTA_ENCUESTA', String(b.titulo));
-  return { ok: true, id: id };
-}
-
-function encuestasAbiertas(emp) {
-  var hoy = fmtFecha(ahora());
-  var respondidas = {};
-  leer(HOJAS.respuestas).forEach(function (r) {
-    if (String(r.trabajador).trim() === emp.nombre) respondidas[String(r.encuesta_id)] = true;
-  });
-  var abiertas = leerEncuestas().filter(function (e) {
-    return e.activa && (!e.hasta || e.hasta >= hoy) && (!e.desde || e.desde <= hoy);
-  }).map(function (e) { e.respondida = !!respondidas[e.id]; return e; });
-  return { ok: true, encuestas: abiertas };
-}
-
-function responderEncuesta(emp, b) {
-  var enc = leerEncuestas().filter(function (e) { return e.id === String(b.id); })[0];
-  if (!enc) return { ok: false, error: 'NO_ENCONTRADA' };
-  var yaRespondio = leer(HOJAS.respuestas).some(function (r) {
-    return String(r.encuesta_id) === String(b.id) && String(r.trabajador).trim() === emp.nombre;
-  });
-  if (yaRespondio) return { ok: false, error: 'YA_RESPONDIDA' };
-
-  // La trazabilidad de "quién respondió" se guarda para no repetir; el contenido va
-  // en una fila separada sin nombre cuando la encuesta es anónima.
-  hoja(HOJAS.respuestas).appendRow([uid('RE'), String(b.id), emp.nombre, '', new Date().toISOString()]);
-  hoja(HOJAS.respuestas).appendRow([uid('RE'), String(b.id), enc.anonima ? 'ANONIMO' : emp.nombre,
-    JSON.stringify(b.respuestas || []), new Date().toISOString()]);
-  return { ok: true };
-}
-
-function resultadosEncuesta(b) {
-  var enc = leerEncuestas().filter(function (e) { return e.id === String(b.id); })[0];
-  if (!enc) return { ok: false, error: 'NO_ENCONTRADA' };
-  var respuestas = [];
-  leer(HOJAS.respuestas).forEach(function (r) {
-    if (String(r.encuesta_id) !== String(b.id) || !r.respuestas) return;
-    try { respuestas.push(JSON.parse(r.respuestas)); } catch (e) {}
-  });
-  return { ok: true, encuesta: enc, respuestas: respuestas, total: respuestas.length };
 }
 
 // ── TABLÓN / COMUNICACIÓN INTERNA ────────────────────────────────────────────
@@ -1541,117 +1533,6 @@ function borrarPublicacion(dir, b) {
     }
   }
   return { ok: false, error: 'NO_ENCONTRADA' };
-}
-
-// ── RECLUTAMIENTO ────────────────────────────────────────────────────────────
-var FASES = ['Recibido', 'Cribado', 'Entrevista', 'Prueba', 'Oferta', 'Contratado', 'Descartado'];
-
-function vacantesYcandidatos() {
-  return { ok: true, fases: FASES,
-    vacantes: leer(HOJAS.vacantes).map(function (v) {
-      return { id: v.id, titulo: v.titulo, departamento: v.departamento, oficina: v.oficina,
-               descripcion: v.descripcion, estado: String(v.estado).toUpperCase(), ts: String(v.ts) };
-    }),
-    candidatos: leer(HOJAS.candidatos).map(function (c) {
-      return { id: c.id, vacante_id: c.vacante_id, nombre: c.nombre, email: c.email,
-               telefono: c.telefono, fase: c.fase, valoracion: Number(c.valoracion || 0),
-               nota: c.nota, cv_url: c.cv_url, ts: String(c.ts) };
-    }) };
-}
-
-function guardarVacante(dir, b) {
-  if (!b.titulo) return { ok: false, error: 'DATOS_INCOMPLETOS' };
-  if (b.id) {
-    var filas = leer(HOJAS.vacantes);
-    for (var i = 0; i < filas.length; i++) {
-      if (String(filas[i].id) !== String(b.id)) continue;
-      hoja(HOJAS.vacantes).getRange(filas[i]._fila, 6).setValue(String(b.estado || 'ABIERTA').toUpperCase());
-      return { ok: true, id: b.id };
-    }
-  }
-  var id = uid('VA');
-  hoja(HOJAS.vacantes).appendRow([id, String(b.titulo), String(b.departamento || ''),
-    String(b.oficina || ''), String(b.descripcion || ''), 'ABIERTA', dir.nombre, new Date().toISOString()]);
-  auditar(dir.nombre, 'ALTA_VACANTE', String(b.titulo));
-  return { ok: true, id: id };
-}
-
-function guardarCandidato(dir, b) {
-  if (!b.nombre || !b.vacante_id) return { ok: false, error: 'DATOS_INCOMPLETOS' };
-  var id = uid('CA');
-  hoja(HOJAS.candidatos).appendRow([id, String(b.vacante_id), String(b.nombre), String(b.email || ''),
-    String(b.telefono || ''), 'Recibido', Number(b.valoracion || 0), String(b.nota || ''),
-    String(b.cv_url || ''), new Date().toISOString()]);
-  return { ok: true, id: id };
-}
-
-function moverCandidato(dir, b) {
-  var filas = leer(HOJAS.candidatos);
-  for (var i = 0; i < filas.length; i++) {
-    if (String(filas[i].id) !== String(b.id)) continue;
-    var h = hoja(HOJAS.candidatos);
-    if (b.fase) h.getRange(filas[i]._fila, 6).setValue(String(b.fase));
-    if (b.valoracion !== undefined) h.getRange(filas[i]._fila, 7).setValue(Number(b.valoracion));
-    if (b.nota !== undefined) h.getRange(filas[i]._fila, 8).setValue(String(b.nota));
-    auditar(dir.nombre, 'MUEVE_CANDIDATO', String(b.id) + ' → ' + String(b.fase || ''));
-    return { ok: true };
-  }
-  return { ok: false, error: 'NO_ENCONTRADO' };
-}
-
-// ── ONBOARDING / OFFBOARDING ─────────────────────────────────────────────────
-var PLANTILLA_ONBOARDING = [
-  'Contrato firmado', 'Alta en Seguridad Social', 'Email corporativo creado',
-  'Equipo informático entregado', 'Accesos al CRM', 'Tarjeta de visita',
-  'Formación de producto', 'Presentación al equipo', 'Manual de acogida entregado'
-];
-var PLANTILLA_OFFBOARDING = [
-  'Entrevista de salida', 'Devolución de equipo', 'Revocación de accesos',
-  'Traspaso de cartera de clientes', 'Finiquito calculado', 'Baja en Seguridad Social'
-];
-
-function crearChecklist(dir, b) {
-  var tipo = String(b.tipo || 'ONBOARDING').toUpperCase();
-  if (!b.trabajador) return { ok: false, error: 'DATOS_INCOMPLETOS' };
-  var tareas = (b.tareas && b.tareas.length) ? b.tareas
-             : (tipo === 'OFFBOARDING' ? PLANTILLA_OFFBOARDING : PLANTILLA_ONBOARDING);
-  var filas = tareas.map(function (t, i) {
-    return [uid('CK'), String(b.trabajador), tipo, String(t), String(b.responsable || dir.nombre),
-            String(b.fecha_limite || ''), '', '', i + 1];
-  });
-  hoja(HOJAS.checklists).getRange(hoja(HOJAS.checklists).getLastRow() + 1, 1, filas.length, 9).setValues(filas);
-  auditar(dir.nombre, 'CREA_CHECKLIST', b.trabajador + ' · ' + tipo);
-  return { ok: true, creadas: filas.length };
-}
-
-function limpiarChecklist(c) {
-  return { id: c.id, trabajador: c.trabajador, tipo: String(c.tipo).toUpperCase(), tarea: c.tarea,
-           responsable: c.responsable, fechaLimite: normFecha(c.fecha_limite),
-           hecho: !!c.hecho_ts, hechoTs: c.hecho_ts ? String(c.hecho_ts) : '',
-           hechoPor: c.hecho_por, orden: Number(c.orden || 0) };
-}
-
-function miChecklist(emp) {
-  return { ok: true, checklist: leer(HOJAS.checklists).filter(function (c) {
-    return String(c.trabajador).trim() === emp.nombre || String(c.responsable).trim() === emp.nombre;
-  }).map(limpiarChecklist) };
-}
-
-function marcarChecklist(emp, b) {
-  var filas = leer(HOJAS.checklists);
-  for (var i = 0; i < filas.length; i++) {
-    if (String(filas[i].id) !== String(b.id)) continue;
-    var h = hoja(HOJAS.checklists);
-    if (b.hecho === false) { h.getRange(filas[i]._fila, 7).setValue(''); h.getRange(filas[i]._fila, 8).setValue(''); }
-    else { h.getRange(filas[i]._fila, 7).setValue(new Date().toISOString()); h.getRange(filas[i]._fila, 8).setValue(emp.nombre); }
-    return { ok: true };
-  }
-  return { ok: false, error: 'NO_ENCONTRADO' };
-}
-
-function checklistEquipo(b) {
-  return { ok: true, checklist: leer(HOJAS.checklists).map(limpiarChecklist),
-           plantillas: { ONBOARDING: PLANTILLA_ONBOARDING, OFFBOARDING: PLANTILLA_OFFBOARDING } };
 }
 
 // ── ANALYTICS ────────────────────────────────────────────────────────────────
@@ -1865,7 +1746,7 @@ function apuntarAutomatico(emp, tipo, fecha, motivo) {
   var hash = sha256(prev + '|' + [id, d.toISOString(), emp.nombre, tipo].join('|'));
   hoja(HOJAS.fichajes).appendRow([
     id, d.toISOString(), fmtFecha(d), fmtHora(d), emp.nombre, emp.email, tipo,
-    '', '', '', 'Sistema', 'AUTOMATICO', motivo, 'SISTEMA', '', '', prev, hash
+    '', '', '', 'Sistema', 'AUTOMATICO', motivo, 'SISTEMA', '', '', '', prev, hash
   ]);
 }
 
