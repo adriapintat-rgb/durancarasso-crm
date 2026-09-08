@@ -12,18 +12,18 @@
 :root{
   color-scheme:light;
   /* Piedra fría, verde botella y latón — Durán Carasso */
-  --bg:#ECEEED;          /* gris piedra, sesgo verde */
+  --bg:#ECEFF0;          /* gris piedra, sesgo frío */
   --card:#FFFFFF;
-  --line:#DEE3E1;
-  --line-soft:#EBEEED;
-  --navy:#122E29;        /* tinta: verde botella casi negro */
-  --text:#2B3633;
-  --sub:#78837F;
-  --accent:#14453C;      /* verde botella */
-  --accent-soft:#E3EAE7;
+  --line:#DCE2E4;
+  --line-soft:#E9EDEE;
+  --navy:#0E3946;        /* tinta: el petrol del logo Durán Carasso */
+  --text:#28363B;
+  --sub:#75838A;
+  --accent:#12525F;      /* petrol claro para acciones */
+  --accent-soft:#E2EAEC;
   --gold:#9C7C3C;        /* latón: solo filetes y marcas */
   --gold-soft:#F2ECE0;
-  --green:#2F6B4F;--green-soft:#E6EFE9;
+  --green:#2C6B52;--green-soft:#E6EFEA;
   --amber:#9C6F1E;--amber-soft:#F5EEDF;
   --red:#9E3F35;--red-soft:#F5E7E4;
   --border:var(--line);
@@ -36,13 +36,18 @@ button,input,select,textarea{font-family:'Inter',system-ui,sans-serif;font-size:
 .hide{display:none!important}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
+/* ══ MARCA ══ */
+.wordmark{font-family:var(--serif);color:var(--navy);line-height:.92;font-weight:500;letter-spacing:.5px}
+.wordmark span{display:block}
+.wordmark.grande{font-size:40px;letter-spacing:1.2px;text-align:center}
+
 /* ══ LANDING ══ */
 #login{min-height:100vh;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 20px;gap:0}
 .access{width:100%;max-width:392px;background:var(--card);border:1px solid var(--line);border-radius:3px;padding:0 0 30px;position:relative}
 .access:before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent)}
 .hero{padding:42px 34px 26px;text-align:center;width:100%}
-.hero-brand{font-family:var(--serif);font-size:21px;font-weight:500;letter-spacing:5.5px;color:var(--navy);text-transform:uppercase;line-height:1.2;margin-bottom:0}
-.hero-brand:after{content:'';display:block;width:22px;height:1px;background:var(--gold);margin:18px auto 0}
+.hero-brand{display:flex;flex-direction:column;align-items:center;margin-bottom:0}
+.hero-brand:after{content:'';display:block;width:24px;height:1px;background:var(--gold);margin:20px auto 0}
 .hero-title{font-size:11px;font-weight:500;letter-spacing:2.6px;text-transform:uppercase;color:var(--sub);margin-top:17px}
 .hero-title em{display:none}
 .hero-hint{font-size:12px;color:var(--sub);margin-top:14px;line-height:1.65}
@@ -87,8 +92,10 @@ button,input,select,textarea{font-family:'Inter',system-ui,sans-serif;font-size:
 #app{display:none;min-height:100vh;flex-direction:column}
 #app.on{display:flex}
 .topbar{background:var(--card);border-bottom:1px solid var(--line);box-shadow:inset 0 2px 0 var(--accent);padding:13px 22px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:60}
-.tb-brand{font-family:var(--serif);font-size:15px;font-weight:500;letter-spacing:2.6px;text-transform:uppercase;color:var(--navy);flex-shrink:0;line-height:1.1;white-space:nowrap}
-.tb-brand small{display:block;font-family:'Inter',sans-serif;font-size:7.5px;font-weight:500;letter-spacing:2.2px;color:var(--gold);text-transform:uppercase;margin-top:3px}
+.tb-brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.tb-brand .wordmark{font-size:15px;letter-spacing:.4px}
+.tb-brand .et{font-size:7.5px;font-weight:500;letter-spacing:2.2px;color:var(--gold);text-transform:uppercase;font-family:'Inter',sans-serif;align-self:flex-end;padding-bottom:2px}
+
 .tb-spacer{flex:1}
 .clockbox{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:2px;padding:4px 4px 4px 16px}
 .clock-t{font-family:var(--serif);font-size:17px;font-weight:500;color:var(--navy);letter-spacing:.2px;font-variant-numeric:tabular-nums}
@@ -117,7 +124,8 @@ button,input,select,textarea{font-family:'Inter',system-ui,sans-serif;font-size:
 .bottomnav{display:none}
 
 @media(max-width:860px){
-  .tb-brand{font-size:13px;letter-spacing:1.8px}
+  .tb-brand .wordmark{font-size:13px}
+  .tb-brand .et{display:none}
   .side{display:none}
   .main{padding:16px 14px 96px}
   .topbar{flex-wrap:wrap;gap:9px;padding:10px 14px}
@@ -255,7 +263,7 @@ textarea.inp{resize:vertical;min-height:72px;line-height:1.55}
 <div id="login">
  <div class="access">
   <div class="hero">
-    <div class="hero-brand">Durán Carasso</div>
+    <div class="hero-brand" id="lg_logo"></div>
     <div class="hero-title">Bienvenido</div>
     <div class="hero-hint" id="lg_hint">Selecciona tu nombre para fichar</div>
   </div>
@@ -292,7 +300,7 @@ textarea.inp{resize:vertical;min-height:72px;line-height:1.55}
 <!-- ══════════ APP ══════════ -->
 <div id="app">
   <div class="topbar">
-    <div class="tb-brand">Durán Carasso<small>Personas</small></div>
+    <div class="tb-brand" id="tb_logo"></div>
     <div class="tb-spacer"></div>
     <div class="clockbox">
       <div class="clock-t"><span id="ck_hoy">0h 00min</span> <small>/ <span id="ck_live">00:00:00</span></small></div>
@@ -328,6 +336,7 @@ textarea.inp{resize:vertical;min-height:72px;line-height:1.55}
    ══════════════════════════════════════════════════════════════════════════ */
 
 var SCRIPT_URL = '';   // ← pega aquí la URL /exec de tu Apps Script desplegado
+var LOGO_URL   = '';   // ← URL del logo (SVG o PNG). Vacío = wordmark tipográfico
 var DEMO = !SCRIPT_URL;
 
 /* ── Estado global ── */
@@ -368,6 +377,18 @@ var DOW = ['L','M','X','J','V','S','D'];
 
 /* ── Utilidades ── */
 function $(id){return document.getElementById(id);}
+
+/** Lockup de marca. Con LOGO_URL usa la imagen oficial; si no, el wordmark. */
+function logo(variante){
+  if(LOGO_URL){
+    var alturas={grande:74,cabecera:26,email:30};
+    return '<img src="'+LOGO_URL+'" alt="Durán Carasso" style="height:'+(alturas[variante]||30)+'px;width:auto;display:block">';
+  }
+  if(variante==='grande'){
+    return '<div class="wordmark grande"><span>Durán</span><span>Carasso</span></div>';
+  }
+  return '<div class="wordmark"><span>Durán</span><span>Carasso</span></div>';
+}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function ini(n){return String(n||'').trim().split(/\s+/).slice(0,2).map(function(w){return w[0]||'';}).join('').toUpperCase();}
 function pad(n){return (n<10?'0':'')+n;}
@@ -569,6 +590,7 @@ var CARGA = {
   tablon:      function(){ return api('publicaciones').then(function(r){ if(r.ok) S.publicaciones=r.publicaciones; }); },
   checklist:   function(){ return api('miChecklist').then(function(r){ if(r.ok) S.checklist=r.checklist; }); },
   perfil:      function(){ return api('miPerfil').then(function(r){ if(r.ok) S.perfil=r.perfil; }); },
+  documentos:  function(){ return api('misDocumentos').then(function(r){ if(r.ok) S.documentos=r.documentos; }); },
   stats:       function(){ return api('miBolsa',{year:S.year}).then(function(r){ if(r.ok) S.compensaciones=r.compensaciones; }); },
   turnos:      function(){ return api('turnosEquipo',{}).then(function(r){ if(r.ok) S.turnosEquipo=r.turnos; }); },
   bolsa:       function(){ return api('bolsaEquipo',{year:S.year}).then(function(r){ if(r.ok) S.bolsaEquipo=r; }); },
@@ -733,6 +755,7 @@ function colorEstado(e){
 function entrarApp(){
   $('login').style.display='none';
   $('app').classList.add('on');
+  $('tb_logo').innerHTML=logo('cabecera')+'<span class="et">Personas</span>';
   $('tb_name').textContent=S.emp.nombre;
   $('tb_ava').textContent=ini(S.emp.nombre);
   pintarNav();
@@ -969,7 +992,7 @@ function vAusencias(){
        kpi(s.disponibles,'Días disponibles', (s.arrastre&&s.arrastreVigente)?'<span class="pos">incluye '+s.arrastre+' de '+(S.year-1)+'</span>':'')+
        kpi(s.consumidos,'Días consumidos','')+
        kpi(s.pendientes,'Pendientes aprobar','')+
-       kpi(s.totales,'Días totales','')+
+       kpi(s.totales,'Días totales', s.prorrateado? 'prorrateado sobre '+s.cupoCompleto+' por alta o baja este año':'')+
      '</div>'+
      ((s.arrastre&&s.arrastreVigente)? '<div style="margin-top:14px;padding:11px 13px;background:var(--amber-soft);border:1px solid #EEDFBE;border-radius:2px;font-size:12px;color:var(--amber)">'+
        'Te quedan <b>'+s.arrastre+' días de '+(S.year-1)+'</b>. Se gastan automáticamente antes que los de '+S.year+
@@ -978,7 +1001,7 @@ function vAusencias(){
    (S.saldos.length>1? '<div class="sec">Saldo por tipo</div>'+
      '<div class="scroll-x"><table class="tbl"><tr><th>Tipo</th><th>Asignados</th><th>Arrastre</th><th>Consumidos</th><th>Pendientes</th><th>Disponibles</th></tr>'+
      S.saldos.map(function(x){
-       return '<tr><td>'+esc(x.tipo)+'</td><td>'+x.totales+'</td>'+
+       return '<tr><td>'+esc(x.tipo)+(x.prorrateado?' <span class="pill p-warn">prorrateado</span>':'')+'</td><td>'+x.totales+'</td>'+
          '<td>'+(x.arrastre? (x.arrastreVigente?'<span class="pos">'+x.arrastre+'</span>':'<span style="color:var(--sub)">'+x.arrastre+' caducado</span>'):'—')+'</td>'+
          '<td>'+x.consumidos+'</td><td>'+x.pendientes+'</td>'+
          '<td><b class="'+(x.disponibles>0?'pos':'')+'">'+x.disponibles+'</b></td></tr>';
@@ -1529,9 +1552,33 @@ function vPerfil(){
    '</div><button class="btn b-pri" onclick="guardarPin()">Cambiar PIN</button></div>'+
    '<div class="sec">Calendario</div>'+
    '<div class="card"><div style="font-size:12.5px;color:var(--sub);line-height:1.6;margin-bottom:14px">'+
-     'Suscribe tus ausencias aprobadas a Google Calendar o a Outlook. Es un calendario de solo lectura que se actualiza solo.</div>'+
-     '<button class="btn b-ghost" onclick="urlCalendario()">Obtener enlace de suscripción</button>'+
-     '<div id="cal_out" style="margin-top:14px"></div></div>';
+     'Suscribe tus ausencias aprobadas a Google Calendar o a Outlook. Es un calendario de solo lectura '+
+     'que se actualiza solo y caduca al año.</div>'+
+     '<div class="row"><button class="btn b-ghost" onclick="urlCalendario()">Obtener enlace de suscripción</button>'+
+     '<button class="btn b-ghost" onclick="revocarCalendario()">Revocar enlaces anteriores</button></div>'+
+     '<div id="cal_out" style="margin-top:14px"></div></div>'+
+   '<div class="sec">La app en tu móvil</div>'+
+   '<div class="card">'+bloqueInstalacion()+'</div>';
+}
+function bloqueInstalacion(){
+  if(yaInstalada()) return '<div class="row"><span class="pill p-ok">Instalada</span>'+
+    '<span style="font-size:12.5px;color:var(--sub)">Estás usando la app instalada en este dispositivo.</span></div>';
+  var texto='<div style="font-size:12.5px;color:var(--sub);line-height:1.65;margin-bottom:14px">'+
+    'Instálala y tendrás el icono de Durán Carasso en la pantalla de inicio, a pantalla completa y '+
+    'sin barra del navegador. Ocupa unos pocos kB y funciona aunque te quedes sin cobertura.</div>';
+  if(promptInstalar) return texto+'<button class="btn b-pri" onclick="instalarApp()">Instalar en este dispositivo</button>';
+  if(esIOS()) return texto+'<div style="font-size:12.5px;line-height:1.8">'+
+    '<b>En iPhone o iPad:</b><br>1. Pulsa el botón <b>Compartir</b> de Safari.<br>'+
+    '2. Elige <b>Añadir a pantalla de inicio</b>.<br>3. Confirma con <b>Añadir</b>.</div>';
+  return texto+'<div style="font-size:12.5px;line-height:1.8">'+
+    '<b>En Android:</b> menú ⋮ del navegador → <b>Instalar aplicación</b>.<br>'+
+    '<b>En ordenador:</b> icono de instalación en la barra de direcciones de Chrome o Edge.</div>';
+}
+function revocarCalendario(){
+  if(!confirm('Los enlaces de calendario que hayas compartido dejarán de funcionar. ¿Continuar?')) return;
+  api('tokenCalendario',{revocar:true}).then(function(r){
+    if(r.ok){ toast('Enlaces revocados','ok'); $('cal_out').innerHTML=''; } else toast('Error','err');
+  });
 }
 function campoLectura(l,v){
   return '<div class="fld"><label class="lbl">'+esc(l)+'</label>'+
@@ -1555,10 +1602,11 @@ function urlCalendario(){
   api('tokenCalendario').then(function(r){
     if(!r.ok) return toast('Error','err');
     var url=(SCRIPT_URL||'[URL_DE_TU_APPS_SCRIPT]')+'?ics='+encodeURIComponent(r.token);
+    var caduca=r.caduca? ' Caduca el '+fBonita(r.caduca)+'.' : '';
     $('cal_out').innerHTML='<div style="background:var(--bg);border:1px solid var(--line);border-radius:2px;padding:12px;font-size:11.5px;word-break:break-all;font-family:ui-monospace,monospace">'+esc(url)+'</div>'+
       '<div style="font-size:11.5px;color:var(--sub);margin-top:10px;line-height:1.6">'+
       '<b>Outlook:</b> Calendario → Añadir calendario → Suscribirse desde Internet.<br>'+
-      '<b>Google Calendar:</b> Otros calendarios → + → Desde URL.</div>';
+      '<b>Google Calendar:</b> Otros calendarios → + → Desde URL.'+esc(caduca)+'</div>';
   });
 }
 
@@ -2384,7 +2432,7 @@ function abrirQuiosco(){
   ov.id='quiosco';
   ov.style.cssText='position:fixed;inset:0;background:var(--bg);z-index:400;overflow-y:auto;padding:34px 22px';
   ov.innerHTML='<div style="max-width:820px;margin:0 auto">'+
-    '<div class="row" style="margin-bottom:30px"><div><div class="tb-brand">Durán Carasso<small>Punto de fichaje</small></div></div>'+
+    '<div class="row" style="margin-bottom:30px"><div>'+logo('cabecera')+'<div style="font-size:8px;letter-spacing:2.4px;text-transform:uppercase;color:var(--gold);margin-top:4px">Punto de fichaje</div></div>'+
     '<div class="sp"></div><div id="qk_reloj" style="font-family:var(--serif);font-size:30px;color:var(--navy)"></div>'+
     '<button class="btn b-ghost b-sm" onclick="cerrarQuiosco()">Salir del quiosco</button></div>'+
     '<div id="qk_body"></div></div>';
@@ -2746,7 +2794,11 @@ function demoApiInterno(action,p){
       if(!/^\d{4}$/.test(p.nuevo)){ r={ok:false,error:'PIN_INVALIDO'}; break; }
       if(p.nuevo==='0000'||p.nuevo==='1234'){ r={ok:false,error:'PIN_DEBIL'}; break; }
       db.empleados.forEach(function(e){ if(e.nombre===yo.nombre) e.pin=p.nuevo; }); dbSet(db); r={ok:true}; break;
-    case 'tokenCalendario': r={ok:true,token:'demo-'+btoa(yo.nombre).replace(/=/g,'')}; break;
+    case 'tokenCalendario':
+      if(p.revocar){ r={ok:true,revocado:true}; break; }
+      var cad=new Date(); cad.setFullYear(cad.getFullYear()+1);
+      r={ok:true,token:'demo-'+btoa(unescape(encodeURIComponent(yo.nombre))).replace(/=/g,''),
+         caduca:fISO(cad)}; break;
 
     /* ── Turnos y centros ── */
     case 'guardarTurno':
@@ -2963,7 +3015,8 @@ function demoSaldos(db,yo,year){
     var vigente=hoyISO()<=limite;
     var cons=demoConsumo(db,yo.nombre,t.tipo,year,['APROBADA']);
     var pend=demoConsumo(db,yo.nombre,t.tipo,year,['PENDIENTE']);
-    return {tipo:t.tipo,totales:cupo,arrastre:arr,arrastreVigente:vigente,limiteArrastre:limite,
+    return {tipo:t.tipo,totales:cupo,prorrateado:false,cupoCompleto:cupo,
+            arrastre:arr,arrastreVigente:vigente,limiteArrastre:limite,
             consumidos:cons,pendientes:pend,disponibles:cupo+(vigente?arr:0)-cons-pend};
   });
 }
@@ -2974,9 +3027,45 @@ function diasLab(d1,d2,fest){
   return n;
 }
 
+/* ══ INSTALACIÓN EN EL MÓVIL (PWA) ══════════════════════════════════════ */
+var promptInstalar=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault(); promptInstalar=e;
+  if(S.vista==='perfil') render();
+});
+function esIOS(){ return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
+function yaInstalada(){
+  return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone===true;
+}
+function instalarApp(){
+  if(!promptInstalar) return;
+  promptInstalar.prompt();
+  promptInstalar.userChoice.then(function(r){
+    if(r.outcome==='accepted') toast('App instalada','ok');
+    promptInstalar=null; if(S.vista==='perfil') render();
+  });
+}
+function prepararPWA(){
+  try{
+    if(!document.querySelector('link[rel="manifest"]')){
+      var l=document.createElement('link'); l.rel='manifest'; l.href='manifest.json';
+      document.head.appendChild(l);
+    }
+    if(!document.querySelector('meta[name="theme-color"]')){
+      var m=document.createElement('meta'); m.name='theme-color'; m.content='#0E3946';
+      document.head.appendChild(m);
+    }
+    // El service worker solo tiene sentido en el dominio propio, no en una vista previa
+    if('serviceWorker' in navigator && location.protocol==='https:' && window.top===window.self){
+      navigator.serviceWorker.register('sw.js').catch(function(){});
+    }
+  }catch(e){}
+}
+
 /* ══ INIT ═══════════════════════════════════════════════════════════════ */
 function initLogin(){
   pintarPad();
+  $('lg_logo').innerHTML=logo('grande');
   $('sel_trig').onclick=function(){ this.classList.toggle('open'); $('sel_drop').classList.toggle('open'); $('sel_q').focus(); };
   $('sel_q').oninput=pintarSelect;
   if(DEMO) $('lg_hint').innerHTML='Modo demo · <b>Admin de pruebas</b> PIN 0000 · <b>Empleado de pruebas</b> PIN 1234'+
@@ -2993,6 +3082,7 @@ function reiniciarDemo(){
   location.reload();
 }
 function arrancar(){
+  prepararPWA();
   try{ S.modalidad=localStorage.getItem('dcp_mod')||'OFICINA'; }catch(e){}
   var ses=leerSesion();
   if(ses && ses.token){ S.token=ses.token; S.emp=ses.emp; S.esDir=ses.esDir; entrarApp(); }

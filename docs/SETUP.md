@@ -135,6 +135,60 @@ En **Configuración del proyecto → Propiedades del script**:
 | `LIMITE_ARRASTRE` | Hasta cuándo se pueden gastar los días del año anterior. Formato `MM-DD`, por defecto `03-31` |
 | `CLAVE_ACCESO` | Si la rellenas, la pantalla de acceso pide esta clave antes de mostrar la plantilla |
 | `CARPETA_JUSTIFICANTES` | Carpeta de Drive donde se guardan los certificados. Se crea sola |
+| `EMAIL_GESTORIA` | Dirección a la que va el registro mensual el día 1 |
+| `WIDGET_CRM` | `SI` habilita el widget «quién está trabajando» para el CRM |
+| `CARPETA_COPIAS` · `CARPETA_ARCHIVO` | Carpetas de copias y de archivo legal. Se crean solas |
+
+## Automatismos
+
+Ejecuta **una vez** la función `instalarAutomatismos()` desde el editor de Apps Script.
+A partir de ahí el sistema trabaja solo:
+
+| Cuándo | Qué hace |
+|---|---|
+| Cada día a las **18:30** | Avisa por email a quien sigue fichado sin haber salido |
+| Cada día a las **23:45** | Cierra las jornadas abiertas, las marca como incidencia y avisa a dirección |
+| Cada día a las **03:00** | Copia completa de la hoja a Drive. Conserva las últimas 60 |
+| **Lunes a las 09:00** | Resumen a dirección de solicitudes sin validar e incidencias de la semana |
+| **Día 1 de cada mes** | Envía el registro del mes anterior en CSV a dirección y a la gestoría |
+| **Día 1 de enero, abril, julio y octubre** | Genera el PDF trimestral sellado en la carpeta de archivo legal |
+
+Un cierre automático **nunca sustituye a la hora real**: queda marcado como incidencia
+para que dirección introduzca la hora correcta, y esa corrección consta con su autor y
+su motivo, como exige la norma.
+
+## Validar ausencias desde el correo
+
+Cuando alguien pide una ausencia, su responsable (o dirección, si no lo tiene asignado)
+recibe un email con dos botones: **Aprobar** y **Denegar**. Resuelven la solicitud sin
+entrar en la app. El enlace va firmado, caduca a los 14 días y solo funciona una vez:
+si la solicitud ya estaba resuelta, la página lo dice.
+
+## Instalar la app en el móvil
+
+Sirve `personas.html`, `manifest.json`, `sw.js`, `icono-192.png` e `icono-512.png`
+desde el mismo dominio, por HTTPS. Entonces:
+
+- **Android**: menú del navegador → *Instalar aplicación*
+- **iPhone**: Compartir → *Añadir a pantalla de inicio*
+- **Ordenador**: icono de instalación en la barra de direcciones de Chrome o Edge
+
+También aparece un botón de instalación en *Mi perfil → La app en tu móvil*.
+
+El *service worker* sirve la app de red primero, para que una versión nueva llegue el
+mismo día, y guarda una copia como red de seguridad si alguien se queda sin cobertura.
+Las llamadas al Apps Script nunca se cachean.
+
+## Poner vuestro logo
+
+Sube el logo a Drive o al hosting y pega su URL en `personas.html`:
+
+```js
+var LOGO_URL = 'https://.../duran-carasso.svg';
+```
+
+Aparece en el acceso, la cabecera, el quiosco y los PDF. Si lo dejas vacío se usa el
+wordmark tipográfico, que ya reproduce el lockup de la marca.
 
 ## Seguridad
 

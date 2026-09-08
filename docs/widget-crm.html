@@ -1,0 +1,66 @@
+<!--
+  DC · Personas — Widget «quién está trabajando» para el CRM
+  ==========================================================
+  Pega este bloque dentro de index.html, donde quieras que aparezca.
+  Es autónomo: no toca ninguna variable del CRM y, si el servicio no
+  responde, no pinta nada en lugar de romper la página.
+
+  Antes de pegarlo, rellena DCP_URL con la URL /exec de tu Apps Script.
+-->
+
+<div id="dcp_widget" style="display:none"></div>
+
+<script>
+(function(){
+  var DCP_URL = '';          // ← URL /exec del Apps Script de Personas
+  var DCP_REFRESCO = 120000; // cada 2 minutos
+
+  if (!DCP_URL) return;      // sin configurar, el widget no existe
+
+  var caja = document.getElementById('dcp_widget');
+  if (!caja) return;
+
+  function pintar(equipo){
+    var dentro = equipo.filter(function(e){ return e.estado === 'TRABAJANDO'; });
+    var pausa  = equipo.filter(function(e){ return e.estado === 'PAUSA'; });
+    if (!dentro.length && !pausa.length) { caja.style.display = 'none'; return; }
+
+    var chip = function(nombre, color){
+      return '<span style="display:inline-flex;align-items:center;gap:6px;background:#F4F4F1;' +
+             'border-radius:2px;padding:4px 9px;font-size:11px;margin:0 5px 5px 0">' +
+             '<i style="width:6px;height:6px;border-radius:50%;background:' + color + '"></i>' +
+             nombre.split(' ')[0] + '</span>';
+    };
+
+    caja.style.display = 'block';
+    caja.style.cssText += ';background:#fff;border:1px solid #DCE2E4;border-radius:3px;padding:14px 16px;margin:12px 0';
+    caja.innerHTML =
+      '<div style="font-size:9px;letter-spacing:1.4px;text-transform:uppercase;color:#75838A;' +
+      'font-weight:600;margin-bottom:10px">Quién está trabajando</div>' +
+      dentro.map(function(e){ return chip(e.nombre, '#2C6B52'); }).join('') +
+      pausa.map(function(e){ return chip(e.nombre, '#9C6F1E'); }).join('') +
+      '<div style="font-size:11px;color:#75838A;margin-top:6px">' +
+      dentro.length + ' dentro · ' + pausa.length + ' en pausa</div>';
+  }
+
+  function cargar(){
+    fetch(DCP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'estadoEquipoPublico' })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(j){ if (j && j.ok && j.equipo) pintar(j.equipo); })
+    .catch(function(){ /* si Personas no responde, el CRM sigue igual */ });
+  }
+
+  cargar();
+  setInterval(cargar, DCP_REFRESCO);
+})();
+</script>
+
+<!--
+  NOTA: este widget usa la acción `estadoEquipoPublico`, que devuelve solo
+  nombre y estado (nunca fichajes ni datos personales) y hay que habilitarla
+  en Propiedades del script poniendo WIDGET_CRM = SI.
+-->

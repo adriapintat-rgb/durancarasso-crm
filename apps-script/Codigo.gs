@@ -44,7 +44,7 @@ var HOJAS = {
 };
 
 var CABECERAS = {
-  Empleados:  ['nombre','email','pin','rol','departamento','oficina','horario_id','fecha_alta','vacaciones_anuales','activo','telefono','dni','coste_hora','empresa','responsable'],
+  Empleados:  ['nombre','email','pin','rol','departamento','oficina','horario_id','fecha_alta','vacaciones_anuales','activo','telefono','dni','coste_hora','empresa','responsable','fecha_baja'],
   Fichajes:   ['id','ts_iso','fecha','hora','trabajador','email','tipo','lat','lng','precision_m','dispositivo','origen','motivo','autor','modalidad','centro','hash_prev','hash'],
   Ausencias:  ['id','ts_solicitud','trabajador','email','tipo','fecha_inicio','fecha_fin','dias','medio_dia','motivo','estado','validador','ts_validacion','comentario','justificante','dias_arrastre'],
   Horarios:   ['horario_id','nombre','lun','mar','mie','jue','vie','sab','dom','pausa_min','horas_semana'],
@@ -112,8 +112,61 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  return ContentService.createTextOutput(JSON.stringify({ ok: true, servicio: 'DC Personas', version: 2 }))
+  // Validación de ausencias desde el email, con enlace firmado
+  if (p.v) return paginaValidacion(p.v, p.d);
+
+  return ContentService.createTextOutput(JSON.stringify({ ok: true, servicio: 'DC Personas', version: 3 }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/* ── Validación por enlace firmado ───────────────────────────────────────── */
+function tokenValidacion(idAusencia, validador) {
+  var exp = Date.now() + 14 * 86400000;   // el enlace caduca a los 14 días
+  var payload = Utilities.base64EncodeWebSafe('VAL|' + idAusencia + '|' + validador + '|' + exp);
+  return payload + '.' + firmar(payload);
+}
+
+function paginaValidacion(token, decision) {
+  var partes = String(token).split('.');
+  if (partes.length !== 2 || firmar(partes[0]) !== partes[1]) return paginaHtml('Enlace no válido', 'Este enlace no es correcto o ha sido manipulado.', false);
+  var claro = Utilities.newBlob(Utilities.base64DecodeWebSafe(partes[0])).getDataAsString().split('|');
+  if (claro[0] !== 'VAL') return paginaHtml('Enlace no válido', 'Este enlace no sirve para validar ausencias.', false);
+  if (Number(claro[3]) < Date.now()) return paginaHtml('Enlace caducado', 'Entra en la app para resolver la solicitud.', false);
+
+  var id = claro[1], validador = buscarEmpleado(claro[2]);
+  if (!validador) return paginaHtml('Sin permisos', 'La persona que valida ya no está de alta.', false);
+
+  var fila = leer(HOJAS.ausencias).filter(function (a) { return String(a.id) === id; })[0];
+  if (!fila) return paginaHtml('Solicitud no encontrada', 'Puede que se haya cancelado.', false);
+  if (String(fila.estado).toUpperCase() !== 'PENDIENTE') {
+    return paginaHtml('Ya estaba resuelta',
+      'Esta solicitud de <b>' + fila.trabajador + '</b> figura como <b>' + String(fila.estado).toLowerCase() +
+      '</b>' + (fila.validador ? ', resuelta por ' + fila.validador : '') + '.', false);
+  }
+
+  var dec = String(decision || '').toUpperCase();
+  if (dec !== 'APROBADA' && dec !== 'DENEGADA') {
+    return paginaHtml('Falta la decisión', 'Usa uno de los dos botones del correo.', false);
+  }
+
+  validarAusencia(validador, { id: id, decision: dec, comentario: 'Resuelta desde el correo' });
+  return paginaHtml(dec === 'APROBADA' ? 'Solicitud aprobada' : 'Solicitud denegada',
+    '<b>' + fila.trabajador + '</b> — ' + fila.tipo + ' del ' + normFecha(fila.fecha_inicio) +
+    ' al ' + normFecha(fila.fecha_fin) + ' (' + fila.dias + ' días).<br><br>' +
+    'Ya está notificado por correo. Puedes cerrar esta ventana.', dec === 'APROBADA');
+}
+
+function paginaHtml(titulo, cuerpo, bien) {
+  var color = bien ? '#2F6B4F' : '#0E3946';
+  return HtmlService.createHtmlOutput(
+    '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>' + titulo + '</title>' +
+    '<div style="font-family:Arial,Helvetica,sans-serif;max-width:460px;margin:12vh auto;padding:0 22px;color:#243138">' +
+    '<div style="border-top:3px solid ' + color + ';padding-top:22px">' +
+    '<div style="font-family:Georgia,serif;font-size:16px;letter-spacing:4px;text-transform:uppercase;color:#0E3946">Durán Carasso</div>' +
+    '<h1 style="font-family:Georgia,serif;font-weight:400;font-size:25px;color:' + color + ';margin:18px 0 12px">' + titulo + '</h1>' +
+    '<div style="font-size:14px;line-height:1.7">' + cuerpo + '</div></div></div>'
+  ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 function router(b) {
@@ -122,6 +175,7 @@ function router(b) {
   if (a === 'auth')       return auth(b);
   if (a === 'setup')      return setupHojas(b);
   if (a === 'listaEmpleados') return listaEmpleados(b);
+  if (a === 'estadoEquipoPublico') return estadoEquipoPublico();
 
   // A partir de aquí hace falta sesión válida
   var ses = validarToken(b.token);
@@ -190,7 +244,7 @@ function router(b) {
     case 'checklistEquipo': return esDir ? checklistEquipo(b)       : denegado();
     case 'crearChecklist':  return esDir ? crearChecklist(emp, b)   : denegado();
     case 'analytics':       return esDir ? analytics(b)             : denegado();
-    case 'tokenCalendario': return tokenCalendario(emp);
+    case 'tokenCalendario': return tokenCalendario(emp, b);
     case 'auditoria':       return esDir ? auditoria(b)           : denegado();
     case 'editarEmpleado':  return esDir ? editarEmpleado(emp, b) : denegado();
     case 'resetPin':        return esDir ? resetPin(emp, b)       : denegado();
@@ -201,6 +255,19 @@ function router(b) {
 }
 
 function denegado() { return { ok: false, error: 'SIN_PERMISOS' }; }
+
+/**
+ * Estado del equipo para el widget del CRM. Devuelve solo nombre y estado,
+ * nunca fichajes ni datos personales, y hay que habilitarlo a propósito.
+ */
+function estadoEquipoPublico() {
+  if (String(PropertiesService.getScriptProperties().getProperty('WIDGET_CRM') || 'NO').toUpperCase() !== 'SI') {
+    return { ok: false, error: 'WIDGET_DESACTIVADO' };
+  }
+  return { ok: true, equipo: estadoEquipo().equipo.map(function (e) {
+    return { nombre: e.nombre, estado: e.estado };
+  }) };
+}
 
 /** Lista pública para la pantalla de acceso. No expone PIN ni email. */
 function listaEmpleados(b) {
@@ -623,6 +690,8 @@ function solicitarAusencia(emp, b) {
   ]);
   auditar(emp.nombre, 'SOLICITUD_AUSENCIA', tipo + ' ' + desde + '→' + hasta + ' (' + dias + 'd' +
     (arrastreUsado ? ', ' + arrastreUsado + ' del año anterior' : '') + ')');
+  avisarValidador(emp, { id: id, tipo: tipo, desde: desde, hasta: hasta, dias: dias,
+                         motivo: b.motivo, justificante: url });
   return { ok: true, id: id, dias: dias, arrastre: arrastreUsado };
 
 }
@@ -725,10 +794,32 @@ function consumoDelAno(nombre, tipo, year, estados) {
   return total;
 }
 
+/**
+ * Cupo del año, prorrateado si la persona entra o sale a mitad de año.
+ * Ejemplo: alta el 1 de julio con 23 días → 23 × 184/365 ≈ 11,5 días.
+ */
 function cupoDe(emp, t, year) {
-  // Las vacaciones salen de la ficha de la persona; el resto, del tipo
-  if (t.tipo.toUpperCase().indexOf('VACAC') === 0) return Number(emp.vacaciones_anuales || t.dias);
-  return t.dias;
+  var base = (t.tipo.toUpperCase().indexOf('VACAC') === 0)
+    ? Number(emp.vacaciones_anuales || t.dias)
+    : t.dias;
+  if (!base) return 0;
+
+  var iniAno = new Date(year + '-01-01T00:00:00');
+  var finAno = new Date(year + '-12-31T00:00:00');
+  var desde = iniAno, hasta = finAno;
+
+  var alta = emp.fecha_alta ? new Date(normFecha(emp.fecha_alta) + 'T00:00:00') : null;
+  if (alta && !isNaN(alta) && alta > desde) desde = alta;
+
+  var baja = emp.fecha_baja ? new Date(normFecha(emp.fecha_baja) + 'T00:00:00') : null;
+  if (baja && !isNaN(baja) && baja < hasta) hasta = baja;
+
+  if (hasta < desde) return 0;                       // no estuvo de alta ese año
+  var diasAno = Math.round((finAno - iniAno) / 86400000) + 1;
+  var diasAlta = Math.round((hasta - desde) / 86400000) + 1;
+  if (diasAlta >= diasAno) return base;              // año completo, sin prorrateo
+
+  return Math.round(base * diasAlta / diasAno * 2) / 2;   // se redondea a medio día
 }
 
 function arrastreDisponible(emp, t, year) {
@@ -745,7 +836,10 @@ function saldos(emp, year) {
     var vigente = fmtFecha(ahora()) <= limiteArrastre(year);
     var cons = consumoDelAno(emp.nombre, t.tipo, year, ['APROBADA']);
     var pend = consumoDelAno(emp.nombre, t.tipo, year, ['PENDIENTE']);
-    return { tipo: t.tipo, totales: cupo, arrastre: arr, arrastreVigente: vigente,
+    var completo = (t.tipo.toUpperCase().indexOf('VACAC') === 0)
+      ? Number(emp.vacaciones_anuales || t.dias) : t.dias;
+    return { tipo: t.tipo, totales: cupo, prorrateado: cupo !== completo, cupoCompleto: completo,
+             arrastre: arr, arrastreVigente: vigente,
              limiteArrastre: limiteArrastre(year), consumidos: cons, pendientes: pend,
              disponibles: cupo + (vigente ? arr : 0) - cons - pend };
   });
@@ -805,6 +899,36 @@ function validarAusencia(dir, b) {
     return { ok: true };
   }
   return { ok: false, error: 'NO_ENCONTRADA' };
+}
+
+/** Avisa a quien debe validar, con dos botones que resuelven sin abrir la app. */
+function avisarValidador(emp, sol) {
+  var base = ScriptApp.getService().getUrl();
+  var destinos = emp.responsable ? [String((buscarEmpleado(emp.responsable) || {}).email || '')] : [];
+  destinos = destinos.filter(Boolean);
+  if (!destinos.length) destinos = destinatariosDireccion();
+  if (!destinos.length) return;
+
+  var quien = emp.responsable || destinatariosDireccion()[0];
+  var validador = emp.responsable ? emp.responsable :
+    (leer(HOJAS.empleados).filter(function (e) { return String(e.rol).toUpperCase() === 'DIRECCION'; })[0] || {}).nombre;
+  if (!validador) return;
+
+  var t = tokenValidacion(sol.id, validador);
+  var btn = function (texto, dec, color) {
+    return '<a href="' + base + '?v=' + encodeURIComponent(t) + '&d=' + dec + '" ' +
+      'style="display:inline-block;background:' + color + ';color:#fff;text-decoration:none;' +
+      'padding:12px 26px;font-size:13px;letter-spacing:.5px;margin-right:10px">' + texto + '</a>';
+  };
+
+  enviar(destinos, 'Solicitud de ' + sol.tipo + ' · ' + emp.nombre,
+    '<b>' + emp.nombre + '</b> pide <b>' + sol.tipo.toLowerCase() + '</b>:<br><br>' +
+    'Del <b>' + sol.desde + '</b> al <b>' + sol.hasta + '</b> · ' + sol.dias + ' día(s)' +
+    (sol.motivo ? '<br>Motivo: ' + sol.motivo : '') +
+    (sol.justificante ? '<br><a href="' + sol.justificante + '">Ver justificante adjunto</a>' : '') +
+    '<br><br>' + btn('Aprobar', 'APROBADA', '#2F6B4F') + btn('Denegar', 'DENEGADA', '#9E3F35') +
+    '<br><br><span style="font-size:11px;color:#78837F">Los botones resuelven la solicitud sin entrar en la app. ' +
+    'El enlace caduca en 14 días.</span>');
 }
 
 function notificarAusencia(fila, decision, validador) {
@@ -949,7 +1073,7 @@ function auditoria(b) {
 /* ── Gestión de la plantilla (solo dirección) ───────────────────────────── */
 var CAMPOS_ADMIN = ['email', 'rol', 'departamento', 'oficina', 'horario_id',
                     'vacaciones_anuales', 'activo', 'telefono', 'dni', 'coste_hora',
-                    'empresa', 'responsable'];
+                    'empresa', 'responsable', 'fecha_alta', 'fecha_baja'];
 
 function editarEmpleado(dir, b) {
   var emp = buscarEmpleado(b.nombre);
@@ -1593,8 +1717,15 @@ function analytics(b) {
  * devuelve una URL que ambos aceptan como "calendario por suscripción".
  */
 function tokenCalendario(emp) {
-  var payload = Utilities.base64EncodeWebSafe('CAL|' + emp.nombre);
-  return { ok: true, token: payload + '.' + firmar(payload) };
+  if (arguments.length > 1 && arguments[1] && arguments[1].revocar) {
+    PropertiesService.getScriptProperties().setProperty('CAL_REV_' + emp.nombre, String(Date.now()));
+    auditar(emp.nombre, 'REVOCA_CALENDARIO', '');
+    return { ok: true, revocado: true };
+  }
+  var emitido = Date.now();
+  var exp = emitido + 365 * 86400000;   // un año
+  var payload = Utilities.base64EncodeWebSafe('CAL|' + emp.nombre + '|' + emitido + '|' + exp);
+  return { ok: true, token: payload + '.' + firmar(payload), caduca: new Date(exp).toISOString().slice(0, 10) };
 }
 
 function icsAusencias(token) {
@@ -1602,7 +1733,12 @@ function icsAusencias(token) {
   if (parts.length !== 2 || firmar(parts[0]) !== parts[1]) return null;
   var claro = Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[0])).getDataAsString();
   if (claro.indexOf('CAL|') !== 0) return null;
-  var quien = claro.slice(4);
+  var trozos = claro.split('|');
+  var quien = trozos[1];
+  var emitido = Number(trozos[2] || 0), exp = Number(trozos[3] || 0);
+  if (exp && exp < Date.now()) return null;                       // caducado
+  var revocado = Number(PropertiesService.getScriptProperties().getProperty('CAL_REV_' + quien) || 0);
+  if (revocado && emitido < revocado) return null;                // revocado por la persona
 
   var lineas = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Duran Carasso//Personas//ES',
                 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Ausencias · Durán Carasso'];
@@ -1622,4 +1758,283 @@ function icsAusencias(token) {
   });
   lineas.push('END:VCALENDAR');
   return lineas.join('\r\n');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AUTOMATISMOS PROGRAMADOS
+   Se instalan una sola vez ejecutando `instalarAutomatismos()` desde el editor.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function instalarAutomatismos() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { ScriptApp.deleteTrigger(t); });
+
+  ScriptApp.newTrigger('recordatorioSalida').timeBased().atHour(18).nearMinute(30).everyDays(1).create();
+  ScriptApp.newTrigger('cierreAutomatico').timeBased().atHour(23).nearMinute(45).everyDays(1).create();
+  ScriptApp.newTrigger('copiaSeguridad').timeBased().atHour(3).everyDays(1).create();
+  ScriptApp.newTrigger('avisoValidaciones').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(9).create();
+  ScriptApp.newTrigger('tareasMensuales').timeBased().onMonthDay(1).atHour(7).create();
+
+  return 'Automatismos instalados: recordatorio 18:30, cierre 23:45, copia 03:00, ' +
+         'avisos lunes 09:00 y cierre de mes el día 1.';
+}
+
+function destinatariosDireccion() {
+  return leer(HOJAS.empleados)
+    .filter(function (e) { return String(e.rol).toUpperCase() === 'DIRECCION' &&
+                                  String(e.activo).toUpperCase() !== 'NO' && e.email; })
+    .map(function (e) { return String(e.email); });
+}
+
+function enviar(destinos, asunto, cuerpo) {
+  var lista = (destinos || []).filter(Boolean).join(',');
+  if (!lista) return;
+  try { MailApp.sendEmail({ to: lista, subject: asunto, htmlBody: plantillaEmail(asunto, cuerpo) }); }
+  catch (e) { auditar('SISTEMA', 'EMAIL_FALLIDO', asunto + ' — ' + e.message); }
+}
+
+function plantillaEmail(titulo, cuerpoHtml) {
+  return '<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#243138">' +
+    '<div style="border-top:3px solid #0E3946;padding:22px 0 16px">' +
+    '<div style="font-family:Georgia,serif;font-size:17px;letter-spacing:4px;text-transform:uppercase;color:#0E3946">Durán Carasso</div>' +
+    '<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#9C7C3C;margin-top:3px">Personas</div></div>' +
+    '<h2 style="font-family:Georgia,serif;font-weight:400;font-size:20px;color:#0E3946;margin:14px 0 12px">' + titulo + '</h2>' +
+    '<div style="font-size:14px;line-height:1.65">' + cuerpoHtml + '</div>' +
+    '<div style="margin-top:26px;padding-top:14px;border-top:1px solid #E0E4E3;font-size:11px;color:#78837F">' +
+    'Mensaje automático de DC · Personas. No respondas a este correo.</div></div>';
+}
+
+/* ── 18:30 · Quien sigue fichado sin haber salido ────────────────────────── */
+function recordatorioSalida() {
+  var hoy = fmtFecha(ahora());
+  var abiertos = leer(HOJAS.empleados).filter(function (e) {
+    return String(e.activo).toUpperCase() !== 'NO' && ultimoEstado(e.nombre).estado !== 'FUERA';
+  }).filter(function (e) {
+    return ultimoEstado(e.nombre).estado !== 'SIN_FICHAR';
+  });
+
+  abiertos.forEach(function (e) {
+    if (!e.email) return;
+    enviar([e.email], 'Te falta fichar la salida',
+      'Hola ' + e.nombre + ',<br><br>Según el registro sigues dentro desde esta mañana. ' +
+      'Si ya has terminado, ficha la salida ahora para que la jornada de hoy quede bien.<br><br>' +
+      'Si no lo haces, a las 23:45 se cerrará automáticamente y quedará marcado como incidencia ' +
+      'para que dirección lo corrija.');
+  });
+
+  if (abiertos.length) {
+    auditar('SISTEMA', 'RECORDATORIO_SALIDA', abiertos.length + ' persona(s) el ' + hoy);
+  }
+  return abiertos.length;
+}
+
+/* ── 23:45 · Cierre automático de jornadas abiertas ──────────────────────── */
+function cierreAutomatico() {
+  var hoy = fmtFecha(ahora());
+  var cerradas = [];
+
+  leer(HOJAS.empleados).forEach(function (e) {
+    if (String(e.activo).toUpperCase() === 'NO') return;
+    var est = ultimoEstado(e.nombre);
+    if (est.estado === 'FUERA' || est.estado === 'SIN_FICHAR') return;
+
+    var lock = LockService.getScriptLock();
+    try { lock.waitLock(10000); } catch (err) { return; }
+    try {
+      // Si estaba en pausa, primero se reanuda para que el cómputo cuadre
+      if (est.estado === 'PAUSA') apuntarAutomatico(e, 'PAUSA_FIN', hoy, 'Cierre automático: pausa sin reanudar');
+      apuntarAutomatico(e, 'SALIDA', hoy, 'Cierre automático a las 23:45 · el trabajador no fichó la salida');
+      cerradas.push(e.nombre);
+    } finally { lock.releaseLock(); }
+  });
+
+  if (cerradas.length) {
+    auditar('SISTEMA', 'CIERRE_AUTOMATICO', cerradas.join(', '));
+    enviar(destinatariosDireccion(), 'Jornadas cerradas automáticamente',
+      'Estas personas no ficharon la salida del ' + hoy + ' y el sistema ha cerrado su jornada:<br><br>' +
+      '<b>' + cerradas.join('</b><br><b>') + '</b><br><br>' +
+      'Aparecen en <b>Incidencias</b> para que corrijas la hora real. La corrección queda registrada ' +
+      'con tu nombre y su motivo, como exige el registro de jornada.');
+  }
+  return cerradas.length;
+}
+
+function apuntarAutomatico(emp, tipo, fecha, motivo) {
+  var d = new Date(fecha + 'T23:45:00');
+  var id = uid('S');
+  var prev = ultimoHash();
+  var hash = sha256(prev + '|' + [id, d.toISOString(), emp.nombre, tipo].join('|'));
+  hoja(HOJAS.fichajes).appendRow([
+    id, d.toISOString(), fmtFecha(d), fmtHora(d), emp.nombre, emp.email, tipo,
+    '', '', '', 'Sistema', 'AUTOMATICO', motivo, 'SISTEMA', '', '', prev, hash
+  ]);
+}
+
+/* ── 03:00 · Copia de seguridad a Drive ──────────────────────────────────── */
+function copiaSeguridad() {
+  var props = PropertiesService.getScriptProperties();
+  var idCarpeta = props.getProperty('CARPETA_COPIAS');
+  var carpeta;
+  if (idCarpeta) { carpeta = DriveApp.getFolderById(idCarpeta); }
+  else {
+    var busca = DriveApp.getFoldersByName('DC Personas · Copias');
+    carpeta = busca.hasNext() ? busca.next() : DriveApp.createFolder('DC Personas · Copias');
+    props.setProperty('CARPETA_COPIAS', carpeta.getId());
+  }
+
+  var libro = ss();
+  var nombre = 'DC Personas · copia ' + fmtFecha(ahora());
+  DriveApp.getFileById(libro.getId()).makeCopy(nombre, carpeta);
+
+  // Se conservan 60 copias: suficiente para recuperar sin llenar el Drive
+  var archivos = [];
+  var it = carpeta.getFiles();
+  while (it.hasNext()) archivos.push(it.next());
+  archivos.sort(function (a, b) { return b.getDateCreated() - a.getDateCreated(); });
+  archivos.slice(60).forEach(function (f) { f.setTrashed(true); });
+
+  auditar('SISTEMA', 'COPIA_SEGURIDAD', nombre);
+  return nombre;
+}
+
+/* ── Lunes 09:00 · Solicitudes y jornadas pendientes ─────────────────────── */
+function avisoValidaciones() {
+  var pendientes = leer(HOJAS.ausencias).filter(function (a) {
+    return String(a.estado).toUpperCase() === 'PENDIENTE';
+  });
+  var inc = incidencias({ desde: fmtFecha(new Date(Date.now() - 7 * 86400000)), hasta: fmtFecha(ahora()) });
+
+  if (!pendientes.length && !inc.incidencias.length) return 0;
+
+  var html = '';
+  if (pendientes.length) {
+    html += '<b>' + pendientes.length + ' solicitud(es) esperando respuesta:</b><br>' +
+      pendientes.map(function (a) {
+        return '· ' + a.trabajador + ' — ' + a.tipo + ' del ' + normFecha(a.fecha_inicio) +
+               ' al ' + normFecha(a.fecha_fin) + ' (' + a.dias + ' días)';
+      }).join('<br>') + '<br><br>';
+  }
+  if (inc.incidencias.length) {
+    html += '<b>' + inc.incidencias.length + ' incidencia(s) en el registro de la última semana.</b><br>' +
+            'Revísalas en Dirección → Incidencias.';
+  }
+  enviar(destinatariosDireccion(), 'Tienes cosas pendientes en Personas', html);
+  return pendientes.length + inc.incidencias.length;
+}
+
+/* ── Día 1 · Cierre de mes y, si toca, archivo trimestral ────────────────── */
+function tareasMensuales() {
+  resumenMensual();
+  var mes = ahora().getMonth() + 1;              // 1 = enero
+  if ([1, 4, 7, 10].indexOf(mes) >= 0) archivoTrimestral();
+}
+
+function resumenMensual() {
+  var hoy = ahora();
+  var fin = new Date(hoy.getFullYear(), hoy.getMonth(), 0);          // último día del mes anterior
+  var ini = new Date(fin.getFullYear(), fin.getMonth(), 1);
+  var desde = fmtFecha(ini), hasta = fmtFecha(fin);
+
+  var filas = leer(HOJAS.fichajes).filter(function (f) {
+    var fe = normFecha(f.fecha); return fe >= desde && fe <= hasta;
+  });
+  if (!filas.length) return;
+
+  var csv = ['id;fecha;hora;trabajador;tipo;modalidad;centro;origen;motivo;autor'];
+  filas.forEach(function (f) {
+    csv.push([f.id, normFecha(f.fecha), f.hora, f.trabajador, String(f.tipo).trim(),
+              f.modalidad || '', f.centro || '', f.origen || 'APP',
+              String(f.motivo || '').replace(/;/g, ','), f.autor || ''].join(';'));
+  });
+
+  var resumen = resumenPorPersona(filas);
+  var blob = Utilities.newBlob('﻿' + csv.join('\n'), 'text/csv',
+    'registro-jornada-' + desde.slice(0, 7) + '.csv');
+
+  var destinos = destinatariosDireccion();
+  var gestoria = PropertiesService.getScriptProperties().getProperty('EMAIL_GESTORIA');
+  if (gestoria) destinos.push(gestoria);
+
+  try {
+    MailApp.sendEmail({
+      to: destinos.join(','),
+      subject: 'Registro de jornada · ' + desde.slice(0, 7),
+      htmlBody: plantillaEmail('Registro de jornada de ' + desde.slice(0, 7),
+        'Adjunto el registro completo del ' + desde + ' al ' + hasta + '.<br><br>' +
+        '<table style="border-collapse:collapse;font-size:13px">' +
+        '<tr><th align="left" style="border-bottom:1px solid #ccc;padding:5px 12px 5px 0">Persona</th>' +
+        '<th align="left" style="border-bottom:1px solid #ccc;padding:5px 0">Horas</th></tr>' +
+        Object.keys(resumen).sort().map(function (k) {
+          return '<tr><td style="padding:4px 12px 4px 0">' + k + '</td>' +
+                 '<td style="padding:4px 0">' + (resumen[k] / 60).toFixed(1) + ' h</td></tr>';
+        }).join('') + '</table>'),
+      attachments: [blob]
+    });
+    auditar('SISTEMA', 'RESUMEN_MENSUAL', desde.slice(0, 7) + ' → ' + destinos.join(', '));
+  } catch (e) {
+    auditar('SISTEMA', 'RESUMEN_MENSUAL_FALLIDO', e.message);
+  }
+}
+
+function resumenPorPersona(filas) {
+  var porClave = {}, out = {};
+  filas.forEach(function (f) {
+    var k = String(f.trabajador).trim() + '|' + normFecha(f.fecha);
+    (porClave[k] = porClave[k] || []).push(f);
+  });
+  Object.keys(porClave).forEach(function (k) {
+    var p = k.split('|')[0];
+    out[p] = (out[p] || 0) + minutosTrabajados(porClave[k]);
+  });
+  return out;
+}
+
+/* ── Archivo trimestral sellado en Drive ─────────────────────────────────── */
+function archivoTrimestral() {
+  var hoy = ahora();
+  var finTrim = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+  var iniTrim = new Date(finTrim.getFullYear(), finTrim.getMonth() - 2, 1);
+  var desde = fmtFecha(iniTrim), hasta = fmtFecha(finTrim);
+
+  var filas = leer(HOJAS.fichajes).filter(function (f) {
+    var fe = normFecha(f.fecha); return fe >= desde && fe <= hasta;
+  });
+  if (!filas.length) return;
+
+  var integridad = verificarCadena();
+  var resumen = resumenPorPersona(filas);
+
+  var html = '<html><head><meta charset="utf-8"><style>' +
+    'body{font-family:Georgia,serif;color:#17242B;margin:34px}' +
+    'h1{font-size:19px;letter-spacing:3px;text-transform:uppercase;margin:0 0 4px}' +
+    '.s{font-family:Arial,sans-serif;font-size:11px;color:#666;margin-bottom:24px}' +
+    'table{width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:11px}' +
+    'th{text-align:left;border-bottom:1.5px solid #17242B;padding:7px 6px;font-size:9px;text-transform:uppercase;letter-spacing:1px}' +
+    'td{border-bottom:1px solid #E5E5E5;padding:6px}' +
+    '.f{margin-top:24px;padding-top:12px;border-top:1px solid #ccc;font-family:Arial,sans-serif;font-size:10px;color:#666}' +
+    '</style></head><body>' +
+    '<h1>Durán Carasso</h1>' +
+    '<div class="s">Registro de jornada · ' + desde + ' a ' + hasta + '</div>' +
+    '<table><tr><th>Persona</th><th>Horas del periodo</th></tr>' +
+    Object.keys(resumen).sort().map(function (k) {
+      return '<tr><td>' + k + '</td><td>' + (resumen[k] / 60).toFixed(1) + ' h</td></tr>';
+    }).join('') + '</table>' +
+    '<div class="f"><b>' + filas.length + ' registros.</b> ' +
+    'Cadena de integridad: <b>' + (integridad.integridad ? 'correcta' : 'ALTERADA · ' + integridad.rotas.length + ' registro(s)') + '</b>.<br>' +
+    'Último sello: ' + String(filas[filas.length - 1].hash).slice(0, 32) + '…<br>' +
+    'Documento generado el ' + Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm') + '. ' +
+    'Conservación mínima 4 años (art. 34.9 ET).</div></body></html>';
+
+  var props = PropertiesService.getScriptProperties();
+  var idC = props.getProperty('CARPETA_ARCHIVO');
+  var carpeta;
+  if (idC) { carpeta = DriveApp.getFolderById(idC); }
+  else {
+    var b = DriveApp.getFoldersByName('DC Personas · Archivo legal');
+    carpeta = b.hasNext() ? b.next() : DriveApp.createFolder('DC Personas · Archivo legal');
+    props.setProperty('CARPETA_ARCHIVO', carpeta.getId());
+  }
+  var pdf = Utilities.newBlob(html, 'text/html', 'tmp.html')
+    .getAs('application/pdf').setName('Registro jornada ' + desde + ' a ' + hasta + '.pdf');
+  carpeta.createFile(pdf);
+  auditar('SISTEMA', 'ARCHIVO_TRIMESTRAL', desde + ' a ' + hasta);
 }
