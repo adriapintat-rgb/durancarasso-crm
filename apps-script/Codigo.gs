@@ -38,13 +38,15 @@ var HOJAS = {
   publicaciones: 'Publicaciones',
   vacantes:      'Vacantes',
   candidatos:    'Candidatos',
-  checklists:    'Checklists'
+  checklists:    'Checklists',
+  tiposAusencia: 'TiposAusencia',
+  intentos:      'Intentos'
 };
 
 var CABECERAS = {
   Empleados:  ['nombre','email','pin','rol','departamento','oficina','horario_id','fecha_alta','vacaciones_anuales','activo','telefono','dni','coste_hora','empresa','responsable'],
   Fichajes:   ['id','ts_iso','fecha','hora','trabajador','email','tipo','lat','lng','precision_m','dispositivo','origen','motivo','autor','modalidad','centro','hash_prev','hash'],
-  Ausencias:  ['id','ts_solicitud','trabajador','email','tipo','fecha_inicio','fecha_fin','dias','medio_dia','motivo','estado','validador','ts_validacion','comentario'],
+  Ausencias:  ['id','ts_solicitud','trabajador','email','tipo','fecha_inicio','fecha_fin','dias','medio_dia','motivo','estado','validador','ts_validacion','comentario','justificante','dias_arrastre'],
   Horarios:   ['horario_id','nombre','lun','mar','mie','jue','vie','sab','dom','pausa_min','horas_semana'],
   Festivos:   ['fecha','nombre','ambito'],
   Tareas:     ['id','ts','trabajador','fecha','proyecto','tarea','minutos','nota'],
@@ -60,7 +62,9 @@ var CABECERAS = {
   Publicaciones:  ['id','ts','autor','categoria','titulo','cuerpo','fijado','destinatarios'],
   Vacantes:       ['id','titulo','departamento','oficina','descripcion','estado','autor','ts'],
   Candidatos:     ['id','vacante_id','nombre','email','telefono','fase','valoracion','nota','cv_url','ts'],
-  Checklists:     ['id','trabajador','tipo','tarea','responsable','fecha_limite','hecho_ts','hecho_por','orden']
+  Checklists:     ['id','trabajador','tipo','tarea','responsable','fecha_limite','hecho_ts','hecho_por','orden'],
+  TiposAusencia:  ['tipo','dias_anuales','cuenta_saldo','requiere_justificante','arrastrable','color','activo'],
+  Intentos:       ['ts','nombre','ip','resultado']
 };
 
 var TIPOS_FICHAJE = ['ENTRADA','PAUSA_INI','PAUSA_FIN','SALIDA'];
@@ -117,7 +121,7 @@ function router(b) {
   if (a === 'ping')       return { ok: true, hora: new Date().toISOString() };
   if (a === 'auth')       return auth(b);
   if (a === 'setup')      return setupHojas(b);
-  if (a === 'listaEmpleados') return listaEmpleados();
+  if (a === 'listaEmpleados') return listaEmpleados(b);
 
   // A partir de aquí hace falta sesión válida
   var ses = validarToken(b.token);
@@ -187,6 +191,11 @@ function router(b) {
     case 'crearChecklist':  return esDir ? crearChecklist(emp, b)   : denegado();
     case 'analytics':       return esDir ? analytics(b)             : denegado();
     case 'tokenCalendario': return tokenCalendario(emp);
+    case 'auditoria':       return esDir ? auditoria(b)           : denegado();
+    case 'editarEmpleado':  return esDir ? editarEmpleado(emp, b) : denegado();
+    case 'resetPin':        return esDir ? resetPin(emp, b)       : denegado();
+    case 'guardarTipoAusencia': return esDir ? guardarTipoAusencia(emp, b) : denegado();
+    case 'tiposAusencia':   return { ok: true, tipos: tiposAusencia() };
   }
   return { ok: false, error: 'ACCION_DESCONOCIDA: ' + a };
 }
@@ -194,7 +203,10 @@ function router(b) {
 function denegado() { return { ok: false, error: 'SIN_PERMISOS' }; }
 
 /** Lista pública para la pantalla de acceso. No expone PIN ni email. */
-function listaEmpleados() {
+function listaEmpleados(b) {
+  // Protegida con la clave de acceso del centro para no exponer la plantilla
+  var clave = PropertiesService.getScriptProperties().getProperty('CLAVE_ACCESO');
+  if (clave && String(b && b.clave || '') !== clave) return { ok: false, error: 'CLAVE_ACCESO_REQUERIDA' };
   var out = leer(HOJAS.empleados)
     .filter(function (e) { return String(e.activo).toUpperCase() !== 'NO'; })
     .map(function (e) { return { nombre: e.nombre, departamento: e.departamento, rol: e.rol }; });
@@ -254,16 +266,47 @@ function firmar(payload) {
   return Utilities.base64EncodeWebSafe(sig);
 }
 
+var MAX_INTENTOS = 5;          // intentos fallidos antes de bloquear
+var VENTANA_BLOQUEO_MIN = 15;  // minutos que dura el bloqueo
+
+/** El PIN nunca se guarda en claro: se almacena SHA-256(pin + salt). */
+function hashPin(pin, salt) { return sha256(String(pin) + '|' + salt); }
+function esHash(v) { return /^[0-9a-f]{64}$/.test(String(v).trim()); }
+
+function intentosRecientes(nombre) {
+  var limite = Date.now() - VENTANA_BLOQUEO_MIN * 60000;
+  return leer(HOJAS.intentos).filter(function (i) {
+    return String(i.nombre).trim() === nombre &&
+           String(i.resultado).toUpperCase() === 'FALLIDO' &&
+           new Date(String(i.ts)).getTime() > limite;
+  }).length;
+}
+function registrarIntento(nombre, resultado) {
+  try { hoja(HOJAS.intentos).appendRow([new Date().toISOString(), nombre, '', resultado]); } catch (e) {}
+}
+
 function auth(b) {
   var nombre = String(b.nombre || '').trim();
   var pin = String(b.pin || '').trim();
   var emp = buscarEmpleado(nombre);
   if (!emp)  return { ok: false, error: 'EMPLEADO_NO_ENCONTRADO' };
   if (String(emp.activo).toUpperCase() === 'NO') return { ok: false, error: 'EMPLEADO_INACTIVO' };
-  if (String(emp.pin).trim() !== pin) {
-    auditar(nombre, 'LOGIN_FALLIDO', '');
-    return { ok: false, error: 'PIN_INCORRECTO' };
+
+  if (intentosRecientes(nombre) >= MAX_INTENTOS) {
+    auditar(nombre, 'LOGIN_BLOQUEADO', 'demasiados intentos');
+    return { ok: false, error: 'CUENTA_BLOQUEADA', minutos: VENTANA_BLOQUEO_MIN };
   }
+
+  var guardado = String(emp.pin).trim();
+  var correcto = esHash(guardado) ? (hashPin(pin, nombre) === guardado) : (guardado === pin);
+  if (!correcto) {
+    registrarIntento(nombre, 'FALLIDO');
+    auditar(nombre, 'LOGIN_FALLIDO', '');
+    return { ok: false, error: 'PIN_INCORRECTO', restantes: MAX_INTENTOS - intentosRecientes(nombre) };
+  }
+  registrarIntento(nombre, 'OK');
+  // Migración transparente: el primer acceso con PIN en claro lo convierte en hash
+  if (!esHash(guardado)) escribirPin(emp, pin);
   var exp = Date.now() + TOKEN_HORAS * 3600 * 1000;
   var payload = Utilities.base64EncodeWebSafe(nombre + '|' + exp);
   var token = payload + '.' + firmar(payload);
@@ -288,6 +331,12 @@ function validarToken(token) {
   var trozos = claro.split('|');
   if (Number(trozos[1]) < Date.now()) return { ok: false };
   return { ok: true, nombre: trozos[0] };
+}
+
+function escribirPin(emp, pin) {
+  var h = hoja(HOJAS.empleados);
+  var cols = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0].map(String);
+  h.getRange(emp._fila, cols.indexOf('pin') + 1).setValue(hashPin(pin, emp.nombre));
 }
 
 function buscarEmpleado(nombre) {
@@ -326,6 +375,7 @@ function bootstrap(emp, esDir) {
       .map(function (c) { return { id: c.id, nombre: c.nombre, direccion: c.direccion,
                                    lat: Number(c.lat), lng: Number(c.lng), radio_m: Number(c.radio_m || 150) }; }),
     turnos: turnosDe(emp.nombre),
+    tiposAusencia: tiposAusencia(),
     exigirCentro: exigeCentro(),
     esDireccion: esDir,
     servidorHora: new Date().toISOString()
@@ -538,13 +588,69 @@ function solicitarAusencia(emp, b) {
   }
 
   var dias = medio === 'SI' ? 0.5 : diasLaborables(desde, hasta);
+  var year = Number(desde.slice(0, 4));
+  var def = tiposAusencia().filter(function (t) { return t.tipo === tipo; })[0];
+
+  if (def && def.requiereJustificante && !b.justificante) {
+    return { ok: false, error: 'JUSTIFICANTE_OBLIGATORIO' };
+  }
+
+  // El arrastre del año anterior se gasta primero, si sigue en plazo
+  var arrastreUsado = 0;
+  if (def && def.cuentaSaldo) {
+    var s = saldos(emp, year).filter(function (x) { return x.tipo === tipo; })[0];
+    if (s) {
+      if (dias > s.disponibles) {
+        return { ok: false, error: 'SIN_DIAS', disponibles: s.disponibles, solicitados: dias };
+      }
+      if (s.arrastreVigente && s.arrastre > 0 && desde <= s.limiteArrastre) {
+        arrastreUsado = Math.min(dias, s.arrastre);
+      }
+    }
+  }
+
+  var url = '';
+  if (b.justificante) {
+    var g = guardarJustificante(emp, b.justificante, tipo + ' ' + desde);
+    if (!g.ok) return g;
+    url = g.url;
+  }
+
   var id = uid('A');
   hoja(HOJAS.ausencias).appendRow([
     id, new Date().toISOString(), emp.nombre, emp.email, tipo, desde, hasta,
-    dias, medio, String(b.motivo || ''), 'PENDIENTE', '', '', ''
+    dias, medio, String(b.motivo || ''), 'PENDIENTE', '', '', '', url, arrastreUsado
   ]);
-  auditar(emp.nombre, 'SOLICITUD_AUSENCIA', tipo + ' ' + desde + '→' + hasta + ' (' + dias + 'd)');
-  return { ok: true, id: id, dias: dias };
+  auditar(emp.nombre, 'SOLICITUD_AUSENCIA', tipo + ' ' + desde + '→' + hasta + ' (' + dias + 'd' +
+    (arrastreUsado ? ', ' + arrastreUsado + ' del año anterior' : '') + ')');
+  return { ok: true, id: id, dias: dias, arrastre: arrastreUsado };
+
+}
+
+/** Guarda el certificado en una carpeta de Drive y devuelve su enlace. */
+function guardarJustificante(emp, j, titulo) {
+  try {
+    var datos = String(j.datos || '');
+    var coma = datos.indexOf(',');
+    if (coma < 0) return { ok: false, error: 'ARCHIVO_INVALIDO' };
+    var bytes = Utilities.base64Decode(datos.slice(coma + 1));
+    if (bytes.length > 8 * 1024 * 1024) return { ok: false, error: 'ARCHIVO_DEMASIADO_GRANDE' };
+
+    var idCarpeta = PropertiesService.getScriptProperties().getProperty('CARPETA_JUSTIFICANTES');
+    var carpeta;
+    if (idCarpeta) { carpeta = DriveApp.getFolderById(idCarpeta); }
+    else {
+      var busca = DriveApp.getFoldersByName('DC Personas · Justificantes');
+      carpeta = busca.hasNext() ? busca.next() : DriveApp.createFolder('DC Personas · Justificantes');
+      PropertiesService.getScriptProperties().setProperty('CARPETA_JUSTIFICANTES', carpeta.getId());
+    }
+    var blob = Utilities.newBlob(bytes, j.tipoMime || 'application/octet-stream',
+      emp.nombre + ' · ' + titulo + ' · ' + (j.nombre || 'justificante'));
+    var archivo = carpeta.createFile(blob);
+    return { ok: true, url: archivo.getUrl() };
+  } catch (e) {
+    return { ok: false, error: 'ERROR_AL_GUARDAR: ' + e.message };
+  }
 }
 
 function cancelarAusencia(emp, b) {
@@ -562,18 +668,94 @@ function cancelarAusencia(emp, b) {
   return { ok: false, error: 'NO_ENCONTRADA' };
 }
 
-function saldoVacaciones(nombre, year, anuales) {
-  var consumidos = 0, pendientes = 0;
+/* ── Tipos de ausencia ───────────────────────────────────────────────────── */
+var TIPOS_POR_DEFECTO = [
+  ['Vacaciones',            23, 'SI', 'NO', 'SI', '#E8C9C4', 'SI'],
+  ['Asuntos propios',        4, 'SI', 'NO', 'NO', '#C7E4DA', 'SI'],
+  ['Permiso Navidad 24',     1, 'SI', 'NO', 'NO', '#C7E4DA', 'SI'],
+  ['Permiso Navidad 31',     1, 'SI', 'NO', 'NO', '#C7E4DA', 'SI'],
+  ['Tarde día cumpleaños',   1, 'SI', 'NO', 'NO', '#F0E0BC', 'SI'],
+  ['Permiso retribuido',     0, 'NO', 'SI', 'NO', '#C7E4DA', 'SI'],
+  ['Formación',              0, 'NO', 'NO', 'NO', '#D5D2E8', 'SI'],
+  ['Mudanza',                1, 'NO', 'SI', 'NO', '#D5D2E8', 'SI'],
+  ['Matrimonio',            15, 'NO', 'SI', 'NO', '#D5D2E8', 'SI'],
+  ['Nacimiento hijo/a',      0, 'NO', 'SI', 'NO', '#D5D2E8', 'SI'],
+  ['Fallecimiento familiar', 0, 'NO', 'SI', 'NO', '#D5D2E8', 'SI'],
+  ['Otros',                  0, 'NO', 'NO', 'NO', '#DEDCD6', 'SI']
+];
+
+function tiposAusencia() {
+  var filas = leer(HOJAS.tiposAusencia);
+  if (!filas.length) {
+    hoja(HOJAS.tiposAusencia).getRange(2, 1, TIPOS_POR_DEFECTO.length, 7).setValues(TIPOS_POR_DEFECTO);
+    filas = leer(HOJAS.tiposAusencia);
+  }
+  return filas.filter(function (t) { return String(t.activo).toUpperCase() !== 'NO'; })
+    .map(function (t) {
+      return { tipo: String(t.tipo).trim(), dias: Number(t.dias_anuales || 0),
+               cuentaSaldo: String(t.cuenta_saldo).toUpperCase() === 'SI',
+               requiereJustificante: String(t.requiere_justificante).toUpperCase() === 'SI',
+               arrastrable: String(t.arrastrable).toUpperCase() === 'SI',
+               color: t.color || '#DEDCD6' };
+    });
+}
+
+function limiteArrastre(year) {
+  var mmdd = PropertiesService.getScriptProperties().getProperty('LIMITE_ARRASTRE') || '03-31';
+  return String(year) + '-' + mmdd;
+}
+
+/**
+ * Días que una persona ha cargado a un año concreto.
+ * Una solicitud hecha en enero puede cargarse al año anterior si consume
+ * arrastre: por eso `dias_arrastre` se contabiliza en el año previo.
+ */
+function consumoDelAno(nombre, tipo, year, estados) {
+  var total = 0;
   leer(HOJAS.ausencias).forEach(function (a) {
     if (String(a.trabajador).trim() !== nombre) return;
-    if (String(a.tipo).toUpperCase().indexOf('VACAC') < 0) return;
-    if (normFecha(a.fecha_inicio).slice(0, 4) !== String(year)) return;
-    var est = String(a.estado).toUpperCase();
-    if (est === 'APROBADA') consumidos += Number(a.dias || 0);
-    if (est === 'PENDIENTE') pendientes += Number(a.dias || 0);
+    if (String(a.tipo).trim() !== tipo) return;
+    if (estados.indexOf(String(a.estado).toUpperCase()) < 0) return;
+    var anoInicio = Number(normFecha(a.fecha_inicio).slice(0, 4));
+    var arrastre = Number(a.dias_arrastre || 0);
+    var dias = Number(a.dias || 0);
+    if (anoInicio === year)      total += dias - arrastre;
+    if (anoInicio === year + 1)  total += arrastre;
   });
-  return { totales: anuales, consumidos: consumidos, pendientes: pendientes,
-           disponibles: anuales - consumidos - pendientes };
+  return total;
+}
+
+function cupoDe(emp, t, year) {
+  // Las vacaciones salen de la ficha de la persona; el resto, del tipo
+  if (t.tipo.toUpperCase().indexOf('VACAC') === 0) return Number(emp.vacaciones_anuales || t.dias);
+  return t.dias;
+}
+
+function arrastreDisponible(emp, t, year) {
+  if (!t.arrastrable) return 0;
+  var cupoPrev = cupoDe(emp, t, year - 1);
+  var gastadoPrev = consumoDelAno(emp.nombre, t.tipo, year - 1, ['APROBADA', 'PENDIENTE']);
+  return Math.max(0, cupoPrev - gastadoPrev);
+}
+
+function saldos(emp, year) {
+  return tiposAusencia().filter(function (t) { return t.cuentaSaldo; }).map(function (t) {
+    var cupo = cupoDe(emp, t, year);
+    var arr = arrastreDisponible(emp, t, year);
+    var vigente = fmtFecha(ahora()) <= limiteArrastre(year);
+    var cons = consumoDelAno(emp.nombre, t.tipo, year, ['APROBADA']);
+    var pend = consumoDelAno(emp.nombre, t.tipo, year, ['PENDIENTE']);
+    return { tipo: t.tipo, totales: cupo, arrastre: arr, arrastreVigente: vigente,
+             limiteArrastre: limiteArrastre(year), consumidos: cons, pendientes: pend,
+             disponibles: cupo + (vigente ? arr : 0) - cons - pend };
+  });
+}
+
+/** Compatibilidad: el portal sigue mostrando el saldo de vacaciones. */
+function saldoVacaciones(nombre, year, anuales) {
+  var emp = buscarEmpleado(nombre);
+  var v = saldos(emp, year).filter(function (s) { return s.tipo.toUpperCase().indexOf('VACAC') === 0; })[0];
+  return v || { totales: anuales, arrastre: 0, consumidos: 0, pendientes: 0, disponibles: anuales };
 }
 
 function misAusencias(emp, b) {
@@ -582,7 +764,9 @@ function misAusencias(emp, b) {
     return String(a.trabajador).trim() === emp.nombre &&
            normFecha(a.fecha_inicio).slice(0, 4) === year;
   }).map(limpiarAusencia);
-  return { ok: true, ausencias: mias, saldo: saldoVacaciones(emp.nombre, year, Number(emp.vacaciones_anuales || 0)) };
+  return { ok: true, ausencias: mias,
+           saldo: saldoVacaciones(emp.nombre, year, Number(emp.vacaciones_anuales || 0)),
+           saldos: saldos(emp, year), tipos: tiposAusencia() };
 }
 
 function limpiarAusencia(a) {
@@ -591,7 +775,8 @@ function limpiarAusencia(a) {
     desde: normFecha(a.fecha_inicio), hasta: normFecha(a.fecha_fin),
     dias: Number(a.dias || 0), medioDia: String(a.medio_dia).toUpperCase() === 'SI',
     motivo: a.motivo, estado: String(a.estado).toUpperCase(),
-    validador: a.validador, comentario: a.comentario
+    validador: a.validador, comentario: a.comentario,
+    justificante: a.justificante || '', diasArrastre: Number(a.dias_arrastre || 0)
   };
 }
 
@@ -752,6 +937,71 @@ function altaEmpleado(dir, b) {
   return { ok: true };
 }
 
+/* ── Auditoría (solo dirección) ─────────────────────────────────────────── */
+function auditoria(b) {
+  var filas = leer(HOJAS.auditoria).map(function (a) {
+    return { ts: String(a.ts), actor: a.actor, accion: a.accion, detalle: a.detalle };
+  }).reverse();
+  var limite = Number(b.limite || 200);
+  return { ok: true, registros: filas.slice(0, limite), total: filas.length };
+}
+
+/* ── Gestión de la plantilla (solo dirección) ───────────────────────────── */
+var CAMPOS_ADMIN = ['email', 'rol', 'departamento', 'oficina', 'horario_id',
+                    'vacaciones_anuales', 'activo', 'telefono', 'dni', 'coste_hora',
+                    'empresa', 'responsable'];
+
+function editarEmpleado(dir, b) {
+  var emp = buscarEmpleado(b.nombre);
+  if (!emp) return { ok: false, error: 'NO_ENCONTRADO' };
+  var h = hoja(HOJAS.empleados);
+  var cols = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0].map(String);
+  var cambios = [];
+  CAMPOS_ADMIN.forEach(function (campo) {
+    if (b[campo] === undefined) return;
+    var col = cols.indexOf(campo) + 1;
+    if (col <= 0) return;
+    var antes = String(h.getRange(emp._fila, col).getValue());
+    if (antes === String(b[campo])) return;
+    h.getRange(emp._fila, col).setValue(b[campo]);
+    cambios.push(campo + ': "' + antes + '" → "' + b[campo] + '"');
+  });
+  if (cambios.length) auditar(dir.nombre, 'EDITA_EMPLEADO', b.nombre + ' — ' + cambios.join('; '));
+  return { ok: true, cambios: cambios.length };
+}
+
+function resetPin(dir, b) {
+  var emp = buscarEmpleado(b.nombre);
+  if (!emp) return { ok: false, error: 'NO_ENCONTRADO' };
+  var nuevo = String(b.pin || '').trim();
+  if (!/^\d{4}$/.test(nuevo)) return { ok: false, error: 'PIN_INVALIDO' };
+  escribirPin(emp, nuevo);
+  // Levanta también el bloqueo por intentos fallidos
+  var h = hoja(HOJAS.intentos);
+  leer(HOJAS.intentos).forEach(function (i) {
+    if (String(i.nombre).trim() === emp.nombre) h.getRange(i._fila, 4).setValue('ANULADO');
+  });
+  auditar(dir.nombre, 'RESET_PIN', b.nombre);
+  return { ok: true };
+}
+
+function guardarTipoAusencia(dir, b) {
+  if (!b.tipo) return { ok: false, error: 'DATOS_INCOMPLETOS' };
+  var filas = leer(HOJAS.tiposAusencia);
+  var fila = [String(b.tipo), Number(b.dias || 0), b.cuentaSaldo ? 'SI' : 'NO',
+              b.requiereJustificante ? 'SI' : 'NO', b.arrastrable ? 'SI' : 'NO',
+              String(b.color || '#DEDCD6'), b.activo === false ? 'NO' : 'SI'];
+  for (var i = 0; i < filas.length; i++) {
+    if (String(filas[i].tipo).trim() !== String(b.tipo).trim()) continue;
+    hoja(HOJAS.tiposAusencia).getRange(filas[i]._fila, 1, 1, 7).setValues([fila]);
+    auditar(dir.nombre, 'EDITA_TIPO_AUSENCIA', String(b.tipo));
+    return { ok: true };
+  }
+  hoja(HOJAS.tiposAusencia).appendRow(fila);
+  auditar(dir.nombre, 'ALTA_TIPO_AUSENCIA', String(b.tipo));
+  return { ok: true };
+}
+
 // ── SETUP INICIAL ────────────────────────────────────────────────────────────
 /**
  * Ejecutar UNA VEZ desde el editor de Apps Script (Ejecutar → setupInicial).
@@ -771,6 +1021,8 @@ function setupInicial() {
   if (!props.getProperty('SECRET'))  props.setProperty('SECRET', Utilities.getUuid() + Utilities.getUuid());
   if (!props.getProperty('API_KEY')) props.setProperty('API_KEY', Utilities.getUuid());
   if (!props.getProperty('EXIGIR_CENTRO')) props.setProperty('EXIGIR_CENTRO', 'NO');
+  if (!props.getProperty('LIMITE_ARRASTRE')) props.setProperty('LIMITE_ARRASTRE', '03-31');
+  tiposAusencia();   // siembra la tabla de tipos con sus cupos
 
   var hCen = hoja(HOJAS.centros);
   if (hCen.getLastRow() < 2) {
@@ -817,12 +1069,12 @@ function actualizarPerfil(emp, b) {
 
 function cambiarPin(emp, b) {
   var actual = String(b.actual || '').trim(), nuevo = String(b.nuevo || '').trim();
-  if (String(emp.pin).trim() !== actual) return { ok: false, error: 'PIN_ACTUAL_INCORRECTO' };
+  var guardado = String(emp.pin).trim();
+  var ok = esHash(guardado) ? (hashPin(actual, emp.nombre) === guardado) : (guardado === actual);
+  if (!ok) return { ok: false, error: 'PIN_ACTUAL_INCORRECTO' };
   if (!/^\d{4}$/.test(nuevo)) return { ok: false, error: 'PIN_INVALIDO' };
   if (nuevo === '0000' || nuevo === '1234') return { ok: false, error: 'PIN_DEBIL' };
-  var h = hoja(HOJAS.empleados);
-  var cols = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0].map(String);
-  h.getRange(emp._fila, cols.indexOf('pin') + 1).setValue(nuevo);
+  escribirPin(emp, nuevo);
   auditar(emp.nombre, 'CAMBIA_PIN', '');
   return { ok: true };
 }

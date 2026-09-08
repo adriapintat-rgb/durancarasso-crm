@@ -132,6 +132,36 @@ En **Configuración del proyecto → Propiedades del script**:
 |---|---|
 | `EXIGIR_CENTRO` | `SI` impide fichar fuera de un centro de la hoja `Centros`. Por defecto `NO` |
 | `API_KEY` | Clave de la API de lectura. Se genera sola en `setupInicial` |
+| `LIMITE_ARRASTRE` | Hasta cuándo se pueden gastar los días del año anterior. Formato `MM-DD`, por defecto `03-31` |
+| `CLAVE_ACCESO` | Si la rellenas, la pantalla de acceso pide esta clave antes de mostrar la plantilla |
+| `CARPETA_JUSTIFICANTES` | Carpeta de Drive donde se guardan los certificados. Se crea sola |
+
+## Seguridad
+
+- **El PIN nunca se guarda en claro.** Se almacena como SHA-256 con sal. Los PIN que
+  escribas a mano en la hoja se convierten en hash la primera vez que la persona entra.
+- **Bloqueo por intentos**: 5 fallos seguidos bloquean el acceso 15 minutos. Dirección
+  puede levantarlo desde *Plantilla → PIN*.
+- **Cifrado y control de acceso**: los datos viven en tu Google Sheet. Google los cifra
+  en reposo y en tránsito, y solo entra quien tenga permiso sobre ese archivo. Comparte
+  la hoja únicamente con las cuentas de dirección.
+- **Registro de auditoría**: cada acceso, validación, corrección y edición de ficha queda
+  en la hoja `Auditoria`, visible en *Dirección → Auditoría* y exportable a CSV.
+
+## Tipos de ausencia y cupos
+
+La hoja `TiposAusencia` define cuántos días da cada tipo y cómo se controla. Se edita
+desde *Dirección → Tipos de ausencia*:
+
+| Columna | Qué hace |
+|---|---|
+| `dias_anuales` | Cupo del año. En Vacaciones manda el valor de la ficha de cada persona |
+| `cuenta_saldo` | `SI` descuenta de un cupo y bloquea la solicitud si no quedan días |
+| `requiere_justificante` | `SI` obliga a adjuntar un archivo al solicitar |
+| `arrastrable` | `SI` pasa los días sobrantes al año siguiente, y se gastan antes que los nuevos |
+
+Cupos de partida: Vacaciones 23 · Asuntos propios 4 · Navidad 24 y 31, uno cada uno ·
+Tarde de cumpleaños 1.
 
 **Calendario**: cada persona obtiene su enlace en *Mi perfil → Calendario*. Es un feed iCal
 de solo lectura con sus ausencias aprobadas; Outlook y Google Calendar lo aceptan como

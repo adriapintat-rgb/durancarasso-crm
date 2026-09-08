@@ -339,17 +339,30 @@ var S = {
   tareas: [], documentos: [], pendientes: [],
   centros: [], turnos: [], exigirCentro: false, modalidad: 'OFICINA',
   perfil: null, objetivos: [], evaluacion: [], encuestas: [], publicaciones: [],
+  tiposAusencia: [], saldos: [], auditoria: null,
   checklist: [], compensaciones: [],
   objEquipo: [], evalEquipo: null, encuestasAdmin: [], turnosEquipo: [],
   bolsaEquipo: null, reclut: null, checklistEquipo: null, analytics: null, centrosAdmin: [],
   vista: 'portal', year: new Date().getFullYear(), cargando: false, cargandoVista: false
 };
 
-var TIPOS_AUSENCIA = [
-  'Vacaciones','Permiso retribuido','Baja IT','Asuntos propios',
-  'Permiso Navidad 24','Permiso Navidad 31','Formación','Mudanza',
-  'Matrimonio','Nacimiento hijo/a','Fallecimiento familiar','Otros'
+// Los tipos y sus cupos se configuran en la hoja TiposAusencia (Dirección → Ausencias)
+var TIPOS_AUSENCIA_DEF = [
+  {tipo:'Vacaciones',            dias:23, cuentaSaldo:true,  requiereJustificante:false, arrastrable:true},
+  {tipo:'Asuntos propios',       dias:4,  cuentaSaldo:true,  requiereJustificante:false, arrastrable:false},
+  {tipo:'Permiso Navidad 24',    dias:1,  cuentaSaldo:true,  requiereJustificante:false, arrastrable:false},
+  {tipo:'Permiso Navidad 31',    dias:1,  cuentaSaldo:true,  requiereJustificante:false, arrastrable:false},
+  {tipo:'Tarde día cumpleaños',  dias:1,  cuentaSaldo:true,  requiereJustificante:false, arrastrable:false},
+  {tipo:'Permiso retribuido',    dias:0,  cuentaSaldo:false, requiereJustificante:true,  arrastrable:false},
+  {tipo:'Formación',             dias:0,  cuentaSaldo:false, requiereJustificante:false, arrastrable:false},
+  {tipo:'Mudanza',               dias:1,  cuentaSaldo:false, requiereJustificante:true,  arrastrable:false},
+  {tipo:'Matrimonio',            dias:15, cuentaSaldo:false, requiereJustificante:true,  arrastrable:false},
+  {tipo:'Nacimiento hijo/a',     dias:0,  cuentaSaldo:false, requiereJustificante:true,  arrastrable:false},
+  {tipo:'Fallecimiento familiar',dias:0,  cuentaSaldo:false, requiereJustificante:true,  arrastrable:false},
+  {tipo:'Otros',                 dias:0,  cuentaSaldo:false, requiereJustificante:false, arrastrable:false}
 ];
+function tiposAusencia(){ return (S.tiposAusencia && S.tiposAusencia.length)? S.tiposAusencia : TIPOS_AUSENCIA_DEF; }
+function tipoDef(t){ return tiposAusencia().filter(function(x){return x.tipo===t;})[0]||{}; }
 var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 var DOW = ['L','M','X','J','V','S','D'];
 
@@ -516,6 +529,8 @@ var NAV_DIR = [
   {id:'analytics',    ic:'◱', t:'Analytics'},
   {id:'informes',     ic:'⤓', t:'Informes'},
   {id:'plantilla',    ic:'⚇', t:'Plantilla'},
+  {id:'tiposaus',     ic:'☂', t:'Tipos de ausencia'},
+  {id:'auditoria',    ic:'⎘', t:'Auditoría'},
   {id:'centros',      ic:'⌖', t:'Centros'},
   {id:'quiosco',      ic:'▣', t:'Quiosco / QR'}
 ];
@@ -564,6 +579,8 @@ var CARGA = {
   onboarding:  function(){ return api('checklistEquipo',{}).then(function(r){ if(r.ok) S.checklistEquipo=r; }); },
   analytics:   function(){ return api('analytics',{desde:S.year+'-01-01',hasta:hoyISO()}).then(function(r){ if(r.ok) S.analytics=r; }); },
   centros:     function(){ return api('centros').then(function(r){ if(r.ok) S.centrosAdmin=r.centros; }); },
+  auditoria:   function(){ return api('auditoria',{limite:300}).then(function(r){ if(r.ok) S.auditoria=r; }); },
+  tiposaus:    function(){ return api('tiposAusencia').then(function(r){ if(r.ok) S.tiposAusencia=r.tipos; }); },
   tablonPortal:function(){ return api('publicaciones').then(function(r){ if(r.ok) S.publicaciones=r.publicaciones; }); }
 };
 function ir(v){
@@ -661,7 +678,17 @@ function pintarReloj(){
   $('btn_pause').disabled = e==='FUERA' || e==='SIN_FICHAR';
   $('btn_pause').textContent = e==='PAUSA' ? 'Reanudar' : 'Pausa';
   if(S.vista==='portal' && $('portal_estado')) pintarEstadoPortal();
+  if(S.vista==='fichajes'){
+    var el=$('fi_hoy');
+    if(el){
+      var m=minutosHoy();
+      el.textContent = (S.estado==='TRABAJANDO') ? hhmm(m)+' '+pad(Math.floor((m*60)%60))+'s' : hhmm(m);
+    }
+    var sem=$('fi_sem'); if(sem) sem.textContent=hhmm(minutosSemanaVista());
+  }
 }
+var _semVista={min:0,teo:0};
+function minutosSemanaVista(){ return _semVista.min; }
 function togglePausa(){ fichar(S.estado==='PAUSA' ? 'PAUSA_FIN' : 'PAUSA_INI'); }
 
 function fichar(tipo){
@@ -718,11 +745,12 @@ function refrescar(){
   var lunes=lunesDe(new Date()), año=S.year;
   var desdeRango=fISO(new Date(new Date().getFullYear(),0,1));
   var tareas=[
-    api('bootstrap').then(function(r){ if(r.ok){ S.empleados=r.empleados; S.horarios=r.horarios; S.festivos=r.festivos; S.esDir=r.esDireccion; S.centros=r.centros||[]; S.turnos=r.turnos||[]; S.exigirCentro=!!r.exigirCentro; } }),
+    api('bootstrap').then(function(r){ if(r.ok){ S.empleados=r.empleados; S.horarios=r.horarios; S.festivos=r.festivos; S.esDir=r.esDireccion; S.centros=r.centros||[]; S.turnos=r.turnos||[]; S.exigirCentro=!!r.exigirCentro;
+        S.tiposAusencia=r.tiposAusencia||[]; } }),
     api('misFichajes',{desde:desdeRango,hasta:hoyISO()}).then(function(r){
       if(r.ok){ S.fichajesRango=r.fichajes; S.fichajesHoy=r.fichajes.filter(function(f){return f.fecha===hoyISO();});
                 S.estado=r.estado?r.estado.estado:'FUERA'; } }),
-    api('misAusencias',{year:año}).then(function(r){ if(r.ok){ S.ausencias=r.ausencias; S.saldo=r.saldo; } }),
+    api('misAusencias',{year:año}).then(function(r){ if(r.ok){ S.ausencias=r.ausencias; S.saldo=r.saldo; S.saldos=r.saldos||[]; if(r.tipos) S.tiposAusencia=r.tipos; } }),
     api('estadoEquipo').then(function(r){ if(r.ok) S.equipo=r.equipo; }),
     api('ausenciasEquipo',{year:año}).then(function(r){ if(r.ok) S.ausEquipo=r.ausencias; }),
     api('misTareas',{desde:fISO(lunes),hasta:hoyISO()}).then(function(r){ if(r.ok) S.tareas=r.tareas; }),
@@ -745,7 +773,8 @@ function render(){
          objetivos:vObjetivos,evaluacion:vEvaluacion,encuestas:vEncuestas,tablon:vTablon,
          checklist:vChecklist,perfil:vPerfil,turnos:vTurnos,bolsa:vBolsa,objequipo:vObjEquipo,
          evaluaciones:vEvaluaciones,encuestasadm:vEncuestasAdm,reclutamiento:vReclutamiento,
-         onboarding:vOnboarding,analytics:vAnalytics,centros:vCentros,quiosco:vQuiosco}[S.vista]||vPortal;
+         onboarding:vOnboarding,analytics:vAnalytics,centros:vCentros,quiosco:vQuiosco,
+         auditoria:vAuditoria,tiposaus:vTiposAusencia}[S.vista]||vPortal;
   $('main').innerHTML=v();
   if(S.vista==='quiosco') setTimeout(pintarQR,60);
 }
@@ -847,6 +876,7 @@ function filaAusencia(a){
     '<div class="li-t">'+esc(a.tipo)+'</div>'+
     '<div class="li-s">'+fBonita(a.desde)+(a.desde!==a.hasta?' → '+fBonita(a.hasta):'')+' · '+a.dias+' día'+(a.dias===1?'':'s')+'</div></div>'+
     '<span class="pill '+est+'">'+esc(a.estado)+'</span>'+
+    (a.justificante?'<a class="btn b-ghost b-sm" href="'+esc(a.justificante)+'" target="_blank" rel="noopener">Justificante</a>':'')+
     (a.estado==='PENDIENTE'?'<button class="btn b-ghost b-sm" onclick="cancelarAus(\''+a.id+'\')">Cancelar</button>':'')+
     '</div>';
 }
@@ -868,7 +898,7 @@ function vFichajes(){
         '<div><div class="li-t" style="text-transform:capitalize">'+d.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'short'})+'</div>'+
         '<div class="li-s">'+(fest?'Festivo · '+esc(fest.nombre):aus?esc(aus.tipo):teo?'Previsto '+hhmm(teo):'No laborable')+'</div></div>'+
         '<div class="sp"></div>'+
-        (min? '<div style="text-align:right"><div style="font-weight:600;font-variant-numeric:tabular-nums">'+hhmm(min)+'</div>'+
+        (min? '<div style="text-align:right"><div style="font-weight:600;font-variant-numeric:tabular-nums"'+(f===hoyISO()?' id="fi_hoy"':'')+'>'+hhmm(min)+'</div>'+
               (teo?'<div style="font-size:10.5px" class="'+(min-teo>=0?'pos':'neg')+'">'+hhmmSigned(min-teo)+'</div>':'')+'</div>'
             : aus? '<span class="pill '+(aus.estado==='PENDIENTE'?'p-warn':'p-info')+'">'+esc(aus.tipo)+'</span>'
             : fest? '<span class="pill p-grey">Festivo</span>'
@@ -883,12 +913,13 @@ function vFichajes(){
       }).join('')+'</div>' : '')+
     '</div>';
   }
+  _semVista={min:totalSem,teo:teoSem};
   var fin=new Date(lunes); fin.setDate(fin.getDate()+6);
   return cab('Mis fichajes','Registro de jornada · sistema append-only con sello de integridad')+
    '<div class="card" style="margin-bottom:14px"><div class="row wrap">'+
      '<button class="btn b-ghost b-sm" onclick="semOffset--;render()">←</button>'+
      '<div style="flex:1;text-align:center"><div style="font-weight:600;font-size:13px">'+fBonita(fISO(lunes))+' — '+fBonita(fISO(fin))+'</div>'+
-     '<div style="font-size:11px;color:var(--sub)">'+hhmm(totalSem)+' trabajadas · previsto '+hhmm(teoSem)+' · <span class="'+(totalSem-teoSem>=0?'pos':'neg')+'">'+hhmmSigned(totalSem-teoSem)+'</span></div></div>'+
+     '<div style="font-size:11px;color:var(--sub)"><span id="fi_sem">'+hhmm(totalSem)+'</span> trabajadas · previsto '+hhmm(teoSem)+' · <span class="'+(totalSem-teoSem>=0?'pos':'neg')+'">'+hhmmSigned(totalSem-teoSem)+'</span></div></div>'+
      '<button class="btn b-ghost b-sm" onclick="semOffset++;render()" '+(semOffset>=0?'disabled':'')+'>→</button>'+
    '</div></div>'+
    filas+
@@ -935,11 +966,23 @@ function vAusencias(){
    '<div class="card" style="margin-bottom:16px">'+
      '<div style="font-size:12px;color:var(--sub);margin-bottom:12px">Vacaciones · Durán Carasso · 1 ene '+S.year+' – 31 dic '+S.year+'</div>'+
      '<div class="grid g4">'+
-       kpi(s.disponibles,'Días disponibles','')+
+       kpi(s.disponibles,'Días disponibles', (s.arrastre&&s.arrastreVigente)?'<span class="pos">incluye '+s.arrastre+' de '+(S.year-1)+'</span>':'')+
        kpi(s.consumidos,'Días consumidos','')+
        kpi(s.pendientes,'Pendientes aprobar','')+
        kpi(s.totales,'Días totales','')+
-     '</div></div>'+
+     '</div>'+
+     ((s.arrastre&&s.arrastreVigente)? '<div style="margin-top:14px;padding:11px 13px;background:var(--amber-soft);border:1px solid #EEDFBE;border-radius:2px;font-size:12px;color:var(--amber)">'+
+       'Te quedan <b>'+s.arrastre+' días de '+(S.year-1)+'</b>. Se gastan automáticamente antes que los de '+S.year+
+       ' y caducan el '+fBonita(s.limiteArrastre)+'.</div>':'')+
+     '</div>'+
+   (S.saldos.length>1? '<div class="sec">Saldo por tipo</div>'+
+     '<div class="scroll-x"><table class="tbl"><tr><th>Tipo</th><th>Asignados</th><th>Arrastre</th><th>Consumidos</th><th>Pendientes</th><th>Disponibles</th></tr>'+
+     S.saldos.map(function(x){
+       return '<tr><td>'+esc(x.tipo)+'</td><td>'+x.totales+'</td>'+
+         '<td>'+(x.arrastre? (x.arrastreVigente?'<span class="pos">'+x.arrastre+'</span>':'<span style="color:var(--sub)">'+x.arrastre+' caducado</span>'):'—')+'</td>'+
+         '<td>'+x.consumidos+'</td><td>'+x.pendientes+'</td>'+
+         '<td><b class="'+(x.disponibles>0?'pos':'')+'">'+x.disponibles+'</b></td></tr>';
+     }).join('')+'</table></div>' : '')+
    (Object.keys(tipos).length?'<div class="sec">Consumo por tipo</div><div class="card">'+
      Object.keys(tipos).map(function(t){
        return '<div class="row" style="padding:5px 0;font-size:13px"><span>'+esc(t)+'</span><div class="sp" style="border-bottom:1px dotted var(--border);margin:0 8px"></div><b>'+tipos[t]+' d</b></div>';
@@ -950,7 +993,7 @@ function vAusencias(){
    (S.ausencias.length? S.ausencias.slice().sort(function(a,b){return a.desde<b.desde?1:-1;}).map(filaAusencia).join('')
      : vacio('Todavía no has solicitado ninguna ausencia','☂'));
 }
-function cambiarAño(d){ S.year+=d; api('misAusencias',{year:S.year}).then(function(r){ if(r.ok){S.ausencias=r.ausencias;S.saldo=r.saldo;} render(); }); }
+function cambiarAño(d){ S.year+=d; api('misAusencias',{year:S.year}).then(function(r){ if(r.ok){S.ausencias=r.ausencias;S.saldo=r.saldo;S.saldos=r.saldos||[];} render(); }); }
 function leyenda(){
   return '<div class="leg">'+
     '<span><i style="background:#E8C9C4"></i>Vacaciones</span>'+
@@ -988,25 +1031,74 @@ function modalAusencia(){
   var hoy=hoyISO();
   abrirModal('<div class="mtitle">Solicitar ausencia</div>'+
     '<div class="msub">Se enviará a dirección para su aprobación</div>'+
-    '<div class="fld"><label class="lbl">Tipo</label><select class="inp" id="au_tipo">'+
-      TIPOS_AUSENCIA.map(function(t){return '<option>'+esc(t)+'</option>';}).join('')+'</select></div>'+
+    '<div class="fld"><label class="lbl">Tipo</label><select class="inp" id="au_tipo" onchange="pintarAvisoTipo()">'+
+      tiposAusencia().map(function(t){return '<option>'+esc(t.tipo)+'</option>';}).join('')+'</select>'+
+      '<div id="au_aviso" style="margin-top:8px"></div></div>'+
     '<div class="grid g2 tight"><div class="fld"><label class="lbl">Desde</label><input class="inp" type="date" id="au_d" value="'+hoy+'"></div>'+
     '<div class="fld"><label class="lbl">Hasta</label><input class="inp" type="date" id="au_h" value="'+hoy+'"></div></div>'+
     '<div class="fld"><label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer">'+
-      '<input type="checkbox" id="au_medio"> Medio día</label></div>'+
+      '<input type="checkbox" id="au_medio" style="accent-color:var(--accent)"> Medio día</label></div>'+
+    '<div class="fld"><label class="lbl">Justificante <span id="au_oblig" style="color:var(--red)"></span></label>'+
+      '<input class="inp" type="file" id="au_file" accept=".pdf,.jpg,.jpeg,.png,.heic" onchange="pintarArchivo()" style="padding:8px">'+
+      '<div id="au_file_info" style="font-size:11.5px;color:var(--sub);margin-top:6px">Certificado médico, parte de baja, etc. Máx. 8 MB.</div></div>'+
     '<div class="fld"><label class="lbl">Motivo / comentario</label><textarea class="inp" id="au_motivo" placeholder="Opcional"></textarea></div>'+
     '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
-    '<button class="btn b-gold" style="flex:1" onclick="enviarAusencia()">Solicitar</button></div>');
+    '<button class="btn b-gold" style="flex:1" id="au_send" onclick="enviarAusencia()">Solicitar</button></div>');
+  pintarAvisoTipo();
+}
+function pintarAvisoTipo(){
+  var t=$('au_tipo').value, def=tipoDef(t);
+  var s=(S.saldos||[]).filter(function(x){return x.tipo===t;})[0];
+  $('au_oblig').textContent = def.requiereJustificante ? '· obligatorio' : '';
+  if(!s) return $('au_aviso').innerHTML='';
+  $('au_aviso').innerHTML='<span class="pill '+(s.disponibles>0?'p-info':'p-err')+'">'+
+    s.disponibles+' de '+s.totales+' disponibles</span>'+
+    ((s.arrastre&&s.arrastreVigente)?' <span class="pill p-warn">'+s.arrastre+' del año anterior, hasta '+fBonita(s.limiteArrastre)+'</span>':'');
+}
+function pintarArchivo(){
+  var f=$('au_file').files[0];
+  if(!f) return $('au_file_info').textContent='Certificado médico, parte de baja, etc. Máx. 8 MB.';
+  var mb=(f.size/1048576).toFixed(1);
+  $('au_file_info').innerHTML = f.size>8*1048576
+    ? '<span style="color:var(--red)">'+esc(f.name)+' pesa '+mb+' MB · el máximo son 8 MB</span>'
+    : esc(f.name)+' · '+mb+' MB';
+}
+function leerArchivo(input){
+  return new Promise(function(res){
+    var f=input.files&&input.files[0];
+    if(!f) return res(null);
+    if(f.size>8*1048576) return res('GRANDE');
+    var fr=new FileReader();
+    fr.onload=function(){ res({nombre:f.name,tipoMime:f.type,datos:fr.result}); };
+    fr.onerror=function(){ res(null); };
+    fr.readAsDataURL(f);
+  });
 }
 function enviarAusencia(){
   var p={tipo:$('au_tipo').value,desde:$('au_d').value,hasta:$('au_h').value,
          medioDia:$('au_medio').checked,motivo:$('au_motivo').value};
   if(!p.desde||!p.hasta) return toast('Indica las fechas','err');
   if(p.hasta<p.desde) return toast('El rango de fechas no es válido','err');
-  api('solicitarAusencia',p).then(function(r){
-    cerrarModal();
-    if(r.ok){ toast('Solicitud enviada · '+r.dias+' día(s)','ok'); refrescar(); }
-    else toast(r.error==='SOLAPAMIENTO'?'Ya tienes una ausencia en esas fechas':'Error: '+(r.error||''),'err');
+  $('au_send').disabled=true; $('au_send').textContent='Enviando…';
+  leerArchivo($('au_file')).then(function(j){
+    if(j==='GRANDE'){ $('au_send').disabled=false; $('au_send').textContent='Solicitar'; return toast('El archivo supera los 8 MB','err'); }
+    if(j) p.justificante=j;
+    if(!j && tipoDef(p.tipo).requiereJustificante){
+      $('au_send').disabled=false; $('au_send').textContent='Solicitar';
+      return toast('Este tipo de ausencia necesita justificante','err');
+    }
+    api('solicitarAusencia',p).then(function(r){
+      cerrarModal();
+      if(r.ok){
+        toast('Solicitud enviada · '+r.dias+' día(s)'+(r.arrastre?' ('+r.arrastre+' del año anterior)':''),'ok');
+        refrescar();
+      } else toast({
+        SOLAPAMIENTO:'Ya tienes una ausencia en esas fechas',
+        SIN_DIAS:'No te quedan días suficientes de este tipo ('+(r.disponibles||0)+' disponibles, pides '+(r.solicitados||0)+')',
+        JUSTIFICANTE_OBLIGATORIO:'Este tipo de ausencia necesita justificante',
+        ARCHIVO_DEMASIADO_GRANDE:'El justificante supera los 8 MB'
+      }[r.error]||('Error: '+(r.error||'')),'err');
+    });
   });
 }
 function cancelarAus(id){
@@ -1097,17 +1189,50 @@ function vDocumentos(){
      '<b>'+pendFirma.length+'</b> documento(s) pendientes de tu firma.</div>':'')+
    (S.documentos.length? Object.keys(porTipo).map(function(t){
      return '<div class="sec">'+esc(t)+'</div>'+porTipo[t].map(function(d){
+       var visto=docsVistos[d.id];
        return '<div class="li"><div style="flex:1;min-width:0"><div class="li-t">'+esc(d.nombre)+'</div>'+
-         '<div class="li-s">'+fBonita(d.fecha)+(d.firmado?' · firmado':'')+'</div></div>'+
-         (d.url?'<a class="btn b-ghost b-sm" href="'+esc(d.url)+'" target="_blank" rel="noopener">Abrir</a>':'')+
-         (d.requiereFirma && !d.firmado?'<button class="btn b-pri b-sm" onclick="firmar(\''+d.id+'\')">Firmar</button>':
-          d.firmado?'<span class="pill p-ok">Firmado</span>':'')+'</div>';
+         '<div class="li-s">'+fBonita(d.fecha)+(d.firmado?' · firmado el '+fBonita(String(d.firmado).slice(0,10)):'')+'</div></div>'+
+         '<button class="btn b-ghost b-sm" onclick="verDocumento(\''+d.id+'\')">Ver</button>'+
+         (d.requiereFirma && !d.firmado?
+            '<button class="btn b-pri b-sm" id="fb_'+d.id+'" '+(visto?'':'disabled title="Ábrelo antes de firmar"')+
+            ' onclick="firmar(\''+d.id+'\')">Firmar</button>'
+          : d.firmado?'<span class="pill p-ok">Firmado</span>':'')+'</div>';
      }).join('');
    }).join('') : vacio('No tienes documentos compartidos','▢'));
 }
+var docsVistos={};
+function verDocumento(id){
+  var d=S.documentos.filter(function(x){return x.id===id;})[0]; if(!d) return;
+  docsVistos[id]=true;
+  var cuerpo;
+  if(!d.url){
+    cuerpo='<div style="background:var(--bg);border:1px solid var(--line);border-radius:2px;padding:26px;text-align:center;color:var(--sub);font-size:13px">'+
+      'Este documento todavía no tiene archivo asociado.<br>Dirección debe añadir el enlace en la hoja <b>Documentos</b>.</div>';
+  } else if(/\.(png|jpe?g|gif|webp)$/i.test(d.url)){
+    cuerpo='<img src="'+esc(d.url)+'" alt="'+esc(d.nombre)+'" style="width:100%;border:1px solid var(--line)">';
+  } else {
+    var visor=d.url.indexOf('drive.google.com')>=0 ? d.url.replace(/\/view.*$/,'/preview') : d.url;
+    cuerpo='<iframe src="'+esc(visor)+'" style="width:100%;height:58vh;border:1px solid var(--line)" title="'+esc(d.nombre)+'"></iframe>';
+  }
+  abrirModal('<div class="mtitle">'+esc(d.nombre)+'</div>'+
+    '<div class="msub">'+esc(d.tipo||'')+' · '+fBonita(d.fecha)+(d.firmado?' · ya firmado':'')+
+    (d.requiereFirma&&!d.firmado?'<br>Al firmar dejas constancia de que lo has recibido y leído. Queda sellado con fecha y hora.':'')+'</div>'+
+    cuerpo+
+    '<div class="row" style="margin-top:16px">'+
+      (d.url?'<a class="btn b-ghost" href="'+esc(d.url)+'" target="_blank" rel="noopener">Abrir en pestaña</a>':'')+
+      '<div class="sp"></div>'+
+      (d.requiereFirma && !d.firmado
+        ? '<button class="btn b-pri" onclick="firmar(\''+d.id+'\')">He leído y firmo este documento</button>'
+        : '<button class="btn b-ghost" onclick="cerrarModal()">Cerrar</button>')+
+    '</div>');
+  var b=$('fb_'+id); if(b) b.disabled=false;
+}
 function firmar(id){
-  if(!confirm('Al firmar dejas constancia de que has recibido y leído el documento. ¿Continuar?')) return;
-  api('firmarDocumento',{id:id}).then(function(r){ if(r.ok){toast('Documento firmado','ok');refrescar();} else toast('Error','err'); });
+  if(!docsVistos[id]) return verDocumento(id);   // primero se abre, luego se firma
+  api('firmarDocumento',{id:id}).then(function(r){
+    cerrarModal();
+    if(r.ok){ toast('Documento firmado','ok'); ir('documentos'); } else toast('Error','err');
+  });
 }
 
 /* ── EQUIPO ── */
@@ -1561,7 +1686,7 @@ function generarInforme(){
     $('inf_out').innerHTML=
       '<div class="row wrap" style="margin-bottom:12px"><b>'+filas.length+' jornadas · '+hhmm(total)+' en total</b><div class="sp"></div>'+
       '<button class="btn b-gold b-sm" onclick="exportarCSV()">Descargar CSV</button>'+
-      '<button class="btn b-ghost b-sm" onclick="window.print()">Imprimir / PDF</button></div>'+
+      '<button class="btn b-ghost b-sm" onclick="informePDF()">Descargar PDF</button></div>'+
       '<div class="scroll-x"><table class="tbl"><tr><th>Persona</th><th>Fecha</th><th>Entrada</th><th>Salida</th><th>Horas</th><th></th></tr>'+
       filas.map(function(f){
         return '<tr><td>'+esc(f.trabajador)+'</td><td>'+f.fecha+'</td><td>'+f.entrada+'</td><td>'+f.salida+'</td>'+
@@ -1572,26 +1697,105 @@ function generarInforme(){
 }
 function exportarCSV(){
   if(!ultimoInforme) return;
-  var cab=['id','fecha','hora','trabajador','tipo','origen','motivo','autor','lat','lng'];
-  var csv=cab.join(';')+'\n'+ultimoInforme.map(function(f){
-    return [f.id,f.fecha,f.hora,f.trabajador,f.tipo,f.origen||'APP',f.motivo||'',f.autor||'',f.lat||'',f.lng||'']
-      .map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(';');
-  }).join('\n');
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download='registro-jornada-'+$('inf_d').value+'_'+$('inf_h').value+'.csv';
-  a.click();
+  descargarCSV('registro-jornada-'+$('inf_d').value+'_'+$('inf_h').value+'.csv',
+    ['id','fecha','hora','trabajador','tipo','modalidad','centro','origen','motivo','autor'],
+    ultimoInforme.map(function(f){
+      return [f.id,f.fecha,f.hora,f.trabajador,f.tipo,f.modalidad||'',f.centro||'',
+              f.origen||'APP',f.motivo||'',f.autor||''];
+    }));
+}
+/** Abre una hoja limpia lista para «Guardar como PDF» desde el diálogo de impresión. */
+function informePDF(){
+  if(!ultimoInforme) return;
+  var porDia={};
+  ultimoInforme.forEach(function(f){ var k=f.trabajador+'|'+f.fecha; (porDia[k]=porDia[k]||[]).push(f); });
+  var filas=Object.keys(porDia).sort().map(function(k){
+    var evs=porDia[k].sort(cmpTs), p=k.split('|');
+    var ent=evs.filter(function(e){return e.tipo==='ENTRADA';})[0];
+    var sal=evs.filter(function(e){return e.tipo==='SALIDA';}).pop();
+    return {t:p[0],f:p[1],e:ent?String(ent.hora).slice(0,5):'—',s:sal?String(sal.hora).slice(0,5):'—',
+            m:minutosDe(evs).cerrado, c:evs.some(function(x){return x.origen==='CORRECCION';})};
+  });
+  var total=filas.reduce(function(a,f){return a+f.m;},0);
+  var w=window.open('','_blank');
+  if(!w) return toast('Permite las ventanas emergentes para generar el PDF','err');
+  w.document.write('<!doctype html><meta charset="utf-8"><title>Registro de jornada</title>'+
+    '<style>body{font-family:Georgia,serif;margin:34px;color:#17242B}'+
+    'h1{font-size:20px;letter-spacing:3px;text-transform:uppercase;margin:0 0 4px}'+
+    '.s{font-size:11px;color:#666;margin-bottom:22px;font-family:Arial,sans-serif}'+
+    'table{width:100%;border-collapse:collapse;font-size:11px;font-family:Arial,sans-serif}'+
+    'th{text-align:left;border-bottom:1.5px solid #17242B;padding:7px 6px;font-size:9px;text-transform:uppercase;letter-spacing:1px}'+
+    'td{border-bottom:1px solid #E5E5E5;padding:6px}'+
+    '.f{margin-top:22px;font-size:10px;color:#666;font-family:Arial,sans-serif;border-top:1px solid #ccc;padding-top:10px}'+
+    '@media print{@page{margin:14mm}}</style>'+
+    '<h1>Durán Carasso</h1><div class="s">Registro de jornada · '+$('inf_d').value+' a '+$('inf_h').value+
+    ($('inf_p').value?' · '+esc($('inf_p').value):' · toda la plantilla')+'</div>'+
+    '<table><tr><th>Persona</th><th>Fecha</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Obs.</th></tr>'+
+    filas.map(function(f){
+      return '<tr><td>'+esc(f.t)+'</td><td>'+f.f+'</td><td>'+f.e+'</td><td>'+f.s+'</td>'+
+        '<td>'+hhmm(f.m)+'</td><td>'+(f.c?'Corregido':'')+'</td></tr>';
+    }).join('')+'</table>'+
+    '<div class="f"><b>'+filas.length+' jornadas · '+hhmm(total)+' en total.</b><br>'+
+    'Registro generado el '+new Date().toLocaleString('es-ES')+' desde DC · Personas. '+
+    'Los fichajes son de solo lectura y cada corrección consta con autor y motivo (art. 34.9 ET).</div>');
+  w.document.close();
+  setTimeout(function(){ w.focus(); w.print(); },400);
 }
 
 function vPlantilla(){
   return cab('Plantilla','Personas dadas de alta en el sistema')+
    '<button class="btn b-gold" style="margin-bottom:14px" onclick="modalAlta()">+ Añadir persona</button>'+
-   '<div class="scroll-x"><table class="tbl"><tr><th>Nombre</th><th>Email</th><th>Departamento</th><th>Oficina</th><th>Horario</th><th>Vac.</th></tr>'+
+   '<div class="scroll-x"><table class="tbl"><tr><th>Nombre</th><th>Email</th><th>Departamento</th><th>Oficina</th><th>Horario</th><th>Vac.</th><th></th></tr>'+
    S.empleados.map(function(e){
-     return '<tr><td>'+esc(e.nombre)+(String(e.rol).toUpperCase()==='DIRECCION'?' <span class="pill p-info">Dirección</span>':'')+'</td>'+
+     var n=esc(e.nombre).replace(/'/g,"\\'");
+     return '<tr><td>'+esc(e.nombre)+(String(e.rol).toUpperCase()==='DIRECCION'?' <span class="pill p-info">Admin</span>':'')+'</td>'+
        '<td>'+esc(e.email||'')+'</td><td>'+esc(e.departamento||'')+'</td><td>'+esc(e.oficina||'')+'</td>'+
-       '<td>'+esc(e.horario_id||'')+'</td><td>'+e.vacaciones_anuales+'</td></tr>';
+       '<td>'+esc(e.horario_id||'')+'</td><td>'+e.vacaciones_anuales+'</td>'+
+       '<td style="white-space:nowrap"><button class="btn b-ghost b-sm" onclick="modalEditar(\''+n+'\')">Editar</button> '+
+       '<button class="btn b-ghost b-sm" onclick="modalResetPin(\''+n+'\')">PIN</button></td></tr>';
    }).join('')+'</table></div>';
+}
+function modalEditar(nombre){
+  var e=S.empleados.filter(function(x){return x.nombre===nombre;})[0]; if(!e) return;
+  abrirModal('<div class="mtitle">'+esc(nombre)+'</div><div class="msub">Los cambios quedan registrados en Auditoría</div>'+
+    '<div class="fld"><label class="lbl">Email</label><input class="inp" id="ed_e" value="'+esc(e.email||'')+'"></div>'+
+    '<div class="grid g2 tight"><div class="fld"><label class="lbl">Departamento</label><input class="inp" id="ed_d" value="'+esc(e.departamento||'')+'"></div>'+
+    '<div class="fld"><label class="lbl">Oficina</label><input class="inp" id="ed_o" value="'+esc(e.oficina||'')+'"></div></div>'+
+    '<div class="grid g2 tight"><div class="fld"><label class="lbl">Horario</label><select class="inp" id="ed_h">'+
+      S.horarios.map(function(h){return '<option value="'+esc(h.horario_id)+'"'+(String(h.horario_id)===String(e.horario_id)?' selected':'')+'>'+esc(h.nombre)+'</option>';}).join('')+'</select></div>'+
+    '<div class="fld"><label class="lbl">Días de vacaciones</label><input class="inp" type="number" id="ed_v" value="'+(e.vacaciones_anuales||0)+'"></div></div>'+
+    '<div class="grid g2 tight"><div class="fld"><label class="lbl">Rol</label><select class="inp" id="ed_r">'+
+      '<option value="EMPLEADO"'+(String(e.rol).toUpperCase()!=='DIRECCION'?' selected':'')+'>Empleado</option>'+
+      '<option value="DIRECCION"'+(String(e.rol).toUpperCase()==='DIRECCION'?' selected':'')+'>Administrador</option></select></div>'+
+    '<div class="fld"><label class="lbl">Estado</label><select class="inp" id="ed_a">'+
+      '<option value="SI">Activo</option><option value="NO">De baja</option></select></div></div>'+
+    '<div class="fld"><label class="lbl">Coste por hora (€) · para Analytics</label><input class="inp" type="number" id="ed_c" value="'+(e.coste_hora||0)+'"></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarEdicion(\''+esc(nombre).replace(/'/g,"\\'")+'\')">Guardar</button></div>');
+}
+function enviarEdicion(nombre){
+  api('editarEmpleado',{nombre:nombre,email:$('ed_e').value,departamento:$('ed_d').value,
+      oficina:$('ed_o').value,horario_id:$('ed_h').value,vacaciones_anuales:Number($('ed_v').value),
+      rol:$('ed_r').value,activo:$('ed_a').value,coste_hora:Number($('ed_c').value)}).then(function(r){
+    cerrarModal();
+    if(r.ok){ toast(r.cambios? r.cambios+' cambio(s) guardados':'Sin cambios','ok'); refrescar(); }
+    else toast('Error','err');
+  });
+}
+function modalResetPin(nombre){
+  abrirModal('<div class="mtitle">Nuevo PIN</div>'+
+    '<div class="msub">'+esc(nombre)+' · queda registrado en Auditoría y se levanta cualquier bloqueo</div>'+
+    '<div class="fld"><label class="lbl">PIN de 4 dígitos</label><input class="inp" id="rp_p" maxlength="4" inputmode="numeric"></div>'+
+    '<div style="font-size:11.5px;color:var(--sub);margin-bottom:16px">Dáselo en mano y pídele que lo cambie desde <b>Mi perfil</b>.</div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-pri" style="flex:1" onclick="enviarReset(\''+esc(nombre).replace(/'/g,"\\'")+'\')">Guardar</button></div>');
+}
+function enviarReset(nombre){
+  var p=$('rp_p').value.trim();
+  if(!/^\d{4}$/.test(p)) return toast('Deben ser 4 dígitos','err');
+  api('resetPin',{nombre:nombre,pin:p}).then(function(r){
+    cerrarModal(); if(r.ok) toast('PIN actualizado','ok'); else toast('Error','err');
+  });
 }
 function modalAlta(){
   abrirModal('<div class="mtitle">Añadir persona</div><div class="msub">Se creará con acceso por PIN</div>'+
@@ -2270,11 +2474,97 @@ function qkFichar(token,tipo){
   }).catch(function(){ S.token=guardado; toast('Sin conexión','err'); quioscoLista(); });
 }
 
+/* ── Auditoría ── */
+function vAuditoria(){
+  var d=S.auditoria||{registros:[],total:0};
+  var color={LOGIN_FALLIDO:'p-warn',LOGIN_BLOQUEADO:'p-err',CORRECCION_FICHAJE:'p-err',
+             RESET_PIN:'p-warn',EDITA_EMPLEADO:'p-warn',VALIDA_AUSENCIA:'p-ok',
+             CAMBIA_PIN:'p-info',LOGIN:'p-grey'};
+  return cab('Auditoría','Quién hizo qué y cuándo · registro no editable')+
+   '<div class="card" style="margin-bottom:16px"><div style="font-size:12.5px;color:var(--sub);line-height:1.65">'+
+     'Cada acceso, validación y corrección queda aquí con su autor y su hora. Los fichajes nunca se '+
+     'sobrescriben: una corrección es un registro nuevo con su motivo. '+
+     '<b>Verificar integridad</b> comprueba que nadie ha tocado la hoja por fuera de la app.</div>'+
+     '<div class="row" style="margin-top:14px"><button class="btn b-ghost b-sm" onclick="comprobarIntegridad()">Verificar integridad</button>'+
+     '<button class="btn b-ghost b-sm" onclick="exportarAuditoria()">Descargar CSV</button></div></div>'+
+   '<div class="sec">Últimos '+d.registros.length+' movimientos de '+d.total+'</div>'+
+   (d.registros.length? '<div class="scroll-x"><table class="tbl"><tr><th>Fecha y hora</th><th>Quién</th><th>Acción</th><th>Detalle</th></tr>'+
+     d.registros.map(function(r){
+       var f=new Date(r.ts);
+       return '<tr><td style="white-space:nowrap">'+(isNaN(f)?esc(r.ts):
+         pad(f.getDate())+'/'+pad(f.getMonth()+1)+'/'+f.getFullYear()+' '+pad(f.getHours())+':'+pad(f.getMinutes()))+'</td>'+
+         '<td>'+esc(r.actor)+'</td>'+
+         '<td><span class="pill '+(color[r.accion]||'p-grey')+'">'+esc(String(r.accion).replace(/_/g,' '))+'</span></td>'+
+         '<td style="font-size:11.5px;color:var(--sub)">'+esc(r.detalle||'')+'</td></tr>';
+     }).join('')+'</table></div>' : vacio('Sin movimientos registrados','⎘'));
+}
+function exportarAuditoria(){
+  var d=S.auditoria||{registros:[]};
+  descargarCSV('auditoria-'+hoyISO()+'.csv',
+    ['ts','actor','accion','detalle'],
+    d.registros.map(function(r){return [r.ts,r.actor,r.accion,r.detalle||''];}));
+}
+
+/* ── Tipos de ausencia y sus cupos ── */
+function vTiposAusencia(){
+  var t=tiposAusencia();
+  return cab('Tipos de ausencia','Cuántos días da cada tipo y cómo se controlan')+
+   '<button class="btn b-gold" style="margin-bottom:18px" onclick="modalTipo()">+ Nuevo tipo</button>'+
+   '<div class="card" style="margin-bottom:16px"><div style="font-size:12.5px;color:var(--sub);line-height:1.65">'+
+     '<b>Cuenta saldo</b>: descuenta de un cupo anual y bloquea la solicitud si no quedan días.<br>'+
+     '<b>Arrastrable</b>: los días no gastados pasan al año siguiente y se consumen antes que los nuevos.<br>'+
+     'La fecha de caducidad del arrastre se fija en la propiedad <code>LIMITE_ARRASTRE</code> (por defecto 31 de marzo).</div></div>'+
+   '<div class="scroll-x"><table class="tbl"><tr><th>Tipo</th><th>Días/año</th><th>Cuenta saldo</th><th>Justificante</th><th>Arrastrable</th><th></th></tr>'+
+   t.map(function(x){
+     return '<tr><td>'+esc(x.tipo)+'</td>'+
+       '<td>'+(x.dias||'—')+'</td>'+
+       '<td>'+(x.cuentaSaldo?'<span class="pill p-ok">Sí</span>':'<span class="pill p-grey">No</span>')+'</td>'+
+       '<td>'+(x.requiereJustificante?'<span class="pill p-warn">Obligatorio</span>':'<span class="pill p-grey">No</span>')+'</td>'+
+       '<td>'+(x.arrastrable?'<span class="pill p-info">Sí</span>':'<span class="pill p-grey">No</span>')+'</td>'+
+       '<td><button class="btn b-ghost b-sm" onclick="modalTipo(\'' + esc(x.tipo).replace(/'/g,"\\'") + '\')">Editar</button></td></tr>';
+   }).join('')+'</table></div>';
+}
+function modalTipo(nombre){
+  var x=nombre? tipoDef(nombre) : {tipo:'',dias:0,cuentaSaldo:false,requiereJustificante:false,arrastrable:false};
+  abrirModal('<div class="mtitle">'+(nombre?'Editar tipo':'Nuevo tipo de ausencia')+'</div>'+
+    '<div class="msub">Se aplica a las solicitudes nuevas</div>'+
+    '<div class="fld"><label class="lbl">Nombre</label><input class="inp" id="ta_n" value="'+esc(x.tipo||'')+'"'+(nombre?' readonly':'')+'></div>'+
+    '<div class="fld"><label class="lbl">Días al año</label><input class="inp" type="number" id="ta_d" value="'+(x.dias||0)+'"></div>'+
+    '<div class="fld"><label style="font-size:13px;display:flex;align-items:center;gap:9px;cursor:pointer;padding:6px 0">'+
+      '<input type="checkbox" id="ta_s" '+(x.cuentaSaldo?'checked':'')+' style="accent-color:var(--accent)"> Descuenta de un cupo anual</label>'+
+      '<label style="font-size:13px;display:flex;align-items:center;gap:9px;cursor:pointer;padding:6px 0">'+
+      '<input type="checkbox" id="ta_j" '+(x.requiereJustificante?'checked':'')+' style="accent-color:var(--accent)"> Exige justificante adjunto</label>'+
+      '<label style="font-size:13px;display:flex;align-items:center;gap:9px;cursor:pointer;padding:6px 0">'+
+      '<input type="checkbox" id="ta_a" '+(x.arrastrable?'checked':'')+' style="accent-color:var(--accent)"> Los días sobrantes pasan al año siguiente</label></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarTipo()">Guardar</button></div>');
+}
+function enviarTipo(){
+  var p={tipo:$('ta_n').value.trim(),dias:Number($('ta_d').value),cuentaSaldo:$('ta_s').checked,
+         requiereJustificante:$('ta_j').checked,arrastrable:$('ta_a').checked};
+  if(!p.tipo) return toast('El nombre es obligatorio','err');
+  api('guardarTipoAusencia',p).then(function(r){
+    cerrarModal(); if(r.ok){toast('Tipo guardado','ok');ir('tiposaus');} else toast('Error','err');
+  });
+}
+
+/* ── Utilidad común de descarga ── */
+function descargarCSV(nombre,cabecera,filas){
+  var csv=cabecera.join(';')+'\n'+filas.map(function(f){
+    return f.map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';}).join(';');
+  }).join('\n');
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download=nombre; document.body.appendChild(a); a.click(); a.remove();
+}
+
 /* ══ MODO DEMO (sin backend) ════════════════════════════════════════════
    Persiste en localStorage para que puedas probar toda la app antes de
    desplegar el Apps Script. Al rellenar SCRIPT_URL se desactiva solo.    */
 var DEMO_SEED = {
   empleados:[
+    {nombre:'Admin de pruebas',    email:'admin@durancarasso.com',   pin:'0000', rol:'DIRECCION', departamento:'Dirección', oficina:'Barcelona', horario_id:'STD', vacaciones_anuales:23},
+    {nombre:'Empleado de pruebas', email:'empleado@durancarasso.com',pin:'1234', rol:'EMPLEADO',  departamento:'Comercial', oficina:'Sitges',    horario_id:'STD', vacaciones_anuales:23},
     {nombre:'Adrià Pintat',   email:'adriapintat@durancarasso.com', pin:'0000', rol:'DIRECCION', departamento:'Marketing',  oficina:'Barcelona', horario_id:'STD', vacaciones_anuales:23},
     {nombre:'Alex Sellés',    email:'aselles@durancarasso.com',     pin:'1234', rol:'EMPLEADO',  departamento:'Comercial',  oficina:'Sitges',    horario_id:'STD', vacaciones_anuales:23},
     {nombre:'Anna Pallarés',  email:'apallares@durancarasso.com',   pin:'1234', rol:'EMPLEADO',  departamento:'Comercial',  oficina:'Barcelona', horario_id:'STD', vacaciones_anuales:23},
@@ -2303,7 +2593,7 @@ function dbGet(){
   // Migración: una base guardada por una versión anterior no tiene las
   // colecciones nuevas. Se rellenan sin tocar los datos ya existentes.
   var vacias=['fichajes','ausencias','tareas','turnos','compensaciones','objetivos',
-              'evaluaciones','encuestas','respuestas','vacantes','candidatos','checklists'];
+              'evaluaciones','encuestas','respuestas','vacantes','candidatos','checklists','auditoria'];
   vacias.forEach(function(k){ if(!Array.isArray(db[k])) db[k]=[]; });
   if(!Array.isArray(db.empleados) || !db.empleados.length) db.empleados=DEMO_SEED.empleados;
   if(!Array.isArray(db.horarios) || !db.horarios.length) db.horarios=DEMO_SEED.horarios;
@@ -2346,7 +2636,7 @@ function demoApiInterno(action,p){
       break;
     case 'bootstrap':
       r={ok:true,empleados:db.empleados,horarios:db.horarios,festivos:db.festivos,
-         centros:db.centros,exigirCentro:false,
+         centros:db.centros,exigirCentro:false,tiposAusencia:db.tipos||TIPOS_AUSENCIA_DEF,
          turnos:db.turnos.filter(function(t){return t.trabajador===(yo&&yo.nombre);}),
          esDireccion:yo&&yo.rol==='DIRECCION'}; break;
     case 'fichar':
@@ -2375,27 +2665,41 @@ function demoApiInterno(action,p){
       })}; break;
     case 'solicitarAusencia':
       var dias=p.medioDia?0.5:diasLab(p.desde,p.hasta,db.festivos);
-      var a={id:demoId('A'),ts:new Date().toISOString(),trabajador:yo.nombre,email:yo.email,tipo:p.tipo,
-             desde:p.desde,hasta:p.hasta,dias:dias,medioDia:!!p.medioDia,motivo:p.motivo||'',estado:'PENDIENTE',validador:'',comentario:''};
       var solapa=db.ausencias.some(function(x){return x.trabajador===yo.nombre&&['PENDIENTE','APROBADA'].indexOf(x.estado)>=0&&p.desde<=x.hasta&&p.hasta>=x.desde;});
       if(solapa){ r={ok:false,error:'SOLAPAMIENTO'}; break; }
-      db.ausencias.push(a); dbSet(db); r={ok:true,id:a.id,dias:dias}; break;
+      var defT=(db.tipos||TIPOS_AUSENCIA_DEF).filter(function(x){return x.tipo===p.tipo;})[0]||{};
+      if(defT.requiereJustificante && !p.justificante){ r={ok:false,error:'JUSTIFICANTE_OBLIGATORIO'}; break; }
+      var arrUsado=0;
+      if(defT.cuentaSaldo){
+        var sx=demoSaldos(db,yo,Number(p.desde.slice(0,4))).filter(function(x){return x.tipo===p.tipo;})[0];
+        if(sx){
+          if(dias>sx.disponibles){ r={ok:false,error:'SIN_DIAS',disponibles:sx.disponibles,solicitados:dias}; break; }
+          if(sx.arrastreVigente && sx.arrastre>0 && p.desde<=sx.limiteArrastre) arrUsado=Math.min(dias,sx.arrastre);
+        }
+      }
+      var a={id:demoId('A'),ts:new Date().toISOString(),trabajador:yo.nombre,email:yo.email,tipo:p.tipo,
+             desde:p.desde,hasta:p.hasta,dias:dias,medioDia:!!p.medioDia,motivo:p.motivo||'',
+             estado:'PENDIENTE',validador:'',comentario:'',diasArrastre:arrUsado,
+             justificante:p.justificante? '#demo-'+encodeURIComponent(p.justificante.nombre||'justificante') : ''};
+      db.ausencias.push(a);
+      demoAudit(db,yo,'SOLICITUD_AUSENCIA',p.tipo+' '+p.desde+'→'+p.hasta);
+      dbSet(db); r={ok:true,id:a.id,dias:dias,arrastre:arrUsado}; break;
     case 'cancelarAusencia':
       db.ausencias.forEach(function(x){ if(x.id===p.id&&x.trabajador===yo.nombre) x.estado='CANCELADA'; });
       dbSet(db); r={ok:true}; break;
     case 'misAusencias':
       var mias=db.ausencias.filter(function(x){return x.trabajador===yo.nombre&&x.desde.slice(0,4)===String(p.year);});
-      var cons=0,pend=0;
-      mias.forEach(function(x){ if(String(x.tipo).toUpperCase().indexOf('VACAC')<0)return;
-        if(x.estado==='APROBADA')cons+=x.dias; if(x.estado==='PENDIENTE')pend+=x.dias; });
-      r={ok:true,ausencias:mias,saldo:{totales:yo.vacaciones_anuales,consumidos:cons,pendientes:pend,
-          disponibles:yo.vacaciones_anuales-cons-pend}}; break;
+      var sal=demoSaldos(db,yo,Number(p.year));
+      var vac=sal.filter(function(x){return x.tipo.toUpperCase().indexOf('VACAC')===0;})[0];
+      r={ok:true,ausencias:mias,saldo:vac||{totales:yo.vacaciones_anuales,arrastre:0,consumidos:0,pendientes:0,
+         disponibles:yo.vacaciones_anuales},saldos:sal,tipos:db.tipos||TIPOS_AUSENCIA_DEF}; break;
     case 'ausenciasEquipo':
       r={ok:true,ausencias:db.ausencias.filter(function(x){return x.desde.slice(0,4)===String(p.year);})}; break;
     case 'validarAusencia':
       db.ausencias.forEach(function(x){ if(x.id===p.id){x.estado=p.decision;x.validador=yo.nombre;x.comentario=p.comentario||'';} });
-      dbSet(db); r={ok:true}; break;
+      demoAudit(db,yo,'VALIDA_AUSENCIA',p.id+' → '+p.decision); dbSet(db); r={ok:true}; break;
     case 'corregirFichaje':
+      demoAudit(db,yo,'CORRECCION_FICHAJE',p.trabajador+' '+p.tipo+' — '+p.motivo);
       var dc=new Date(p.ts);
       db.fichajes.push({id:demoId('C'),ts:dc.toISOString(),fecha:fISO(dc),
         hora:pad(dc.getHours())+':'+pad(dc.getMinutes())+':00',trabajador:p.trabajador,
@@ -2578,6 +2882,36 @@ function demoApiInterno(action,p){
         OFFBOARDING:['Entrevista de salida','Devolución de equipo','Revocación de accesos',
                      'Traspaso de cartera de clientes','Finiquito calculado','Baja en Seguridad Social']}}; break;
 
+    /* ── Tipos de ausencia, saldos y arrastre ── */
+    case 'tiposAusencia': r={ok:true,tipos:db.tipos||TIPOS_AUSENCIA_DEF}; break;
+    case 'guardarTipoAusencia':
+      db.tipos=db.tipos||JSON.parse(JSON.stringify(TIPOS_AUSENCIA_DEF));
+      var ix=db.tipos.findIndex(function(x){return x.tipo===p.tipo;});
+      var nuevo={tipo:p.tipo,dias:p.dias,cuentaSaldo:!!p.cuentaSaldo,
+                 requiereJustificante:!!p.requiereJustificante,arrastrable:!!p.arrastrable};
+      if(ix>=0) db.tipos[ix]=nuevo; else db.tipos.push(nuevo);
+      demoAudit(db,yo,'ALTA_TIPO_AUSENCIA',p.tipo); dbSet(db); r={ok:true}; break;
+
+    /* ── Auditoría ── */
+    case 'auditoria':
+      r={ok:true,registros:(db.auditoria||[]).slice().reverse().slice(0,p.limite||200),
+         total:(db.auditoria||[]).length}; break;
+
+    /* ── Gestión de plantilla ── */
+    case 'editarEmpleado':
+      var cambios=0;
+      db.empleados.forEach(function(e){
+        if(e.nombre!==p.nombre) return;
+        ['email','departamento','oficina','horario_id','vacaciones_anuales','rol','activo','coste_hora'].forEach(function(c){
+          if(p[c]!==undefined && String(e[c]||'')!==String(p[c])){ e[c]=p[c]; cambios++; }
+        });
+      });
+      demoAudit(db,yo,'EDITA_EMPLEADO',p.nombre+' — '+cambios+' campo(s)');
+      dbSet(db); r={ok:true,cambios:cambios}; break;
+    case 'resetPin':
+      db.empleados.forEach(function(e){ if(e.nombre===p.nombre) e.pin=p.pin; });
+      demoAudit(db,yo,'RESET_PIN',p.nombre); dbSet(db); r={ok:true}; break;
+
     /* ── Analytics ── */
     case 'analytics':
       var hrs={},dias={},porK2={};
@@ -2601,6 +2935,38 @@ function demoApiInterno(action,p){
   }
   return new Promise(function(res){ setTimeout(function(){res(r);},120); });
 }
+function demoAudit(db,yo,accion,detalle){
+  db.auditoria=db.auditoria||[];
+  db.auditoria.push({ts:new Date().toISOString(),actor:(yo&&yo.nombre)||'—',accion:accion,detalle:detalle||''});
+}
+function demoConsumo(db,nombre,tipo,year,estados){
+  var total=0;
+  db.ausencias.forEach(function(a){
+    if(a.trabajador!==nombre||a.tipo!==tipo) return;
+    if(estados.indexOf(a.estado)<0) return;
+    var y=Number(String(a.desde).slice(0,4)), arr=Number(a.diasArrastre||0);
+    if(y===year) total+=a.dias-arr;
+    if(y===year+1) total+=arr;
+  });
+  return total;
+}
+function demoSaldos(db,yo,year){
+  var tipos=db.tipos||TIPOS_AUSENCIA_DEF;
+  var limite=year+'-03-31';
+  return tipos.filter(function(t){return t.cuentaSaldo;}).map(function(t){
+    var cupo=t.tipo.toUpperCase().indexOf('VACAC')===0? Number(yo.vacaciones_anuales||t.dias) : t.dias;
+    var arr=0;
+    if(t.arrastrable){
+      var gastadoPrev=demoConsumo(db,yo.nombre,t.tipo,year-1,['APROBADA','PENDIENTE']);
+      arr=Math.max(0,cupo-gastadoPrev);
+    }
+    var vigente=hoyISO()<=limite;
+    var cons=demoConsumo(db,yo.nombre,t.tipo,year,['APROBADA']);
+    var pend=demoConsumo(db,yo.nombre,t.tipo,year,['PENDIENTE']);
+    return {tipo:t.tipo,totales:cupo,arrastre:arr,arrastreVigente:vigente,limiteArrastre:limite,
+            consumidos:cons,pendientes:pend,disponibles:cupo+(vigente?arr:0)-cons-pend};
+  });
+}
 function diasLab(d1,d2,fest){
   var f={}; (fest||[]).forEach(function(x){f[x.fecha]=1;});
   var n=0,d=new Date(d1+'T00:00:00'),fin=new Date(d2+'T00:00:00');
@@ -2613,7 +2979,8 @@ function initLogin(){
   pintarPad();
   $('sel_trig').onclick=function(){ this.classList.toggle('open'); $('sel_drop').classList.toggle('open'); $('sel_q').focus(); };
   $('sel_q').oninput=pintarSelect;
-  if(DEMO) $('lg_hint').innerHTML='Modo demo · PIN <b>1234</b> · dirección: Adrià Pintat / <b>0000</b>'+
+  if(DEMO) $('lg_hint').innerHTML='Modo demo · <b>Admin de pruebas</b> PIN 0000 · <b>Empleado de pruebas</b> PIN 1234'+
+    '<br><span style="font-size:11px">Para probar los dos a la vez, abre el segundo en una ventana de incógnito</span>'+
     '<br><a href="#" onclick="reiniciarDemo();return false" style="color:var(--accent);font-size:11px">Reiniciar datos de la demo</a>';
   api('listaEmpleados').then(function(r){
     S.empleados = (r&&r.ok) ? r.empleados : [];
