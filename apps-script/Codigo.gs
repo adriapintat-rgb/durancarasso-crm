@@ -35,7 +35,8 @@ var HOJAS = {
   empresa:       'Empresa',
   descansos:     'Descansos',
   consentimientos:'Consentimientos',
-  extras:        'HorasExtra'
+  extras:        'HorasExtra',
+  planificacion: 'Planificacion'
 };
 
 var CABECERAS = {
@@ -54,7 +55,8 @@ var CABECERAS = {
   Empresa:        ['clave','valor'],
   Descansos:      ['id','nombre','minutos','desde','hasta','remunerado','computa','activo'],
   Consentimientos:['ts','trabajador','tipo','valor','version','ip'],
-  HorasExtra:     ['id','ts','trabajador','fecha','minutos','motivo','estado','validador','ts_validacion','comentario']
+  HorasExtra:     ['id','ts','trabajador','fecha','minutos','motivo','estado','validador','ts_validacion','comentario'],
+  Planificacion:  ['id','trabajador','fecha','horario_id','desde','hasta','nota','ts']
 };
 
 var TIPOS_FICHAJE = ['ENTRADA','PAUSA_INI','PAUSA_FIN','SALIDA'];
@@ -220,6 +222,10 @@ function router(b) {
     case 'misDatos':        return misDatos(emp);
     case 'pedirHorasExtra': return pedirHorasExtra(emp, b);
     case 'misHorasExtra':   return misHorasExtra(emp);
+    case 'miPlan':          return miPlan(emp, b);
+    case 'guardarPlan':     return guardarPlan(emp, b);
+    case 'borrarPlan':      return borrarPlan(emp, b);
+    case 'corregirJornada': return esGestor ? corregirJornada(emp, b) : denegado();
     case 'horasExtraEquipo':return esGestor ? horasExtraEquipo(emp)      : denegado();
     case 'validarHorasExtra':return esGestor ? validarHorasExtra(emp, b) : denegado();
     case 'purgar':          return esDir ? purgarAntiguos(emp, b)        : denegado();
@@ -1513,6 +1519,76 @@ function purgarAntiguos(dir, b) {
   }
   auditar(dir.nombre, 'PURGA_LEGAL', borradas + ' fichajes anteriores a ' + corte);
   return { ok: true, borradas: borradas, corte: corte };
+}
+
+/* ── Planificación personal ──────────────────────────────────────────────
+   Lo que cada persona prevé trabajar. No es un fichaje ni cuenta como tal:
+   sirve para comparar lo previsto con lo realmente registrado.            */
+function limpiarPlan(p) {
+  return { id: p.id, fecha: normFecha(p.fecha), horario_id: p.horario_id,
+           desde: p.desde || '', hasta: p.hasta || '', nota: p.nota || '' };
+}
+function miPlan(emp, b) {
+  var mes = String(b.mes || '');   // AAAA-MM
+  return { ok: true, plan: leer(HOJAS.planificacion).filter(function (p) {
+    return String(p.trabajador).trim() === emp.nombre &&
+           (!mes || normFecha(p.fecha).slice(0, 7) === mes);
+  }).map(limpiarPlan) };
+}
+function guardarPlan(emp, b) {
+  var fecha = String(b.fecha || '').slice(0, 10);
+  if (!fecha) return { ok: false, error: 'FECHA_OBLIGATORIA' };
+  var fila = [uid('PL'), emp.nombre, fecha, String(b.horario_id || ''),
+              String(b.desde || ''), String(b.hasta || ''), String(b.nota || ''),
+              new Date().toISOString()];
+  var filas = leer(HOJAS.planificacion);
+  for (var i = 0; i < filas.length; i++) {
+    if (String(filas[i].trabajador).trim() !== emp.nombre) continue;
+    if (normFecha(filas[i].fecha) !== fecha) continue;
+    fila[0] = filas[i].id;
+    hoja(HOJAS.planificacion).getRange(filas[i]._fila, 1, 1, 8).setValues([fila]);
+    return { ok: true, id: fila[0] };
+  }
+  hoja(HOJAS.planificacion).appendRow(fila);
+  return { ok: true, id: fila[0] };
+}
+function borrarPlan(emp, b) {
+  var filas = leer(HOJAS.planificacion);
+  for (var i = 0; i < filas.length; i++) {
+    if (String(filas[i].id) !== String(b.id)) continue;
+    if (String(filas[i].trabajador).trim() !== emp.nombre) return denegado();
+    hoja(HOJAS.planificacion).deleteRow(filas[i]._fila);
+    return { ok: true };
+  }
+  return { ok: false, error: 'NO_ENCONTRADO' };
+}
+
+/**
+ * Rellena de golpe la jornada teórica de un día que quedó sin fichar.
+ * Sigue siendo una corrección: entrada y salida se añaden como registros
+ * nuevos con su autor y su motivo, sin tocar nada de lo ya guardado.
+ */
+function corregirJornada(dir, b) {
+  var trabajador = String(b.trabajador || '').trim();
+  var fecha = String(b.fecha || '').slice(0, 10);
+  var entrada = String(b.entrada || ''), salida = String(b.salida || '');
+  if (!trabajador || !fecha || !entrada || !salida) return { ok: false, error: 'DATOS_INCOMPLETOS' };
+  if (!esEquipoDe(dir, trabajador)) return { ok: false, error: 'FUERA_DE_TU_EQUIPO' };
+
+  var yaTiene = leer(HOJAS.fichajes).some(function (f) {
+    return String(f.trabajador).trim() === trabajador && normFecha(f.fecha) === fecha;
+  });
+  if (yaTiene && !b.forzar) return { ok: false, error: 'YA_TIENE_FICHAJES' };
+
+  var motivo = String(b.motivo || '').trim() ||
+    'Jornada no fichada · se aplica el horario asignado, validado por ' + dir.nombre;
+  var puestos = [];
+  [['ENTRADA', entrada], ['SALIDA', salida]].forEach(function (par) {
+    var r = corregirFichaje(dir, { trabajador: trabajador, tipo: par[0],
+      ts: fecha + 'T' + par[1] + ':00', motivo: motivo });
+    if (r.ok) puestos.push(par[0]);
+  });
+  return { ok: puestos.length === 2, puestos: puestos };
 }
 
 /* ── Horas extra ─────────────────────────────────────────────────────────── */

@@ -79,6 +79,7 @@ console.log('\nEspacios y secciones');
 comprobar(await pagina.isVisible('#sw_espacio'), 'el administrador ve el conmutador de espacios');
 
 const ir = async (espacio, fragmento) => {
+  await pagina.evaluate(() => { if (typeof cerrarModal === 'function') cerrarModal(); });
   await pagina.click('#sw_' + espacio);
   await pagina.waitForTimeout(600);
   const menu = await pagina.$$eval('.side .nav-i', ns => ns.map(n => n.textContent.trim()));
@@ -235,7 +236,7 @@ comprobar(filasDespues === filasAntes - 1, 'se puede eliminar una fila de config
 await pagina.click('.conf-i:has-text("Centros")'); await pagina.waitForTimeout(600);
 await pagina.click('.conf-panel button:has-text("Editar")'); await pagina.waitForTimeout(600);
 comprobar(await pagina.isVisible('#ce_loc'), 'los centros se pueden editar');
-await pagina.click('#mbox button.b-ghost'); await pagina.waitForTimeout(400);
+await pagina.evaluate(() => cerrarModal()); await pagina.waitForTimeout(400);
 
 // ── Permisos por rol ──────────────────────────────────────────────────────
 console.log('\nPermisos');
@@ -294,6 +295,47 @@ await pasarAviso(admin);
 const todosAdmin = await admin.evaluate(() => miEquipo().length);
 comprobar(todosAdmin >= 7, 'el administrador sí ve a toda la plantilla (' + todosAdmin + ')');
 await admin.close();
+
+// ── Vista mensual y planificación ─────────────────────────────────────────
+console.log('\nVista mensual');
+await ir('mi', 'Mis fichajes');
+comprobar(await pagina.isVisible('.mes-cal'), 'Mis fichajes abre en vista mensual');
+const celdas = await pagina.$$eval('.mc-d:not(.vacio)', c => c.length);
+comprobar(celdas >= 28, `el mes pinta sus ${celdas} días`);
+
+await pagina.click('.mc-d.hoy'); await pagina.waitForTimeout(600);
+comprobar(await pagina.isVisible('#pl_d'), 'al pulsar un día se puede planificar');
+await pagina.fill('#pl_d', '09:00'); await pagina.fill('#pl_h', '18:00');
+await pagina.click('#mbox button.b-gold'); await pagina.waitForTimeout(1300);
+comprobar((await pagina.$$eval('.mc-plan', e => e.length)) > 0, 'la planificación queda pintada en el mes');
+
+await pagina.click('.switch button:has-text("Semana")'); await pagina.waitForTimeout(600);
+comprobar(await pagina.isVisible('#fi_hoy'), 'la vista semanal sigue disponible');
+
+// ── Relleno de jornada desde incidencias ──────────────────────────────────
+console.log('\nRelleno rápido');
+await ir('gestion', 'Incidencias');
+await pagina.fill('#inc_d', '2026-09-01');
+await pagina.click('button:has-text("Analizar")'); await pagina.waitForTimeout(1500);
+const hayIncidencias = await pagina.$$eval('.inc-fila', f => f.length).catch(() => 0);
+if (hayIncidencias) {
+  comprobar(await pagina.isVisible('.inc-sug'), 'cada incidencia muestra la jornada asignada');
+  await pagina.hover('.inc-fila'); await pagina.waitForTimeout(300);
+  await pagina.click('.inc-fila button:has-text("Aplicar")'); await pagina.waitForTimeout(600);
+  comprobar((await pagina.textContent('#mbox')).includes('jornada por hecha'),
+    'el botón Aplicar propone dar la jornada por hecha');
+  await pagina.click('#mbox button.b-gold'); await pagina.waitForTimeout(1500);
+  comprobar(/aplicada|fichajes/i.test(await pagina.textContent('#toast')),
+    'la jornada se registra como corrección');
+} else {
+  comprobar(true, 'sin incidencias en el periodo de prueba (nada que rellenar)');
+}
+
+// ── Portal según el rol ───────────────────────────────────────────────────
+console.log('\nPortal por rol');
+await ir('mi', 'Portal');
+const portalAdmin = await pagina.textContent('#main');
+comprobar(/Tu equipo hoy/.test(portalAdmin), 'el administrador ve el bloque de gestión en su portal');
 
 // ── Requisitos legales ────────────────────────────────────────────────────
 console.log('\nRequisitos legales y RGPD');

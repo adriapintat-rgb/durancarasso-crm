@@ -259,6 +259,49 @@ textarea.inp{resize:vertical;min-height:72px;line-height:1.55}
   .conf-i{width:auto;white-space:nowrap;border:1px solid var(--line);border-left-width:1px;background:var(--card)}
 }
 
+
+/* ══ CALENDARIO MENSUAL ══ */
+.mes-cal{background:var(--card);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.mc-cab{display:grid;grid-template-columns:repeat(7,1fr);background:var(--bg);border-bottom:1px solid var(--line)}
+.mc-cab div{padding:9px 6px;font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--sub);font-weight:600;text-align:center}
+.mc-g{display:grid;grid-template-columns:repeat(7,1fr)}
+.mc-d{min-height:96px;border-right:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);
+  padding:7px 8px;cursor:pointer;transition:background .12s;position:relative;overflow:hidden}
+.mc-d:nth-child(7n){border-right:none}
+.mc-d:hover{background:var(--accent-soft)}
+.mc-d.vacio{background:#F7F8F8;cursor:default}
+.mc-d.vacio:hover{background:#F7F8F8}
+.mc-d.finde{background:#FAFBFB}
+.mc-d.festivo{background:var(--bg)}
+.mc-d.ausencia{background:var(--green-soft)}
+.mc-d.hoy{box-shadow:inset 0 0 0 2px var(--navy)}
+.mc-n{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums;margin-bottom:5px}
+.mc-d.hoy .mc-n{color:var(--navy);font-weight:600}
+.mc-horas{font-family:var(--serif);font-size:17px;color:var(--navy);line-height:1.1}
+.mc-horas.corto{color:var(--red)}
+.mc-horas.largo{color:var(--gold)}
+.mc-tag{font-size:10px;padding:2px 6px;border-radius:2px;display:inline-block;margin-top:2px;line-height:1.4}
+.mc-tag.festivo{background:#E6E9EA;color:var(--sub)}
+.mc-tag.ausencia{background:var(--green-soft);color:var(--green)}
+.mc-tag.falta{background:var(--red-soft);color:var(--red)}
+.mc-plan{font-size:10.5px;color:var(--amber);background:var(--amber-soft);padding:2px 6px;margin-top:4px;display:inline-block;border-radius:2px}
+.mc-prev{font-size:10.5px;color:#A6AFB2;margin-top:4px}
+.mc-ev{font-size:9.5px;color:var(--sub);margin-top:3px}
+@media(max-width:720px){
+  .mc-d{min-height:64px;padding:5px}
+  .mc-horas{font-size:13px}
+  .mc-ev,.mc-prev{display:none}
+  .mc-tag,.mc-plan{font-size:9px;padding:1px 4px}
+}
+
+/* ══ RELLENO RÁPIDO DE JORNADA ══ */
+.inc-fila{position:relative}
+.inc-rellenar{opacity:0;transition:opacity .14s}
+.inc-fila:hover .inc-rellenar,.inc-fila:focus-within .inc-rellenar{opacity:1}
+.inc-sug{display:inline-flex;align-items:center;gap:8px;background:var(--accent-soft);
+  border:1px solid #C6D6DA;border-radius:2px;padding:4px 6px 4px 10px;font-size:11.5px;color:var(--accent)}
+@media(hover:none){.inc-rellenar{opacity:1}}
+
 /* Modal */
 .modal{position:fixed;inset:0;background:rgba(23,36,43,.32);display:none;align-items:flex-end;justify-content:center;z-index:150;backdrop-filter:blur(3px)}
 .modal.on{display:flex}
@@ -377,7 +420,7 @@ var S = {
   centros: [], turnos: [], exigirCentro: false, modalidad: 'OFICINA',
   ubicacion: {texto:'', manual:false, centro:''}, geoOk: false, extras: [],
   perfil: null, objetivos: [], evaluacion: [], encuestas: [], publicaciones: [],
-  tiposAusencia: [], saldos: [], auditoria: null, empresa: {}, descansos: [],
+  tiposAusencia: [], saldos: [], auditoria: null, empresa: {}, descansos: [], plan: [],
   checklist: [], compensaciones: [],
   objEquipo: [], evalEquipo: null, encuestasAdmin: [], turnosEquipo: [],
   bolsaEquipo: null, reclut: null, checklistEquipo: null, analytics: null, centrosAdmin: [],
@@ -485,9 +528,11 @@ function menuUsuario(){
     '<button class="nav-i" onclick="cerrarModal();irA(\'mi\',\'perfil\')"><span class="ic">⌾</span>Mi perfil</button>'+
     (puedeGestionar()?'<button class="nav-i" onclick="cerrarModal();cambiarEspacio(S.espacio===\'mi\'?\'gestion\':\'mi\')">'+
       '<span class="ic">⇄</span>Ir a '+(S.espacio==='mi'?'Gestión':'Mi espacio')+'</button>':'')+
+    '<button class="nav-i" onclick="cambiarUsuario()"><span class="ic">⇥</span>Entrar como otra persona</button>'+
     '<button class="nav-i" style="color:var(--red);margin-top:8px" onclick="salir()">'+
     '<span class="ic">⏻</span>Cerrar sesión</button>');
 }
+function cambiarUsuario(){ cerrarSesion(); }
 
 /* ══ LOGIN ══════════════════════════════════════════════════════════════ */
 var pinTarget='', pinBuf='';
@@ -667,6 +712,7 @@ function irA(espacio,vista){ S.espacio=espacio; ir(vista); }
 var CARGA = {
   tablon:        function(){ return api('publicaciones').then(function(r){ if(r.ok) S.publicaciones=r.publicaciones; }); },
   perfil:        function(){ return api('miPerfil').then(function(r){ if(r.ok) S.perfil=r.perfil; }); },
+  fichajes:      function(){ return cargarPlan(); },
   turnos:        function(){ return api('turnosEquipo',{}).then(function(r){ if(r.ok) S.turnosEquipo=r.turnos; }); },
   validaciones:  function(){ return api('horasExtraEquipo').then(function(r){ if(r.ok) S.extras=r.extras; }); },
   analytics:     function(){ return api('analytics',{desde:S.year+'-01-01',hasta:hoyISO()}).then(function(r){ if(r.ok) S.analytics=r; }); },
@@ -894,7 +940,8 @@ function refrescar(){
     api('estadoEquipo').then(function(r){ if(r.ok) S.equipo=r.equipo; }),
     api('ausenciasEquipo',{year:año}).then(function(r){ if(r.ok) S.ausEquipo=r.ausencias; }),
     api('misTareas',{desde:fISO(lunes),hasta:hoyISO()}).then(function(r){ if(r.ok) S.tareas=r.tareas; }),
-    api('publicaciones').then(function(r){ if(r.ok) S.publicaciones=r.publicaciones; })
+    api('publicaciones').then(function(r){ if(r.ok) S.publicaciones=r.publicaciones; }),
+    api('horasExtraEquipo').then(function(r){ if(r.ok) S.extras=r.extras; }).catch(function(){})
   ];
   return Promise.all(tareas).then(function(){
     S.pendientes = puedeGestionar() ? S.ausEquipo.filter(function(a){return a.estado==='PENDIENTE';}) : [];
@@ -1000,11 +1047,72 @@ function vPortal(){
   '</div>'+
   '<div class="sec">Tus próximas ausencias</div>'+
   (proximas.length ? proximas.map(filaAusencia).join('') : vacio('No tienes ausencias programadas','☀'))+
-  (S.esDir && S.pendientes.length ?
-    '<div class="sec">Pendiente de tu validación</div>'+
-    '<div class="card" style="border-color:#EEDFBE;background:var(--amber-soft)">'+
-      '<b>'+S.pendientes.length+'</b> solicitud(es) esperando respuesta. '+
-      '<button class="btn b-gold b-sm" style="margin-left:8px" onclick="ir(\'validaciones\')">Revisar</button></div>' : '');
+  (puedeGestionar()? bloqueGestion() : '');
+}
+/** Lo que un manager o administrador necesita ver nada más entrar. */
+function bloqueGestion(){
+  var hoy=hoyISO();
+  var equipo=miEquipo();
+  var nombres=equipo.map(function(e){return e.nombre;});
+  var estados={};
+  S.equipo.forEach(function(e){ estados[e.nombre]=e.estado; });
+
+  var ausHoy=S.ausEquipo.filter(function(a){
+    return a.estado==='APROBADA' && hoy>=a.desde && hoy<=a.hasta && nombres.indexOf(a.trabajador)>=0;});
+  var deAusencia={}; ausHoy.forEach(function(a){ deAusencia[a.trabajador]=a.tipo; });
+
+  var sinFichar=equipo.filter(function(e){
+    return !deAusencia[e.nombre] && (estados[e.nombre]==='SIN_FICHAR'||!estados[e.nombre]) &&
+           minutosTeoricosDe2(e,hoy)>0;
+  });
+  var dentro=equipo.filter(function(e){return estados[e.nombre]==='TRABAJANDO';});
+  var pausa=equipo.filter(function(e){return estados[e.nombre]==='PAUSA';});
+  var extrasPend=(S.extras||[]).filter(function(x){return x.estado==='PENDIENTE';});
+
+  var aviso=function(n,texto,vista,tono){
+    return '<button class="card" style="text-align:left;cursor:pointer;border:none;border-left:2px solid var(--'+tono+');width:100%" '+
+      'onclick="ir(\''+vista+'\')">'+
+      '<div class="row"><div style="font-family:var(--serif);font-size:27px;color:var(--navy);line-height:1">'+n+'</div>'+
+      '<div style="flex:1;font-size:12.5px;color:var(--sub);line-height:1.5">'+texto+'</div>'+
+      '<span style="color:var(--sub)">›</span></div></button>';
+  };
+
+  var avisos='';
+  if(S.pendientes.length) avisos+=aviso(S.pendientes.length,
+    'solicitud'+(S.pendientes.length>1?'es':'')+' de ausencia esperando tu respuesta','validaciones','gold');
+  if(extrasPend.length) avisos+=aviso(extrasPend.length,
+    'justificación'+(extrasPend.length>1?'es':'')+' de horas extra por validar','validaciones','gold');
+  if(sinFichar.length) avisos+=aviso(sinFichar.length,
+    'persona'+(sinFichar.length>1?'s':'')+' de tu equipo sin fichar hoy teniendo jornada','incidencias','red');
+
+  return '<div class="sec">Tu equipo hoy</div>'+
+   '<div class="grid g4" style="margin-bottom:6px">'+
+     kpi(dentro.length,'Trabajando','')+
+     kpi(pausa.length,'En pausa','')+
+     kpi(ausHoy.length,'De ausencia','')+
+     kpi(equipo.length,nivelUsuario()>=2?'Plantilla':'A tu cargo','')+
+   '</div>'+
+   (sinFichar.length?
+     '<div class="card" style="margin-top:10px;border-color:#EBD7D4;background:var(--red-soft)">'+
+       '<div class="row wrap" style="gap:7px"><span class="lbl" style="margin:0;color:var(--red)">Sin fichar hoy</span>'+
+       sinFichar.map(function(e){
+         return '<span class="pill p-err">'+esc(e.nombre.split(' ')[0])+'</span>';
+       }).join('')+'<div class="sp"></div>'+
+       '<button class="btn b-ghost b-sm" onclick="ir(\'incidencias\')">Revisar y rellenar</button></div></div>' : '')+
+   (avisos? '<div class="sec">Requiere tu atención</div><div class="grid" style="gap:7px">'+avisos+'</div>'
+          : '<div class="card" style="margin-top:10px;background:var(--bg)">'+
+            '<div style="font-size:12.5px;color:var(--sub)">Nada pendiente por tu parte. Todo al día.</div></div>');
+}
+/** Jornada prevista de otra persona, no de quien está mirando. */
+function minutosTeoricosDe2(e,fecha){
+  if(esFestivo(fecha)) return 0;
+  var h=S.horarios.filter(function(x){return String(x.horario_id)===String(e.horario_id);})[0];
+  if(!h) return 0;
+  var col=['dom','lun','mar','mie','jue','vie','sab'][new Date(fecha+'T00:00:00').getDay()];
+  var r=String(h[col]||'').trim();
+  if(r.indexOf('-')<0) return 0;
+  var p=r.split('-'), a=p[0].split(':'), b=p[1].split(':');
+  return Math.max(0,(+b[0]*60+ +b[1])-(+a[0]*60+ +a[1])-Number(h.pausa_min||0));
 }
 function estadoPortalHTML(){
   var col=colorEstado(S.estado);
@@ -1101,8 +1209,177 @@ function filaAusencia(a){
 }
 
 /* ── MIS FICHAJES ── */
-var semOffset=0;
+var semOffset=0, mesOffset=0, vistaFichajes='mes';
+
 function vFichajes(){
+  return cab('Mis fichajes','Tu jornada, lo que has fichado y lo que tienes previsto')+
+   '<div class="row" style="margin-bottom:16px">'+
+     '<div class="switch">'+
+       '<button class="'+(vistaFichajes==='mes'?'on':'')+'" onclick="vistaFichajes=\'mes\';render()">Mes</button>'+
+       '<button class="'+(vistaFichajes==='semana'?'on':'')+'" onclick="vistaFichajes=\'semana\';render()">Semana</button>'+
+     '</div><div class="sp"></div>'+
+     '<button class="btn b-ghost b-sm" onclick="modalCorreccion()">Solicitar corrección</button>'+
+     '<button class="btn b-ghost b-sm" onclick="modalExtra()">Justificar horas extra</button>'+
+   '</div>'+
+   (vistaFichajes==='mes'? vistaMes() : vistaSemana());
+}
+
+/* ── Mes ── */
+function vistaMes(){
+  var hoy=new Date();
+  var base=new Date(hoy.getFullYear(), hoy.getMonth()+mesOffset, 1);
+  var year=base.getFullYear(), mes=base.getMonth();
+  var dias=new Date(year,mes+1,0).getDate();
+  var offset=(base.getDay()+6)%7;
+
+  var real=0, previsto=0, planificado=0, diasFichados=0;
+  var celdas='';
+  for(var i=0;i<offset;i++) celdas+='<div class="mc-d vacio"></div>';
+  for(var d=1;d<=dias;d++){
+    var f=year+'-'+pad(mes+1)+'-'+pad(d);
+    var evs=S.fichajesRango.filter(function(x){return x.fecha===f;}).sort(cmpTs);
+    var min=minutosDiaVivo(f), teo=minutosTeoricos(f);
+    var aus=ausenciaEn(f), fest=esFestivo(f), plan=planDe(f);
+    var dow=new Date(year,mes,d).getDay();
+    if(f<=hoyISO()){ real+=min; previsto+=teo; if(min) diasFichados++; }
+    if(plan) planificado+=minutosDeRango(plan.desde,plan.hasta);
+
+    var clase='mc-d';
+    if(f===hoyISO()) clase+=' hoy';
+    if(dow===0||dow===6) clase+=' finde';
+    if(fest) clase+=' festivo';
+    if(aus) clase+=' ausencia';
+
+    var cuerpo='';
+    if(fest) cuerpo='<div class="mc-tag festivo">'+esc(fest.nombre.slice(0,18))+'</div>';
+    else if(aus) cuerpo='<div class="mc-tag ausencia">'+esc(aus.tipo.slice(0,16))+'</div>';
+    else {
+      if(min) cuerpo+='<div class="mc-horas'+(teo&&min<teo-5?' corto':(teo&&min>teo+5?' largo':''))+'"'+
+        (f===hoyISO()?' id="fi_hoy"':'')+'>'+hhmm(min)+'</div>';
+      else if(f<=hoyISO() && teo) cuerpo+='<div class="mc-tag falta">Sin fichar</div>';
+      if(plan) cuerpo+='<div class="mc-plan">'+esc(plan.desde)+'–'+esc(plan.hasta)+'</div>';
+      else if(f>hoyISO() && teo) cuerpo+='<div class="mc-prev">'+rangoTeorico(f)+'</div>';
+      if(evs.length) cuerpo+='<div class="mc-ev">'+evs.length+' registros</div>';
+    }
+    celdas+='<div class="'+clase+'" onclick="abrirDia(\''+f+'\')" title="'+
+      (fest?esc(fest.nombre):aus?esc(aus.tipo):'Pulsa para ver o planificar')+'">'+
+      '<div class="mc-n">'+d+'</div>'+cuerpo+'</div>';
+  }
+
+  var saldo=real-previsto;
+  return '<div class="card" style="margin-bottom:14px"><div class="row wrap">'+
+     '<button class="btn b-ghost b-sm" onclick="mesOffset--;render()">←</button>'+
+     '<div style="flex:1;text-align:center">'+
+       '<div style="font-family:var(--serif);font-size:21px;color:var(--navy);text-transform:capitalize">'+
+       MESES[mes]+' '+year+'</div>'+
+       '<div style="font-size:11.5px;color:var(--sub)">'+diasFichados+(diasFichados===1?' día fichado · ':' días fichados · ')+hhmm(real)+
+       ' de '+hhmm(previsto)+' previstas · <span class="'+(saldo>=0?'pos':'neg')+'">'+hhmmSigned(saldo)+'</span></div>'+
+     '</div>'+
+     '<button class="btn b-ghost b-sm" onclick="mesOffset++;render()">→</button>'+
+     (mesOffset!==0?'<button class="btn b-ghost b-sm" onclick="mesOffset=0;render()">Hoy</button>':'')+
+   '</div></div>'+
+   '<div class="mes-cal">'+
+     '<div class="mc-cab">'+['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(function(x){
+        return '<div>'+x+'</div>';}).join('')+'</div>'+
+     '<div class="mc-g">'+celdas+'</div>'+
+   '</div>'+
+   '<div class="leg" style="border:none;padding-top:14px">'+
+     '<span><i style="background:#E2EAEC"></i>Fichado</span>'+
+     '<span><i style="background:#F5E7E4"></i>Sin fichar</span>'+
+     '<span><i style="background:#F5EEDF"></i>Planificado</span>'+
+     '<span><i style="background:#E6EFEA"></i>Ausencia</span>'+
+     '<span><i style="background:var(--bg)"></i>Festivo</span>'+
+   '</div>'+
+   (planificado? '<div class="card" style="margin-top:14px;background:var(--bg)">'+
+     '<div style="font-size:12.5px;color:var(--sub);line-height:1.6">Tienes <b>'+hhmm(planificado)+
+     '</b> planificados este mes. La planificación es tuya y orientativa: no es un fichaje '+
+     'ni sustituye al registro de jornada.</div></div>':'');
+}
+
+function planDe(fecha){
+  for(var i=0;i<S.plan.length;i++) if(S.plan[i].fecha===fecha) return S.plan[i];
+  return null;
+}
+function minutosDeRango(a,b){
+  if(!a||!b) return 0;
+  var x=a.split(':'), y=b.split(':');
+  return Math.max(0,(+y[0]*60+ +y[1])-(+x[0]*60+ +x[1]));
+}
+function rangoTeorico(fecha){
+  var h=horarioDe(fecha); if(!h) return '';
+  var col=['dom','lun','mar','mie','jue','vie','sab'][new Date(fecha+'T00:00:00').getDay()];
+  return String(h[col]||'').replace('-','–');
+}
+
+/* Ficha del día: lo fichado, lo previsto y la planificación */
+function abrirDia(fecha){
+  var evs=S.fichajesRango.filter(function(x){return x.fecha===fecha;}).sort(cmpTs);
+  var min=minutosDia(fecha), teo=minutosTeoricos(fecha);
+  var plan=planDe(fecha), fest=esFestivo(fecha), aus=ausenciaEn(fecha);
+  var d=new Date(fecha+'T00:00:00');
+  var teorico=rangoTeorico(fecha);
+
+  abrirModal('<div class="mtitle" style="text-transform:capitalize">'+
+      d.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'})+'</div>'+
+    '<div class="msub">'+(fest?'Festivo · '+esc(fest.nombre):
+      aus?esc(aus.tipo):teo?'Jornada prevista '+teorico+' · '+hhmm(teo):'Día no laborable')+'</div>'+
+    (evs.length?
+      '<div class="lbl">Lo que fichaste</div><div class="tl" style="margin-bottom:18px">'+
+      evs.map(function(e){
+        return '<div class="tl-i t-'+e.tipo+'"><div class="tl-h">'+String(e.hora).slice(0,5)+' · '+
+          ({ENTRADA:'Entrada',SALIDA:'Salida',PAUSA_INI:'Inicio pausa',PAUSA_FIN:'Fin pausa'}[e.tipo]||e.tipo)+
+          (e.descanso?' ('+esc(e.descanso)+')':'')+'</div>'+
+          '<div class="tl-s">'+(e.origen==='CORRECCION'?'Corrección de '+esc(e.autor):
+            e.origen==='AUTOMATICO'?'Cierre automático':'Registro desde la app')+'</div></div>';
+      }).join('')+'</div>'+
+      '<div class="row" style="margin-bottom:18px"><span class="lbl" style="margin:0">Total</span>'+
+      '<div class="sp"></div><b>'+hhmm(min)+'</b>'+
+      (teo?'<span class="'+(min>=teo?'pos':'neg')+'" style="font-size:12px">'+hhmmSigned(min-teo)+'</span>':'')+
+      '</div>'
+      : '<div style="font-size:12.5px;color:var(--sub);margin-bottom:18px">Sin fichajes este día.</div>')+
+    (fest||aus? '' :
+      '<div class="lbl">Mi planificación</div>'+
+      '<div style="font-size:11.5px;color:var(--sub);margin-bottom:10px">Qué prevés trabajar. Es tuya y orientativa.</div>'+
+      '<div class="grid g2 tight">'+
+        '<div class="fld"><label class="lbl">Desde</label><input class="inp" type="time" id="pl_d" value="'+
+          esc(plan?plan.desde:(teorico?teorico.split('–')[0]:''))+'"></div>'+
+        '<div class="fld"><label class="lbl">Hasta</label><input class="inp" type="time" id="pl_h" value="'+
+          esc(plan?plan.hasta:(teorico?teorico.split('–')[1]:''))+'"></div>'+
+      '</div>'+
+      '<div class="fld"><label class="lbl">Nota</label><input class="inp" id="pl_n" value="'+
+        esc(plan?plan.nota:'')+'" placeholder="Visita en Sitges, teletrabajo…"></div>'+
+      '<div class="row">'+
+        (plan?'<button class="btn b-ghost" onclick="borrarPlan(\''+plan.id+'\')">Quitar</button>':'')+
+        '<div class="sp"></div>'+
+        '<button class="btn b-ghost" onclick="cerrarModal()">Cerrar</button>'+
+        '<button class="btn b-gold" onclick="guardarPlan(\''+fecha+'\')">Guardar planificación</button>'+
+      '</div>'));
+}
+function guardarPlan(fecha){
+  var p={fecha:fecha,desde:$('pl_d').value,hasta:$('pl_h').value,nota:$('pl_n').value};
+  if(!p.desde||!p.hasta) return toast('Indica desde y hasta','err');
+  if(p.hasta<=p.desde) return toast('La hora de fin debe ser posterior','err');
+  api('guardarPlan',p).then(function(r){
+    cerrarModal();
+    if(r.ok){ toast('Planificación guardada','ok'); cargarPlan().then(render); } else toast('Error','err');
+  });
+}
+function borrarPlan(id){
+  api('borrarPlan',{id:id}).then(function(r){
+    cerrarModal();
+    if(r.ok){ toast('Planificación eliminada','ok'); cargarPlan().then(render); }
+  });
+}
+function cargarPlan(){
+  var hoy=new Date();
+  var base=new Date(hoy.getFullYear(), hoy.getMonth()+mesOffset, 1);
+  return api('miPlan',{mes:base.getFullYear()+'-'+pad(base.getMonth()+1)}).then(function(r){
+    if(r.ok) S.plan=r.plan;
+  });
+}
+
+/* ── Semana ── */
+function vistaSemana(){
   var lunes=lunesDe(new Date()); lunes.setDate(lunes.getDate()+semOffset*7);
   var filas='', totalSem=0, teoSem=0;
   for(var i=0;i<7;i++){
@@ -1135,8 +1412,7 @@ function vFichajes(){
   }
   _semVista={min:totalSem,teo:teoSem};
   var fin=new Date(lunes); fin.setDate(fin.getDate()+6);
-  return cab('Mis fichajes','Registro de jornada · sistema append-only con sello de integridad')+
-   '<div class="card" style="margin-bottom:14px"><div class="row wrap">'+
+  return '<div class="card" style="margin-bottom:14px"><div class="row wrap">'+
      '<button class="btn b-ghost b-sm" onclick="semOffset--;render()">←</button>'+
      '<div style="flex:1;text-align:center"><div style="font-weight:600;font-size:13px">'+fBonita(fISO(lunes))+' — '+fBonita(fISO(fin))+'</div>'+
      '<div style="font-size:11px;color:var(--sub)"><span id="fi_sem">'+hhmm(totalSem)+'</span> trabajadas · previsto '+hhmm(teoSem)+' · <span class="'+(totalSem-teoSem>=0?'pos':'neg')+'">'+hhmmSigned(totalSem-teoSem)+'</span></div></div>'+
@@ -1728,13 +2004,62 @@ function cargarIncidencias(){
     if(!r.ok) return $('inc_out').innerHTML=vacio('Error al analizar','⚠');
     if(!r.incidencias.length) return $('inc_out').innerHTML=vacio('Sin incidencias en el periodo','✓');
     var et={SIN_SALIDA:'Sin fichaje de salida',JORNADA_LARGA:'Jornada superior a 9 h',JORNADA_CORTA:'Jornada inferior a 1 h'};
-    $('inc_out').innerHTML='<div class="scroll-x"><table class="tbl"><tr><th>Persona</th><th>Fecha</th><th>Incidencia</th><th>Detalle</th><th></th></tr>'+
+    $('inc_out').innerHTML='<div class="scroll-x"><table class="tbl"><tr><th>Persona</th><th>Fecha</th><th>Incidencia</th><th>Jornada asignada</th><th></th></tr>'+
       r.incidencias.map(function(i){
-        return '<tr><td>'+esc(i.trabajador)+'</td><td>'+fBonita(i.fecha)+'</td>'+
-          '<td><span class="pill '+(i.tipo==='SIN_SALIDA'?'p-err':'p-warn')+'">'+esc(et[i.tipo]||i.tipo)+'</span></td>'+
-          '<td>'+esc(i.detalle)+'</td>'+
-          '<td><button class="btn b-ghost b-sm" onclick="modalCorregirDir(\''+esc(i.trabajador).replace(/'/g,"\\'")+'\',\''+i.fecha+'\')">Corregir</button></td></tr>';
-      }).join('')+'</table></div>';
+        var n=esc(i.trabajador).replace(/'/g,"\\'");
+        var h=horarioTeoricoDe(i.trabajador,i.fecha);
+        return '<tr class="inc-fila"><td>'+esc(i.trabajador)+'</td><td>'+fBonita(i.fecha)+'</td>'+
+          '<td><span class="pill '+(i.tipo==='SIN_SALIDA'?'p-err':'p-warn')+'">'+esc(et[i.tipo]||i.tipo)+'</span>'+
+          '<div style="font-size:11px;color:var(--sub);margin-top:3px">'+esc(i.detalle)+'</div></td>'+
+          '<td>'+(h? '<span class="inc-sug">'+h.desde+'–'+h.hasta+
+            '<span class="inc-rellenar"><button class="btn b-pri b-sm" '+
+            'onclick="rellenarJornada(\''+n+'\',\''+i.fecha+'\',\''+h.desde+'\',\''+h.hasta+'\')">Aplicar</button></span></span>'
+            : '<span style="color:var(--sub);font-size:11.5px">sin horario</span>')+'</td>'+
+          '<td style="text-align:right"><button class="btn b-ghost b-sm" onclick="modalCorregirDir(\''+n+'\',\''+i.fecha+'\')">Otra hora</button></td></tr>';
+      }).join('')+'</table></div>'+
+      '<div style="font-size:11.5px;color:var(--sub);margin-top:12px;line-height:1.6">'+
+      'Pasa por encima de una fila y pulsa <b>Aplicar</b> para dar por hecha la jornada asignada de esa persona. '+
+      'Se registra como corrección con tu nombre y su motivo, sin tocar lo ya fichado.</div>';
+  });
+}
+/** Horario que le tocaba a una persona un día concreto, según su ficha. */
+function horarioTeoricoDe(nombre,fecha){
+  var e=S.empleados.filter(function(x){return x.nombre===nombre;})[0];
+  if(!e) return null;
+  if(esFestivo(fecha)) return null;
+  var turno=(S.turnosEquipo||[]).filter(function(t){
+    return t.trabajador===nombre && fecha>=t.desde && fecha<=t.hasta;})[0];
+  var id=turno?turno.horario_id:e.horario_id;
+  var h=S.horarios.filter(function(x){return String(x.horario_id)===String(id);})[0];
+  if(!h) return null;
+  var col=['dom','lun','mar','mie','jue','vie','sab'][new Date(fecha+'T00:00:00').getDay()];
+  var rango=String(h[col]||'').trim();
+  if(rango.indexOf('-')<0) return null;
+  var p=rango.split('-');
+  return {desde:p[0], hasta:p[1], nombre:h.nombre};
+}
+function rellenarJornada(trabajador,fecha,desde,hasta){
+  abrirModal('<div class="mtitle">Dar la jornada por hecha</div>'+
+    '<div class="msub">'+esc(trabajador)+' · '+fBonita(fecha)+'</div>'+
+    '<div class="card" style="background:var(--bg);margin-bottom:16px">'+
+      '<div class="row"><span class="lbl" style="margin:0">Se registrará</span><div class="sp"></div>'+
+      '<b style="font-variant-numeric:tabular-nums">'+desde+' – '+hasta+'</b></div></div>'+
+    '<div class="fld"><label class="lbl">Motivo</label>'+
+      '<input class="inp" id="rj_m" value="No fichó · se aplica su jornada asignada"></div>'+
+    '<div style="font-size:12px;color:var(--sub);line-height:1.6;margin-bottom:18px">'+
+      'Se añaden entrada y salida como <b>corrección</b>, con tu nombre y este motivo. '+
+      'Nada de lo ya registrado se modifica.</div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarJornada(\''+trabajador.replace(/'/g,"\\'")+
+      '\',\''+fecha+'\',\''+desde+'\',\''+hasta+'\')">Aplicar jornada</button></div>');
+}
+function enviarJornada(trabajador,fecha,desde,hasta){
+  api('corregirJornada',{trabajador:trabajador,fecha:fecha,desde:desde,entrada:desde,salida:hasta,
+      motivo:$('rj_m').value.trim()}).then(function(r){
+    cerrarModal();
+    if(r.ok){ toast('Jornada aplicada','ok'); cargarIncidencias(); }
+    else toast({YA_TIENE_FICHAJES:'Ese día ya tiene fichajes: usa «Otra hora»',
+                FUERA_DE_TU_EQUIPO:'Esa persona no está en tu equipo'}[r.error]||'Error','err');
   });
 }
 function comprobarIntegridad(){
@@ -2736,7 +3061,7 @@ function dbGet(){
   // Migración: una base guardada por una versión anterior no tiene las
   // colecciones nuevas. Se rellenan sin tocar los datos ya existentes.
   var vacias=['fichajes','ausencias','tareas','turnos','compensaciones','objetivos',
-              'evaluaciones','encuestas','respuestas','vacantes','candidatos','checklists','auditoria','extras'];
+              'evaluaciones','encuestas','respuestas','vacantes','candidatos','checklists','auditoria','extras','plan'];
   vacias.forEach(function(k){ if(!Array.isArray(db[k])) db[k]=[]; });
   if(!Array.isArray(db.empleados) || !db.empleados.length) db.empleados=DEMO_SEED.empleados;
   if(!Array.isArray(db.horarios) || !db.horarios.length) db.horarios=DEMO_SEED.horarios;
@@ -2776,7 +3101,7 @@ function demoApi(action,p){
   }
 }
 // Mismos permisos que el backend: si la demo no los aplica, no prueba nada
-var ACCIONES_GESTOR = ['validarAusencia','corregirFichaje','informe','incidencias','guardarTurno',
+var ACCIONES_GESTOR = ['validarAusencia','corregirFichaje','corregirJornada','informe','incidencias','guardarTurno',
   'borrarTurno','turnosEquipo','horasExtraEquipo','validarHorasExtra'];
 var ACCIONES_ADMIN = ['configuracion','guardarEmpresa','guardarHorario','guardarDescanso',
   'guardarFestivo','importarFestivos','guardarCentro','centros','eliminar','auditoria',
@@ -3018,6 +3343,32 @@ function demoApiInterno(action,p){
         turnos:mio(db.turnos),horasExtra:mio(db.extras),
         accesos:(db.auditoria||[]).filter(function(a){return a.actor===yo.nombre;})}};
       break;
+
+    /* ── Planificación ── */
+    case 'miPlan':
+      db.plan=db.plan||[];
+      r={ok:true,plan:db.plan.filter(function(x){
+        return x.trabajador===yo.nombre && (!p.mes || x.fecha.slice(0,7)===p.mes);})}; break;
+    case 'guardarPlan':
+      db.plan=db.plan||[];
+      var ip=db.plan.findIndex(function(x){return x.trabajador===yo.nombre&&x.fecha===p.fecha;});
+      var np={id:ip>=0?db.plan[ip].id:demoId('PL'),trabajador:yo.nombre,fecha:p.fecha,
+              horario_id:'',desde:p.desde,hasta:p.hasta,nota:p.nota||''};
+      if(ip>=0) db.plan[ip]=np; else db.plan.push(np);
+      dbSet(db); r={ok:true,id:np.id}; break;
+    case 'borrarPlan':
+      db.plan=(db.plan||[]).filter(function(x){return !(x.id===p.id&&x.trabajador===yo.nombre);});
+      dbSet(db); r={ok:true}; break;
+    case 'corregirJornada':
+      if(db.fichajes.some(function(f){return f.trabajador===p.trabajador&&f.fecha===p.fecha;})){
+        r={ok:false,error:'YA_TIENE_FICHAJES'}; break; }
+      [['ENTRADA',p.entrada],['SALIDA',p.salida]].forEach(function(par){
+        var d=new Date(p.fecha+'T'+par[1]+':00');
+        db.fichajes.push({id:demoId('C'),ts:d.toISOString(),fecha:p.fecha,hora:par[1]+':00',
+          trabajador:p.trabajador,tipo:par[0],origen:'CORRECCION',motivo:p.motivo,autor:yo.nombre});
+      });
+      demoAudit(db,yo,'CORRECCION_FICHAJE',p.trabajador+' · jornada '+p.fecha+' — '+p.motivo);
+      dbSet(db); r={ok:true,puestos:['ENTRADA','SALIDA']}; break;
 
     /* ── Horas extra ── */
     case 'pedirHorasExtra':
