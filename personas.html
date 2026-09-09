@@ -191,11 +191,13 @@ textarea.inp{resize:vertical;min-height:72px;line-height:1.55}
 .li{display:flex;align-items:center;gap:13px;padding:14px 18px;background:var(--card);border:1px solid var(--line);border-radius:3px;margin-bottom:5px}
 .li-t{font-size:13.5px;font-weight:500;color:var(--navy)}
 .li-s{font-size:11.5px;color:var(--sub);margin-top:3px}
-.tbl{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--card);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px;background:var(--card);border:1px solid var(--line);border-radius:3px}
 .tbl th{background:transparent;text-align:left;padding:11px 13px;font-size:9.5px;text-transform:uppercase;letter-spacing:1px;color:var(--sub);font-weight:600;border-bottom:1px solid var(--line)}
 .tbl td{padding:11px 13px;border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
 .tbl tr:last-child td{border-bottom:none}
 .scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+/* Cuando la tabla no cabe, los botones de fila se quedan siempre a la vista */
+.scroll-x .tbl th:last-child,.scroll-x .tbl td:last-child{position:sticky;right:0;background:var(--card);border-left:1px solid var(--line-soft)}
 
 /* Línea de tiempo de fichajes */
 .tl{position:relative;padding-left:20px}
@@ -605,7 +607,7 @@ function pintarSelect(){
   $('sel_list').innerHTML = lista.map(function(e){
     return '<div class="sel-item" onclick="elegir(\''+esc(e.nombre).replace(/'/g,"\\'")+'\')">'+
       '<div class="ava">'+esc(ini(e.nombre))+'</div><div><div class="sel-name">'+esc(e.nombre)+'</div>'+
-      '<div class="sel-sub">'+esc(e.departamento||e.rol||'')+'</div></div></div>';
+      '<div class="sel-sub">'+esc(e.departamento||e.oficina||'')+'</div></div></div>';
   }).join('') || '<div style="padding:24px;text-align:center;color:var(--sub);font-size:13px">Sin resultados</div>';
 }
 function elegir(nombre){
