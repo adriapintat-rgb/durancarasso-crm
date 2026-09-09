@@ -35,12 +35,11 @@ var HOJAS = {
   empresa:       'Empresa',
   descansos:     'Descansos',
   consentimientos:'Consentimientos',
-  extras:        'HorasExtra',
   planificacion: 'Planificacion'
 };
 
 var CABECERAS = {
-  Empleados:  ['nombre','email','pin','rol','departamento','oficina','horario_id','fecha_alta','vacaciones_anuales','activo','telefono','dni','coste_hora','empresa','responsable','fecha_baja'],
+  Empleados:  ['nombre','email','pin','rol','departamento','oficina','horario_id','fecha_alta','vacaciones_anuales','activo','telefono','dni','coste_hora','empresa','responsable','fecha_baja','foto','apellidos'],
   Fichajes:   ['id','ts_iso','fecha','hora','trabajador','email','tipo','lat','lng','precision_m','dispositivo','origen','motivo','autor','modalidad','centro','descanso','hash_prev','hash'],
   Ausencias:  ['id','ts_solicitud','trabajador','email','tipo','fecha_inicio','fecha_fin','dias','medio_dia','motivo','estado','validador','ts_validacion','comentario','justificante','dias_arrastre'],
   Horarios:   ['horario_id','nombre','lun','mar','mie','jue','vie','sab','dom','pausa_min','horas_semana','tipo','dias_semana','activo'],
@@ -55,7 +54,6 @@ var CABECERAS = {
   Empresa:        ['clave','valor'],
   Descansos:      ['id','nombre','minutos','desde','hasta','remunerado','computa','activo'],
   Consentimientos:['ts','trabajador','tipo','valor','version','ip'],
-  HorasExtra:     ['id','ts','trabajador','fecha','minutos','motivo','estado','validador','ts_validacion','comentario'],
   Planificacion:  ['id','trabajador','fecha','horario_id','desde','hasta','nota','ts']
 };
 
@@ -202,10 +200,13 @@ function router(b) {
 
     // ── Solo dirección ──
     case 'validarAusencia': return esGestor ? validarAusencia(emp, b) : denegado();
+    case 'revertirAusencia':return esGestor ? revertirAusencia(emp, b) : denegado();
+    case 'importarEmpleados': return esDir ? importarEmpleados(emp, b) : denegado();
+    case 'guardarFoto':     return guardarFoto(emp, b);
     case 'corregirFichaje': return esGestor ? corregirFichaje(emp, b) : denegado();
     case 'informe':         return esGestor ? informe(b, emp)       : denegado();
     case 'incidencias':     return esGestor ? incidencias(b, emp)   : denegado();
-    case 'verificarCadena': return esDir ? verificarCadena()        : denegado();
+    case 'verificarCadena': return (esDir || esInspector(emp)) ? verificarCadena() : denegado();
     case 'altaEmpleado':    return esDir ? altaEmpleado(emp, b)     : denegado();
     case 'guardarTurno':    return esGestor ? guardarTurno(emp, b)  : denegado();
     case 'borrarTurno':     return esGestor ? borrarTurno(emp, b)   : denegado();
@@ -220,14 +221,10 @@ function router(b) {
     case 'aceptarAviso':    return aceptarAviso(emp, b);
     case 'consentimiento':  return guardarConsentimiento(emp, b);
     case 'misDatos':        return misDatos(emp);
-    case 'pedirHorasExtra': return pedirHorasExtra(emp, b);
-    case 'misHorasExtra':   return misHorasExtra(emp);
     case 'miPlan':          return miPlan(emp, b);
     case 'guardarPlan':     return guardarPlan(emp, b);
     case 'borrarPlan':      return borrarPlan(emp, b);
     case 'corregirJornada': return esGestor ? corregirJornada(emp, b) : denegado();
-    case 'horasExtraEquipo':return esGestor ? horasExtraEquipo(emp)      : denegado();
-    case 'validarHorasExtra':return esGestor ? validarHorasExtra(emp, b) : denegado();
     case 'purgar':          return esDir ? purgarAntiguos(emp, b)        : denegado();
     case 'auditoria':       return esDir ? auditoria(b)           : denegado();
     case 'editarEmpleado':  return esDir ? editarEmpleado(emp, b) : denegado();
@@ -461,7 +458,8 @@ function bootstrap(emp, esDir) {
     .filter(function (e) { return String(e.activo).toUpperCase() !== 'NO'; })
     .map(function (e) {
       return { nombre: e.nombre, email: e.email, rol: e.rol, departamento: e.departamento,
-               oficina: e.oficina, horario_id: e.horario_id,
+               oficina: e.oficina, horario_id: e.horario_id, foto: e.foto || '',
+               responsable: e.responsable || '', fecha_alta: e.fecha_alta ? String(e.fecha_alta).slice(0,10) : '',
                vacaciones_anuales: Number(e.vacaciones_anuales || 0) };
     });
   return {
@@ -536,6 +534,10 @@ function fichar(emp, b) {
     var base = [id, d.toISOString(), emp.nombre, tipo].join('|');
     var hash = sha256(prev + '|' + base);
 
+    // Con la geolocalización obligatoria no se admite un fichaje sin posición
+    if (String(datosEmpresa().geo_obligatoria).toUpperCase() === 'SI' && !b.lat && b.origen !== 'QUIOSCO') {
+      return { ok: false, error: 'GEO_OBLIGATORIA' };
+    }
     var centro = centroDe(b.lat, b.lng);
     if (tipo === 'ENTRADA' && exigeCentro() && !centro && b.lat) {
       return { ok: false, error: 'FUERA_DE_CENTRO' };
@@ -558,7 +560,13 @@ function fichar(emp, b) {
 function misFichajes(emp, b) {
   var desde = String(b.desde || '1900-01-01');
   var hasta = String(b.hasta || '2999-12-31');
-  var quien = b.trabajador && String(emp.rol).toUpperCase() === 'DIRECCION' ? String(b.trabajador) : emp.nombre;
+  // Ver los fichajes de otra persona exige ser su responsable o administrador
+  var quien = emp.nombre;
+  if (b.trabajador && String(b.trabajador).trim() !== emp.nombre) {
+    if (nivel(emp) < 1 && !esInspector(emp)) return denegado();
+    if (!esEquipoDe(emp, b.trabajador) && !esInspector(emp)) return { ok: false, error: 'FUERA_DE_TU_EQUIPO' };
+    quien = String(b.trabajador).trim();
+  }
   var filas = leer(HOJAS.fichajes).filter(function (f) {
     var fe = normFecha(f.fecha);
     return String(f.trabajador).trim() === quien && fe >= desde && fe <= hasta;
@@ -645,6 +653,8 @@ function estadoEquipo() {
     out.push({
       nombre: e.nombre, departamento: e.departamento, oficina: e.oficina,
       estado: f ? (mapa[String(f.tipo).trim()] || 'FUERA') : 'SIN_FICHAR',
+      modalidad: f ? String(f.modalidad || 'OFICINA') : '',
+      foto: e.foto || '',
       desde: f ? String(f.ts_iso) : ''
     });
   });
@@ -811,18 +821,21 @@ function cancelarAusencia(emp, b) {
 }
 
 /* ── Tipos de ausencia ───────────────────────────────────────────────────── */
+// El justificante solo se exige en la visita médica: es el único caso en el
+// que la empresa necesita el parte para justificar la ausencia.
 var TIPOS_POR_DEFECTO = [
   ['Vacaciones',            23, 'SI', 'NO', 'SI', '#E8C9C4', 'SI'],
   ['Asuntos propios',        4, 'SI', 'NO', 'NO', '#C7E4DA', 'SI'],
   ['Permiso Navidad 24',     1, 'SI', 'NO', 'NO', '#C7E4DA', 'SI'],
   ['Permiso Navidad 31',     1, 'SI', 'NO', 'NO', '#C7E4DA', 'SI'],
   ['Tarde día cumpleaños',   1, 'SI', 'NO', 'NO', '#F0E0BC', 'SI'],
-  ['Permiso retribuido',     0, 'NO', 'SI', 'NO', '#C7E4DA', 'SI'],
+  ['Visita médica',          0, 'NO', 'SI', 'NO', '#B7D4E3', 'SI'],
+  ['Permiso retribuido',     0, 'NO', 'NO', 'NO', '#C7E4DA', 'SI'],
   ['Formación',              0, 'NO', 'NO', 'NO', '#D5D2E8', 'SI'],
-  ['Mudanza',                1, 'NO', 'SI', 'NO', '#D5D2E8', 'SI'],
-  ['Matrimonio',            15, 'NO', 'SI', 'NO', '#D5D2E8', 'SI'],
-  ['Nacimiento hijo/a',      0, 'NO', 'SI', 'NO', '#D5D2E8', 'SI'],
-  ['Fallecimiento familiar', 0, 'NO', 'SI', 'NO', '#D5D2E8', 'SI'],
+  ['Mudanza',                1, 'NO', 'NO', 'NO', '#D5D2E8', 'SI'],
+  ['Matrimonio',            15, 'NO', 'NO', 'NO', '#D5D2E8', 'SI'],
+  ['Nacimiento hijo/a',      0, 'NO', 'NO', 'NO', '#D5D2E8', 'SI'],
+  ['Fallecimiento familiar', 0, 'NO', 'NO', 'NO', '#D5D2E8', 'SI'],
   ['Otros',                  0, 'NO', 'NO', 'NO', '#DEDCD6', 'SI']
 ];
 
@@ -868,8 +881,9 @@ function consumoDelAno(nombre, tipo, year, estados) {
 }
 
 /**
- * Cupo del año, prorrateado si la persona entra o sale a mitad de año.
- * Ejemplo: alta el 1 de julio con 23 días → 23 × 184/365 ≈ 11,5 días.
+ * Cupo del año, prorrateado por los meses de alta. Las vacaciones se devengan
+ * mes a mes desde la fecha de incorporación: quien entra el 1 de julio con 23
+ * días al año tiene 11,5 ese primer año, no los 23 completos.
  */
 function cupoDe(emp, t, year) {
   var base = (t.tipo.toUpperCase().indexOf('VACAC') === 0)
@@ -895,6 +909,27 @@ function cupoDe(emp, t, year) {
   return Math.round(base * diasAlta / diasAno * 2) / 2;   // se redondea a medio día
 }
 
+/**
+ * Días ya devengados a día de hoy dentro del año en curso. El cupo anual se
+ * gana por meses trabajados; esto es lo que de verdad tiene disponible quien
+ * se incorporó hace poco.
+ */
+function devengadoHoy(emp, t, year) {
+  var cupo = cupoDe(emp, t, year);
+  if (!cupo) return 0;
+  var hoy = ahora();
+  if (hoy.getFullYear() > year) return cupo;
+  if (hoy.getFullYear() < year) return 0;
+
+  var alta = emp.fecha_alta ? new Date(normFecha(emp.fecha_alta) + 'T00:00:00') : null;
+  var inicio = (alta && !isNaN(alta) && alta.getFullYear() === year) ? alta : new Date(year + '-01-01T00:00:00');
+  var meses = (hoy.getMonth() - inicio.getMonth()) + 1;          // el mes en curso cuenta entero
+  var mesesTotales = 12 - inicio.getMonth();
+  if (meses <= 0) return 0;
+  if (meses >= mesesTotales) return cupo;
+  return Math.round(cupo * meses / mesesTotales * 2) / 2;
+}
+
 function arrastreDisponible(emp, t, year) {
   if (!t.arrastrable) return 0;
   var cupoPrev = cupoDe(emp, t, year - 1);
@@ -911,7 +946,9 @@ function saldos(emp, year) {
     var pend = consumoDelAno(emp.nombre, t.tipo, year, ['PENDIENTE']);
     var completo = (t.tipo.toUpperCase().indexOf('VACAC') === 0)
       ? Number(emp.vacaciones_anuales || t.dias) : t.dias;
-    return { tipo: t.tipo, totales: cupo, prorrateado: cupo !== completo, cupoCompleto: completo,
+    var devengado = devengadoHoy(emp, t, year);
+    return { tipo: t.tipo, totales: cupo, devengado: devengado,
+             prorrateado: cupo !== completo, cupoCompleto: completo,
              arrastre: arr, arrastreVigente: vigente,
              limiteArrastre: limiteArrastre(year), consumidos: cons, pendientes: pend,
              disponibles: cupo + (vigente ? arr : 0) - cons - pend };
@@ -1005,6 +1042,129 @@ function avisarValidador(emp, sol) {
     '<br><br><span style="font-size:11px;color:#78837F">Los botones resuelven la solicitud sin entrar en la app. ' +
     'El enlace caduca en 14 días.</span>');
 }
+
+/**
+ * Deshace una ausencia ya resuelta y la devuelve a pendiente. Los días vuelven
+ * al saldo. Queda en la auditoría con el motivo y se avisa a la persona.
+ */
+function revertirAusencia(dir, b) {
+  var motivo = String(b.motivo || '').trim();
+  if (!motivo) return { ok: false, error: 'MOTIVO_OBLIGATORIO' };
+  var filas = leer(HOJAS.ausencias);
+  for (var i = 0; i < filas.length; i++) {
+    if (String(filas[i].id) !== String(b.id)) continue;
+    if (!esEquipoDe(dir, filas[i].trabajador)) return { ok: false, error: 'FUERA_DE_TU_EQUIPO' };
+    var estado = String(filas[i].estado).toUpperCase();
+    if (['APROBADA', 'DENEGADA'].indexOf(estado) < 0) return { ok: false, error: 'NO_ESTABA_RESUELTA' };
+
+    var h = hoja(HOJAS.ausencias);
+    h.getRange(filas[i]._fila, 11).setValue(b.aPendiente === false ? 'CANCELADA' : 'PENDIENTE');
+    h.getRange(filas[i]._fila, 12).setValue('');
+    h.getRange(filas[i]._fila, 13).setValue('');
+    h.getRange(filas[i]._fila, 14).setValue('Revertida por ' + dir.nombre + ': ' + motivo);
+    auditar(dir.nombre, 'REVIERTE_AUSENCIA', b.id + ' (' + estado.toLowerCase() + ') — ' + motivo);
+
+    if (filas[i].email) {
+      enviar([String(filas[i].email)], 'Se ha revisado tu solicitud de ' + filas[i].tipo,
+        'Tu solicitud de <b>' + filas[i].tipo + '</b> del ' + normFecha(filas[i].fecha_inicio) +
+        ' al ' + normFecha(filas[i].fecha_fin) + ', que estaba <b>' + estado.toLowerCase() +
+        '</b>, ha vuelto a revisión.<br><br>Motivo: ' + motivo +
+        '<br><br>Los días han vuelto a tu saldo mientras tanto.');
+    }
+    return { ok: true };
+  }
+  return { ok: false, error: 'NO_ENCONTRADA' };
+}
+
+/* ── Foto de perfil ──────────────────────────────────────────────────────── */
+function guardarFoto(emp, b) {
+  var datos = String(b.foto || '');
+  if (datos && datos.length > 200000) return { ok: false, error: 'FOTO_DEMASIADO_GRANDE' };
+  var h = hoja(HOJAS.empleados);
+  var cols = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0].map(String);
+  var col = cols.indexOf('foto') + 1;
+  if (col <= 0) return { ok: false, error: 'SIN_COLUMNA_FOTO' };
+  var quien = emp;
+  if (b.trabajador && String(b.trabajador) !== emp.nombre) {
+    if (nivel(emp) < 2) return denegado();
+    quien = buscarEmpleado(b.trabajador);
+    if (!quien) return { ok: false, error: 'NO_ENCONTRADO' };
+  }
+  h.getRange(quien._fila, col).setValue(datos);
+  auditar(emp.nombre, 'FOTO_PERFIL', quien.nombre);
+  return { ok: true };
+}
+
+/* ── Alta masiva de empleados ────────────────────────────────────────────── */
+/**
+ * Crea o actualiza fichas a partir de una lista. Nunca borra a nadie ni pisa
+ * un PIN existente: solo rellena lo que falta y corrige lo que cambió.
+ */
+function importarEmpleados(dir, b) {
+  var lista = b.empleados || [];
+  if (!lista.length) return { ok: false, error: 'LISTA_VACIA' };
+
+  var h = hoja(HOJAS.empleados);
+  var cols = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0].map(String);
+  var existentes = {};
+  leer(HOJAS.empleados).forEach(function (e) { existentes[String(e.nombre).trim().toLowerCase()] = e; });
+
+  var creados = 0, actualizados = 0, cambios = [];
+  var nuevas = [];
+  var empresa = datosEmpresa();
+
+  lista.forEach(function (p) {
+    var nombre = String(p.nombre || '').trim();
+    if (!nombre) return;
+    var ficha = existentes[nombre.toLowerCase()];
+
+    if (!ficha) {
+      var fila = new Array(cols.length).fill('');
+      var pon = function (c, v) { var k = cols.indexOf(c); if (k >= 0) fila[k] = v; };
+      pon('nombre', nombre);
+      pon('apellidos', String(p.apellidos || ''));
+      pon('email', String(p.email || ''));
+      pon('pin', hashPin(pinAleatorio(), nombre));      // PIN provisional, hay que resetearlo
+      pon('rol', String(p.rol || 'EMPLEADO').toUpperCase());
+      pon('departamento', String(p.departamento || ''));
+      pon('oficina', String(p.oficina || ''));
+      pon('horario_id', String(p.horario_id || empresa.horario_defecto || 'STD'));
+      pon('fecha_alta', String(p.fecha_alta || fmtFecha(ahora())));
+      pon('vacaciones_anuales', Number(p.vacaciones_anuales || empresa.dias_vacaciones || 23));
+      pon('activo', 'SI');
+      nuevas.push(fila);
+      creados++;
+      return;
+    }
+
+    // Ya existe: solo se toca lo que llega y es distinto
+    ['email', 'departamento', 'oficina', 'horario_id', 'apellidos', 'responsable'].forEach(function (campo) {
+      if (p[campo] === undefined || p[campo] === '') return;
+      var col = cols.indexOf(campo) + 1;
+      if (col <= 0) return;
+      var antes = String(h.getRange(ficha._fila, col).getValue());
+      if (antes === String(p[campo])) return;
+      h.getRange(ficha._fila, col).setValue(p[campo]);
+      cambios.push(nombre + ' · ' + campo + ': "' + antes + '" → "' + p[campo] + '"');
+    });
+    if (p.fecha_alta) {
+      var cAlta = cols.indexOf('fecha_alta') + 1;
+      if (cAlta > 0 && !h.getRange(ficha._fila, cAlta).getValue()) {
+        h.getRange(ficha._fila, cAlta).setValue(p.fecha_alta);
+        cambios.push(nombre + ' · fecha_alta: "' + p.fecha_alta + '"');
+      }
+    }
+    if (cambios.length) actualizados++;
+  });
+
+  if (nuevas.length) {
+    h.getRange(h.getLastRow() + 1, 1, nuevas.length, cols.length).setValues(nuevas);
+  }
+  auditar(dir.nombre, 'IMPORTA_EMPLEADOS', creados + ' altas, ' + actualizados + ' actualizados');
+  return { ok: true, creados: creados, actualizados: actualizados, cambios: cambios.slice(0, 40),
+           aviso: creados ? 'Las altas llevan un PIN provisional aleatorio: asigna el definitivo desde Empleados → PIN.' : '' };
+}
+function pinAleatorio() { return String(Math.floor(1000 + Math.random() * 9000)); }
 
 function notificarAusencia(fila, decision, validador) {
   try {
@@ -1176,6 +1336,7 @@ var EMPRESA_POR_DEFECTO = {
   logo_url: '', moneda: 'EUR', industria: 'Inmobiliaria',
   convenio: 'Oficinas y despachos de Cataluña',
   horario_defecto: 'STD', dias_vacaciones: '23', dominio_email: 'durancarasso.com',
+  geo_obligatoria: 'SI',
   email_correcciones: 'mabad@durancarasso.com'
 };
 
@@ -1428,9 +1589,14 @@ function textoAviso() {
     responsable: e.razon_social || e.nombre,
     finalidad: 'Cumplir la obligación legal de registro diario de jornada y gestionar ausencias, ' +
                'horarios y turnos.',
-    base: 'Obligación legal (art. 34.9 del Estatuto de los Trabajadores) y ejecución del contrato ' +
-          'de trabajo. La geolocalización es voluntaria y se basa en tu consentimiento, que puedes ' +
-          'retirar cuando quieras.',
+    base: (String(e.geo_obligatoria).toUpperCase() === 'SI')
+      ? 'Obligación legal (art. 34.9 del Estatuto de los Trabajadores) y ejecución del contrato de ' +
+        'trabajo. La ubicación se registra en el instante de fichar para acreditar desde dónde se ' +
+        'presta el trabajo, por interés legítimo de la empresa en verificar el registro de jornada. ' +
+        'No hay seguimiento continuo: solo la posición del momento del fichaje.'
+      : 'Obligación legal (art. 34.9 del Estatuto de los Trabajadores) y ejecución del contrato de ' +
+        'trabajo. La geolocalización es voluntaria y se basa en tu consentimiento, que puedes ' +
+        'retirar cuando quieras.',
     datos: 'Nombre, correo corporativo, departamento, centro, horario, fichajes con su hora exacta, ' +
            'ausencias con su justificante y, si lo autorizas, la ubicación en el momento de fichar.',
     conservacion: 'Los fichajes se conservan ' + ANOS_CONSERVACION + ' años, como exige la ley, y ' +
@@ -1455,6 +1621,7 @@ function avisoPrivacidad(emp) {
     return String(c.trabajador).trim() === emp.nombre && String(c.tipo) === 'GEO';
   }).pop();
   return { ok: true, aviso: textoAviso(),
+           geoObl: String(datosEmpresa().geo_obligatoria).toUpperCase() === 'SI',
            aceptado: !!aceptado, fechaAceptado: aceptado ? String(aceptado.ts) : '',
            geo: geo ? String(geo.valor).toUpperCase() === 'SI' : null };
 }
@@ -1488,7 +1655,6 @@ function misDatos(emp) {
     ausencias: mio(HOJAS.ausencias),
     tareas: mio(HOJAS.tareas),
     turnos: mio(HOJAS.turnos),
-    horasExtra: mio(HOJAS.extras),
     consentimientos: mio(HOJAS.consentimientos),
     accesos: leer(HOJAS.auditoria).filter(function (a) { return String(a.actor).trim() === emp.nombre; })
       .map(function (a) { delete a._fila; return a; })
@@ -1591,54 +1757,6 @@ function corregirJornada(dir, b) {
   return { ok: puestos.length === 2, puestos: puestos };
 }
 
-/* ── Horas extra ─────────────────────────────────────────────────────────── */
-function pedirHorasExtra(emp, b) {
-  var minutos = Number(b.minutos || 0);
-  var motivo = String(b.motivo || '').trim();
-  if (!minutos || !motivo) return { ok: false, error: 'DATOS_INCOMPLETOS' };
-  var id = uid('HE');
-  hoja(HOJAS.extras).appendRow([id, new Date().toISOString(), emp.nombre,
-    String(b.fecha || fmtFecha(ahora())), minutos, motivo, 'PENDIENTE', '', '', '']);
-  auditar(emp.nombre, 'PIDE_HORAS_EXTRA', b.fecha + ' · ' + minutos + ' min');
-
-  var destinos = emp.responsable ? [String((buscarEmpleado(emp.responsable) || {}).email || '')] : [];
-  destinos = destinos.filter(Boolean);
-  if (!destinos.length) destinos = destinatariosDireccion();
-  enviar(destinos, 'Horas extra · ' + emp.nombre,
-    '<b>' + emp.nombre + '</b> justifica <b>' + (minutos / 60).toFixed(1) + ' h</b> de exceso de jornada ' +
-    'el ' + b.fecha + '.<br><br>Motivo: ' + motivo + '<br><br>Valídalas en Gestión → Horas extra.');
-  return { ok: true, id: id };
-}
-
-function limpiarExtra(x) {
-  return { id: x.id, trabajador: x.trabajador, fecha: normFecha(x.fecha),
-           minutos: Number(x.minutos || 0), motivo: x.motivo,
-           estado: String(x.estado).toUpperCase(), validador: x.validador, comentario: x.comentario };
-}
-function misHorasExtra(emp) {
-  return { ok: true, extras: leer(HOJAS.extras)
-    .filter(function (x) { return String(x.trabajador).trim() === emp.nombre; }).map(limpiarExtra) };
-}
-function horasExtraEquipo(emp) {
-  var lista = ambito(emp);
-  return { ok: true, extras: leer(HOJAS.extras)
-    .filter(function (x) { return dentroDe(lista, x.trabajador); }).map(limpiarExtra) };
-}
-function validarHorasExtra(dir, b) {
-  var decision = String(b.decision || '').toUpperCase();
-  if (['APROBADA', 'DENEGADA'].indexOf(decision) < 0) return { ok: false, error: 'DECISION_INVALIDA' };
-  var filas = leer(HOJAS.extras);
-  for (var i = 0; i < filas.length; i++) {
-    if (String(filas[i].id) !== String(b.id)) continue;
-    if (!esEquipoDe(dir, filas[i].trabajador)) return { ok: false, error: 'FUERA_DE_TU_EQUIPO' };
-    var h = hoja(HOJAS.extras);
-    h.getRange(filas[i]._fila, 7, 1, 4).setValues([[decision, dir.nombre, new Date().toISOString(),
-      String(b.comentario || '')]]);
-    auditar(dir.nombre, 'VALIDA_HORAS_EXTRA', b.id + ' → ' + decision);
-    return { ok: true };
-  }
-  return { ok: false, error: 'NO_ENCONTRADA' };
-}
 
 // ── SETUP INICIAL ────────────────────────────────────────────────────────────
 /**
@@ -1669,6 +1787,18 @@ function setupInicial() {
     hCen.appendRow(['CT-BCN', 'Barcelona', 'Av. Diagonal, Barcelona', 41.3947, 2.1503, 150, 'ES', 'ES-CT', 'Barcelona', 'SI']);
     hCen.appendRow(['CT-SIT', 'Sitges',    'Sitges',                  41.2371, 1.8055, 150, 'ES', 'ES-CT', 'Sitges',    'SI']);
     hCen.appendRow(['CT-AND', 'Andorra',   'Andorra la Vella',        42.5063, 1.5218, 150, 'AD', '',      'Andorra la Vella', 'SI']);
+  }
+
+  var hFes = hoja(HOJAS.festivos);
+  if (hFes.getLastRow() < 2) {
+    var y = new Date().getFullYear();
+    [['01-01', 'Año Nuevo'], ['01-06', 'Reyes'], ['05-01', 'Fiesta del Trabajo'],
+     ['06-24', 'Sant Joan'], ['08-15', 'Asunción'], ['09-11', 'Diada de Catalunya'],
+     ['10-12', 'Fiesta Nacional'], ['11-01', 'Todos los Santos'],
+     ['12-06', 'Día de la Constitución'], ['12-08', 'Inmaculada Concepción'],
+     ['12-25', 'Navidad'], ['12-26', 'Sant Esteve']].forEach(function (f) {
+      hFes.appendRow([y + '-' + f[0], f[1], 'Nacional ES']);
+    });
   }
   return 'Hojas creadas. Rellena Empleados, revisa Centros y despliega como Aplicación web.';
 }

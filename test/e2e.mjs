@@ -110,7 +110,7 @@ for (const espacio of ['mi', 'gestion']) {
   await pagina.click('#sw_' + espacio); await pagina.waitForTimeout(400);
   todas.push(...await pagina.$$eval('.side .nav-i', ns => ns.map(n => n.textContent)));
 }
-const retirados = ['objetivo', 'evaluación', 'encuesta', 'checklist', 'documento', 'bolsa', 'onboarding', 'reclutamiento'];
+const retirados = ['objetivo', 'evaluación', 'encuesta', 'checklist', 'documento', 'bolsa', 'onboarding', 'reclutamiento', 'horas extra'];
 const sobran = retirados.filter(r => todas.some(t => t.toLowerCase().includes(r)));
 comprobar(sobran.length === 0, 'los módulos retirados ya no aparecen' + (sobran.length ? ' (quedan: ' + sobran + ')' : ''));
 
@@ -154,20 +154,33 @@ await pagina.fill('#au_d', '2026-10-05'); await pagina.fill('#au_h', '2026-10-09
 await pagina.click('#au_send'); await pagina.waitForTimeout(1500);
 comprobar((await pagina.textContent('#main')).includes('PENDIENTE'), 'la solicitud válida se registra');
 
-// Arrastre de un año al siguiente
+// Arrastre de un año al siguiente, sobre alguien con el año completo
 const arrastre = await pagina.evaluate(() => {
   const db = dbGet();
-  db.ausencias = [{ id: 'T1', trabajador: 'Empleado de pruebas', tipo: 'Vacaciones',
-                    desde: '2026-07-01', hasta: '2026-07-28', dias: 20,
+  const yo = db.empleados.find(e => e.nombre === 'Manager de pruebas');
+  const cupo = demoSaldos(db, yo, 2026).find(x => x.tipo === 'Vacaciones').totales;
+  const gastados = cupo - 3;
+  db.ausencias = [{ id: 'T1', trabajador: yo.nombre, tipo: 'Vacaciones',
+                    desde: '2026-07-01', hasta: '2026-07-28', dias: gastados,
                     estado: 'APROBADA', diasArrastre: 0 }];
   dbSet(db);
-  const yo = db.empleados.find(e => e.nombre === 'Empleado de pruebas');
   const s26 = demoSaldos(db, yo, 2026).find(x => x.tipo === 'Vacaciones');
   const s27 = demoSaldos(db, yo, 2027).find(x => x.tipo === 'Vacaciones');
-  return { restan26: s26.disponibles, arrastre27: s27.arrastre, total27: s27.disponibles };
+  return { cupo, restan26: s26.disponibles, arrastre27: s27.arrastre, total27: s27.disponibles };
 });
-comprobar(arrastre.restan26 === 3 && arrastre.arrastre27 === 3 && arrastre.total27 === 26,
+comprobar(arrastre.restan26 === 3 && arrastre.arrastre27 === 3 &&
+  arrastre.total27 === arrastre.cupo + 3,
   'los días sobrantes de un año se arrastran al siguiente');
+
+// Devengo por fecha de incorporación
+const devengo = await pagina.evaluate(() => {
+  const db = dbGet();
+  const nuevo = db.empleados.find(e => e.nombre === 'Empleado de pruebas');
+  const s = demoSaldos(db, nuevo, 2026).find(x => x.tipo === 'Vacaciones');
+  return { alta: nuevo.fecha_alta, cupo: s.totales, completo: s.cupoCompleto, prorrateado: s.prorrateado };
+});
+comprobar(devengo.prorrateado && devengo.cupo < devengo.completo,
+  `quien entra el ${devengo.alta} devenga ${devengo.cupo} de ${devengo.completo} días`);
 
 // ── Validación por dirección ──────────────────────────────────────────────
 console.log('\nDirección');
@@ -181,7 +194,7 @@ comprobar((await pagina.$eval('#main', el => el.textContent.length)) > 300, 'la 
 
 // ── Administración ────────────────────────────────────────────────────────
 console.log('\nAdministración');
-await ir('gestion','Plantilla');
+await ir('gestion','Empleados');
 await pagina.click('button:has-text("Editar")'); await pagina.waitForTimeout(500);
 await pagina.fill('#ed_d', 'Dirección General');
 await pagina.click('#mbox button.b-gold'); await pagina.waitForTimeout(1300);
@@ -252,8 +265,8 @@ await pasarAviso(empleado);
 const verGestion = await empleado.isVisible('#sw_espacio');
 comprobar(verGestion === false, 'el empleado no ve el espacio de Gestión');
 const menuEmpleado = await empleado.$$eval('.side .nav-i', ns => ns.map(n => n.textContent));
-comprobar(!menuEmpleado.some(t => /Plantilla|Configuración|Auditor/.test(t)),
-  'el empleado no ve plantilla, configuración ni auditoría');
+comprobar(!menuEmpleado.some(t => /Empleados|Configuración|Auditor/.test(t)),
+  'el empleado no ve empleados, configuración ni auditoría');
 await empleado.close();
 
 const manager = await navegador.newPage({ viewport: { width: 1200, height: 900 } });
@@ -352,7 +365,14 @@ comprobar((await legal.textContent('#mbox')).includes('Protección de datos'),
   'el aviso de privacidad se muestra antes de usar la app');
 comprobar((await legal.textContent('#mbox')).includes('art. 34.9'),
   'el aviso indica la base legal del tratamiento');
-comprobar(await legal.isVisible('#av_geo'), 'la geolocalización se pide como consentimiento aparte');
+const textoAviso = await legal.textContent('#mbox');
+const geoObl = await legal.evaluate(() => geoObligatoria());
+const hayCasilla = await legal.isVisible('#av_geo').catch(() => false);
+comprobar(geoObl
+  ? /obligatoria para fichar/i.test(textoAviso) && !hayCasilla
+  : await legal.isVisible('#av_geo'),
+  geoObl ? 'con geo obligatoria el aviso lo dice y no la ofrece como opcional'
+         : 'la geolocalización se pide como consentimiento aparte');
 await legal.click('#mbox button.b-gold'); await legal.waitForTimeout(900);
 comprobar(!(await legal.isVisible('#mbox .mtitle')) || !(await legal.textContent('#mbox')).includes('Protección'),
   'aceptado el aviso, no vuelve a aparecer');
@@ -367,11 +387,9 @@ const sinPermiso = await legal.evaluate(async () =>
     ts: new Date().toISOString(), motivo: 'intento' })).error);
 comprobar(!!sinPermiso, 'un empleado no puede corregir fichajes (' + sinPermiso + ')');
 
-const extras = await legal.evaluate(async () => {
-  await api('pedirHorasExtra', { fecha: hoyISO(), minutos: 90, motivo: 'Cierre de operación' });
-  return (await api('misHorasExtra')).extras.length;
-});
-comprobar(extras === 1, 'se pueden justificar horas extra desde la herramienta');
+const tipos2 = await legal.evaluate(() => tiposAusencia().filter(t => t.requiereJustificante).map(t => t.tipo));
+comprobar(tipos2.length === 1 && /médica/i.test(tipos2[0]),
+  'el justificante solo se exige en la visita médica (' + tipos2.join(', ') + ')');
 await legal.close();
 
 // ── Sesión ────────────────────────────────────────────────────────────────

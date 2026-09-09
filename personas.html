@@ -229,6 +229,8 @@ textarea.inp{resize:vertical;min-height:72px;line-height:1.55}
 .cal-d.wknd{color:#C4C2BC}
 .cal-d.fest{background:var(--bg);color:#A5A39D}
 .cal-d.hoy{box-shadow:inset 0 0 0 1.5px var(--navy);font-weight:600}
+.cal-d.pedible{cursor:pointer;transition:background .12s}
+.cal-d.pedible:hover{background:var(--accent);color:#fff}
 .cal-d.a-VACACIONES{background:#E8C9C4;color:#7A3229}
 .cal-d.a-PENDIENTE{background:#F0E0BC;color:#77551A}
 .cal-d.a-PERMISO{background:#C7E4DA;color:#1E5346}
@@ -301,6 +303,33 @@ textarea.inp{resize:vertical;min-height:72px;line-height:1.55}
 .inc-sug{display:inline-flex;align-items:center;gap:8px;background:var(--accent-soft);
   border:1px solid #C6D6DA;border-radius:2px;padding:4px 6px 4px 10px;font-size:11.5px;color:var(--accent)}
 @media(hover:none){.inc-rellenar{opacity:1}}
+
+
+/* ══ MODALIDAD DE TRABAJO ══ */
+.mod{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:500;border-radius:2px;
+  padding:3px 8px;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
+.mod i{width:6px;height:6px;border-radius:50%;display:inline-block}
+.mod-OFICINA{background:#E2EAEC;color:#1B4F5C}.mod-OFICINA i{background:#1B4F5C}
+.mod-REMOTO{background:#EAE6F2;color:#4C3F7A}.mod-REMOTO i{background:#4C3F7A}
+.mod-VISITA{background:#F7EBDC;color:#96601C}.mod-VISITA i{background:#96601C}
+
+/* ══ FOTOS ══ */
+.foto{width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;background:var(--accent-soft)}
+.foto.sm{width:28px;height:28px}.foto.lg{width:56px;height:56px}
+.caras{display:flex}
+.caras .foto,.caras .ava{margin-left:-7px;border:2px solid var(--card)}
+.caras .foto:first-child,.caras .ava:first-child{margin-left:0}
+.mas{width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;font-size:10px;
+  display:flex;align-items:center;justify-content:center;margin-left:-7px;border:2px solid var(--card);font-weight:600}
+
+/* ══ AUSENTES DEL DÍA ══ */
+.cal-d.con-gente{position:relative;cursor:pointer}
+.cal-n{position:absolute;top:-2px;right:-2px;background:var(--navy);color:#fff;font-size:7.5px;
+  width:12px;height:12px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600}
+.pop-aus{position:absolute;z-index:120;background:var(--card);border:1px solid var(--line);
+  border-top:2px solid var(--accent);padding:12px 14px;min-width:190px;box-shadow:0 8px 24px rgba(23,36,43,.13);
+  opacity:0;pointer-events:none;transition:opacity .12s}
+.pop-aus.on{opacity:1}
 
 /* Modal */
 .modal{position:fixed;inset:0;background:rgba(23,36,43,.32);display:none;align-items:flex-end;justify-content:center;z-index:150;backdrop-filter:blur(3px)}
@@ -435,12 +464,13 @@ var TIPOS_AUSENCIA_DEF = [
   {tipo:'Permiso Navidad 24',    dias:1,  cuentaSaldo:true,  requiereJustificante:false, arrastrable:false},
   {tipo:'Permiso Navidad 31',    dias:1,  cuentaSaldo:true,  requiereJustificante:false, arrastrable:false},
   {tipo:'Tarde día cumpleaños',  dias:1,  cuentaSaldo:true,  requiereJustificante:false, arrastrable:false},
-  {tipo:'Permiso retribuido',    dias:0,  cuentaSaldo:false, requiereJustificante:true,  arrastrable:false},
+  {tipo:'Visita médica',         dias:0,  cuentaSaldo:false, requiereJustificante:true,  arrastrable:false},
+  {tipo:'Permiso retribuido',    dias:0,  cuentaSaldo:false, requiereJustificante:false, arrastrable:false},
   {tipo:'Formación',             dias:0,  cuentaSaldo:false, requiereJustificante:false, arrastrable:false},
-  {tipo:'Mudanza',               dias:1,  cuentaSaldo:false, requiereJustificante:true,  arrastrable:false},
-  {tipo:'Matrimonio',            dias:15, cuentaSaldo:false, requiereJustificante:true,  arrastrable:false},
-  {tipo:'Nacimiento hijo/a',     dias:0,  cuentaSaldo:false, requiereJustificante:true,  arrastrable:false},
-  {tipo:'Fallecimiento familiar',dias:0,  cuentaSaldo:false, requiereJustificante:true,  arrastrable:false},
+  {tipo:'Mudanza',               dias:1,  cuentaSaldo:false, requiereJustificante:false, arrastrable:false},
+  {tipo:'Matrimonio',            dias:15, cuentaSaldo:false, requiereJustificante:false, arrastrable:false},
+  {tipo:'Nacimiento hijo/a',     dias:0,  cuentaSaldo:false, requiereJustificante:false, arrastrable:false},
+  {tipo:'Fallecimiento familiar',dias:0,  cuentaSaldo:false, requiereJustificante:false, arrastrable:false},
   {tipo:'Otros',                 dias:0,  cuentaSaldo:false, requiereJustificante:false, arrastrable:false}
 ];
 function tiposAusencia(){ return (S.tiposAusencia && S.tiposAusencia.length)? S.tiposAusencia : TIPOS_AUSENCIA_DEF; }
@@ -653,13 +683,13 @@ var ESPACIOS = {
     etiqueta: 'Gestión', nivel: 1,
     grupos: [
       { sep:'Equipo', items:[
-        {id:'validaciones', ic:'✓', t:'Validaciones', m:'Validar'},
-        {id:'incidencias',  ic:'⚠', t:'Incidencias'},
-        {id:'turnos',       ic:'▦', t:'Turnos'},
-        {id:'informes',     ic:'⤓', t:'Informes'}
+        {id:'validaciones', ic:'✓', t:'Validaciones', m:'Validar'}
       ]},
       { sep:'Administración', nivel:2, items:[
-        {id:'plantilla',    ic:'⚇', t:'Plantilla',   m:'Plantilla'},
+        {id:'incidencias',  ic:'⚠', t:'Incidencias'},
+        {id:'turnos',       ic:'▦', t:'Turnos'},
+        {id:'informes',     ic:'⤓', t:'Informes'},
+        {id:'empleados',    ic:'⚇', t:'Empleados',   m:'Empleados'},
         {id:'analytics',    ic:'◱', t:'Analytics'},
         {id:'quiosco',      ic:'▣', t:'Quiosco / QR'},
         {id:'auditoria',    ic:'⎘', t:'Auditoría'},
@@ -746,7 +776,7 @@ var CARGA = {
   perfil:        function(){ return api('miPerfil').then(function(r){ if(r.ok) S.perfil=r.perfil; }); },
   fichajes:      function(){ return cargarPlan(); },
   turnos:        function(){ return api('turnosEquipo',{}).then(function(r){ if(r.ok) S.turnosEquipo=r.turnos; }); },
-  validaciones:  function(){ return api('horasExtraEquipo').then(function(r){ if(r.ok) S.extras=r.extras; }); },
+
   analytics:     function(){ return api('analytics',{desde:S.year+'-01-01',hasta:hoyISO()}).then(function(r){ if(r.ok) S.analytics=r; }); },
   auditoria:     function(){ return api('auditoria',{limite:300}).then(function(r){ if(r.ok) S.auditoria=r; }); },
   configuracion: function(){ return api('configuracion').then(function(r){ if(r.ok) S.config=r; }); }
@@ -886,6 +916,7 @@ function fichar(tipo,descanso){
       if(!r.ok){
         if(r.error==='TRANSICION_INVALIDA'){ toast('Estado no válido: ya estás '+etiquetaEstado(r.estado),'err'); refrescar(); }
         else if(r.error==='FUERA_DE_CENTRO') toast('Estás fuera de un centro de trabajo autorizado','err');
+        else if(r.error==='GEO_OBLIGATORIA') avisoGeoNecesaria();
         else toast('No se pudo fichar: '+(r.error||''),'err');
         return;
       }
@@ -899,12 +930,24 @@ function fichar(tipo,descanso){
       toast('Sin conexión · fichaje guardado en cola','err');
     });
   };
-  if(navigator.geolocation && S.geoOk){
+  if(navigator.geolocation && (S.geoOk || geoObligatoria())){
     navigator.geolocation.getCurrentPosition(function(p){
       geo.lat=p.coords.latitude.toFixed(6); geo.lng=p.coords.longitude.toFixed(6);
       geo.acc=Math.round(p.coords.accuracy); lanzar();
     }, lanzar, {timeout:4000, maximumAge:60000});
   } else lanzar();
+}
+/** Sin ubicación no hay fichaje: se explica por qué y cómo darle permiso. */
+function avisoGeoNecesaria(){
+  abrirModal('<div class="mtitle">Falta la ubicación</div>'+
+    '<div class="msub">La empresa registra desde dónde se ficha</div>'+
+    '<div style="font-size:13px;line-height:1.7;margin-bottom:18px">'+
+      'Tu navegador no ha dado la ubicación, así que el fichaje no se ha guardado.<br><br>'+
+      '<b>En el móvil:</b> ajustes del navegador → Permisos → Ubicación → Permitir.<br>'+
+      '<b>En el ordenador:</b> pulsa el candado de la barra de direcciones y activa la ubicación.<br><br>'+
+      '<span style="color:var(--sub);font-size:12.5px">Solo se registra la posición del instante de fichar. '+
+      'No hay seguimiento en ningún otro momento.</span></div>'+
+    '<button class="btn b-gold" style="width:100%" onclick="cerrarModal()">Entendido</button>');
 }
 function mensajeFichaje(t){
   return {ENTRADA:'Entrada registrada',SALIDA:'Salida registrada',PAUSA_INI:'Pausa iniciada',PAUSA_FIN:'Jornada reanudada'}[t]||'Registrado';
@@ -925,7 +968,7 @@ function entrarApp(){
   entrarApp2();
 }
 function mostrarAviso(r){
-  var a=r.aviso;
+  var a=r.aviso; S.geoObl = (r.geoObl!==undefined) ? !!r.geoObl : geoObligatoria();
   var fila=function(t,v){ return '<div style="margin-bottom:13px"><div class="lbl">'+esc(t)+'</div>'+
     '<div style="font-size:12.5px;line-height:1.65">'+esc(v)+'</div></div>'; };
   abrirModal('<div class="mtitle">Protección de datos</div>'+
@@ -934,15 +977,20 @@ function mostrarAviso(r){
     fila('Con qué base legal',a.base)+fila('Qué datos tratamos',a.datos)+
     fila('Cuánto los guardamos',a.conservacion)+fila('Quién puede verlos',a.destinatarios)+
     fila('Tus derechos',a.derechos)+fila('Decisiones automatizadas',a.noAutomatizado)+
-    '<label style="display:flex;gap:10px;align-items:flex-start;padding:14px;background:var(--bg);border:1px solid var(--line);cursor:pointer;margin-bottom:16px">'+
-      '<input type="checkbox" id="av_geo" style="accent-color:var(--accent);margin-top:2px">'+
-      '<span style="font-size:12.5px;line-height:1.6">Autorizo que se registre <b>mi ubicación al fichar</b>, '+
-      'para acreditar desde dónde trabajo. Es voluntario: sin ella el fichaje funciona igual y '+
-      'puedes retirarlo cuando quieras desde tu perfil.</span></label>'+
+    (S.geoObl
+      ? '<div style="padding:14px;background:var(--amber-soft);border:1px solid #EEDFBE;margin-bottom:16px;'+
+        'font-size:12.5px;line-height:1.6"><b>La ubicación es obligatoria para fichar.</b> Se registra '+
+        'únicamente en el instante del fichaje, para acreditar desde dónde prestas el trabajo. '+
+        'No es un consentimiento opcional ni hay seguimiento en ningún otro momento.</div>'
+      : '<label style="display:flex;gap:10px;align-items:flex-start;padding:14px;background:var(--bg);border:1px solid var(--line);cursor:pointer;margin-bottom:16px">'+
+        '<input type="checkbox" id="av_geo" style="accent-color:var(--accent);margin-top:2px">'+
+        '<span style="font-size:12.5px;line-height:1.6">Autorizo que se registre <b>mi ubicación al fichar</b>, '+
+        'para acreditar desde dónde trabajo. Es voluntario: sin ella el fichaje funciona igual y '+
+        'puedes retirarlo cuando quieras desde tu perfil.</span></label>')+
     '<button class="btn b-gold" style="width:100%" onclick="aceptarAviso()">He leído la información</button>');
 }
 function aceptarAviso(){
-  var geo=$('av_geo').checked;
+  var geo = S.geoObl ? true : !!($('av_geo')||{}).checked;
   api('aceptarAviso',{geo:geo}).then(function(){ S.geoOk=geo; cerrarModal(); });
 }
 function entrarApp2(){
@@ -973,7 +1021,7 @@ function refrescar(){
     api('ausenciasEquipo',{year:año}).then(function(r){ if(r.ok) S.ausEquipo=r.ausencias; }),
     api('misTareas',{desde:fISO(lunes),hasta:hoyISO()}).then(function(r){ if(r.ok) S.tareas=r.tareas; }),
     api('publicaciones').then(function(r){ if(r.ok) S.publicaciones=r.publicaciones; }),
-    api('horasExtraEquipo').then(function(r){ if(r.ok) S.extras=r.extras; }).catch(function(){})
+
   ];
   return Promise.all(tareas).then(function(){
     S.pendientes = puedeGestionar() ? S.ausEquipo.filter(function(a){return a.estado==='PENDIENTE';}) : [];
@@ -988,7 +1036,7 @@ function render(){
   var v={portal:vPortal,fichajes:vFichajes,ausencias:vAusencias,horarios:vHorarios,
          tareas:vTareas,tablon:vTablon,perfil:vPerfil,equipo:vEquipo,stats:vStats,
          validaciones:vValidaciones,incidencias:vIncidencias,turnos:vTurnos,informes:vInformes,
-         plantilla:vPlantilla,analytics:vAnalytics,quiosco:vQuiosco,auditoria:vAuditoria,
+         empleados:vPlantilla,analytics:vAnalytics,quiosco:vQuiosco,auditoria:vAuditoria,
          configuracion:vConfiguracion}[S.vista]||vPortal;
   $('main').innerHTML=v();
   if(S.vista==='quiosco') setTimeout(pintarQR,60);
@@ -1110,7 +1158,7 @@ function bloqueGestion(){
   });
   var dentro=equipo.filter(function(e){return estados[e.nombre]==='TRABAJANDO';});
   var pausa=equipo.filter(function(e){return estados[e.nombre]==='PAUSA';});
-  var extrasPend=(S.extras||[]).filter(function(x){return x.estado==='PENDIENTE';});
+
 
   var aviso=function(n,texto,vista,tono){
     return '<button class="card" style="text-align:left;cursor:pointer;border:none;border-left:2px solid var(--'+tono+');width:100%" '+
@@ -1123,8 +1171,7 @@ function bloqueGestion(){
   var avisos='';
   if(S.pendientes.length) avisos+=aviso(S.pendientes.length,
     'solicitud'+(S.pendientes.length>1?'es':'')+' de ausencia esperando tu respuesta','validaciones','gold');
-  if(extrasPend.length) avisos+=aviso(extrasPend.length,
-    'justificación'+(extrasPend.length>1?'es':'')+' de horas extra por validar','validaciones','gold');
+
   if(sinFichar.length) avisos+=aviso(sinFichar.length,
     'persona'+(sinFichar.length>1?'s':'')+' de tu equipo sin fichar hoy teniendo jornada','incidencias','red');
 
@@ -1173,8 +1220,12 @@ function estadoPortalHTML(){
     '<div class="row wrap" style="margin-top:16px;padding-top:15px;border-top:1px solid var(--line-soft);gap:7px">'+
     '<span class="lbl" style="margin:0">Modalidad</span>'+
     ['OFICINA','REMOTO','VISITA'].map(function(m){
-      return '<button class="btn '+(S.modalidad===m?'b-gold':'b-ghost')+' b-sm" onclick="setModalidad(\''+m+'\',true)">'+
-        ({OFICINA:'Oficina',REMOTO:'Teletrabajo',VISITA:'Visita'}[m])+'</button>';
+      var on=S.modalidad===m;
+      var color={OFICINA:'#1B4F5C',REMOTO:'#4C3F7A',VISITA:'#96601C'}[m];
+      return '<button class="btn b-sm" style="'+(on?
+        'background:'+color+';color:#fff;border-color:'+color:
+        'background:var(--card);border:1px solid var(--line);color:var(--sub)')+
+        '" onclick="setModalidad(\''+m+'\',true)">'+MODALIDADES[m]+'</button>';
     }).join('')+
     '<div class="sp"></div><span id="ubi_estado" style="font-size:11px;color:var(--sub)">'+esc(S.ubicacion.texto)+'</span>'+
     '</div>';
@@ -1192,9 +1243,10 @@ function setModalidad(m,manual){
  * Si estás en tu oficina asignada, entra como Oficina; en otro centro del
  * grupo, también; fuera de todos, Teletrabajo. Siempre se puede corregir.
  */
+function geoObligatoria(){ return String((S.empresa||{}).geo_obligatoria||'').toUpperCase()==='SI'; }
 function detectarModalidad(){
   if(S.ubicacion.manual || !navigator.geolocation || !S.centros.length) return;
-  if(!S.geoOk){ S.ubicacion.texto='Ubicación desactivada · elige la modalidad'; return; }
+  if(!S.geoOk && !geoObligatoria()){ S.ubicacion.texto='Ubicación desactivada · elige la modalidad'; return; }
   S.ubicacion.texto='Detectando ubicación…';
   pintarEstadoPortal();
   navigator.geolocation.getCurrentPosition(function(p){
@@ -1229,6 +1281,17 @@ function distanciaM(la1,lo1,la2,lo2){
   return 2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 function pintarEstadoPortal(){ var el=$('portal_estado'); if(el) el.innerHTML=estadoPortalHTML(); }
+var MODALIDADES={OFICINA:'Oficina',REMOTO:'Teletrabajo',VISITA:'Visita'};
+function chipModalidad(m){
+  m=String(m||'OFICINA').toUpperCase();
+  return '<span class="mod mod-'+m+'"><i></i>'+(MODALIDADES[m]||m)+'</span>';
+}
+/** Avatar: la foto de la persona si la tiene, sus iniciales si no. */
+function avatar(nombre,clase){
+  var e=(S.empleados||[]).filter(function(x){return x.nombre===nombre;})[0];
+  if(e&&e.foto) return '<img class="foto '+(clase||'')+'" src="'+esc(e.foto)+'" alt="'+esc(nombre)+'">';
+  return '<div class="ava '+(clase||'')+'">'+esc(ini(nombre))+'</div>';
+}
 function chipPersona(e,col){
   return '<span class="pill p-grey" style="padding:5px 11px 5px 7px;gap:7px">'+
     '<span class="dot" style="background:'+col+'"></span>'+esc(e.nombre.split(' ')[0])+'</span>';
@@ -1264,12 +1327,36 @@ function vFichajes(){
        '<button class="'+(vistaFichajes==='semana'?'on':'')+'" onclick="vistaFichajes=\'semana\';render()">Semana</button>'+
      '</div><div class="sp"></div>'+
      '<button class="btn b-ghost b-sm" onclick="modalCorreccion()">Solicitar corrección</button>'+
-     '<button class="btn b-ghost b-sm" onclick="modalExtra()">Justificar horas extra</button>'+
+
    '</div>'+
    (vistaFichajes==='mes'? vistaMes() : vistaSemana());
 }
 
 /* ── Mes ── */
+/** Informe propio de fichajes, el que cualquiera puede pedir de sus datos. */
+function miInforme(){
+  var hoy=new Date();
+  var base=new Date(hoy.getFullYear(), hoy.getMonth()+mesOffset, 1);
+  var mes=base.getFullYear()+'-'+pad(base.getMonth()+1);
+  var evs=S.fichajesRango.filter(function(f){return f.fecha.slice(0,7)===mes;}).sort(cmpTs);
+  if(!evs.length) return toast('No hay fichajes en '+MESES[base.getMonth()],'err');
+  var porDia={};
+  evs.forEach(function(f){ (porDia[f.fecha]=porDia[f.fecha]||[]).push(f); });
+  descargarCSV('mis-fichajes-'+mes+'.csv',
+    ['fecha','entrada','salida','horas','previsto','saldo','modalidad','centro','origen'],
+    Object.keys(porDia).sort().map(function(f){
+      var dia=porDia[f].sort(cmpTs);
+      var ent=dia.filter(function(e){return e.tipo==='ENTRADA';})[0];
+      var sal=dia.filter(function(e){return e.tipo==='SALIDA';}).pop();
+      var m=minutosDia(f), teo=minutosTeoricos(f);
+      return [f, ent?String(ent.hora).slice(0,5):'', sal?String(sal.hora).slice(0,5):'',
+              hhmm(m), hhmm(teo), hhmmSigned(m-teo),
+              MODALIDADES[(ent||{}).modalidad]||'', (ent||{}).centro||'',
+              dia.some(function(e){return e.origen==='CORRECCION';})?'Con corrección':'App'];
+    }));
+  toast('Informe descargado','ok');
+}
+
 function vistaMes(){
   var hoy=new Date();
   var base=new Date(hoy.getFullYear(), hoy.getMonth()+mesOffset, 1);
@@ -1469,24 +1556,6 @@ function vistaSemana(){
      'Si hay un error, solicita una corrección a dirección: se añadirá un registro nuevo con el motivo y el autor, dejando trazabilidad completa.'+
      '</div><button class="btn b-ghost b-sm" style="margin-top:10px" onclick="modalCorreccion()">Solicitar corrección</button></div>';
 }
-function modalExtra(){
-  abrirModal('<div class="mtitle">Justificar horas extra</div>'+
-    '<div class="msub">Se envía a tu responsable para que las apruebe</div>'+
-    '<div class="grid g2 tight">'+
-      '<div class="fld"><label class="lbl">Día</label><input class="inp" type="date" id="he_f" value="'+hoyISO()+'"></div>'+
-      '<div class="fld"><label class="lbl">Minutos de exceso</label><input class="inp" type="number" id="he_m" value="60" step="15"></div>'+
-    '</div>'+
-    '<div class="fld"><label class="lbl">Motivo</label><textarea class="inp" id="he_x" placeholder="Visita fuera de horario, cierre de operación…"></textarea></div>'+
-    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
-    '<button class="btn b-gold" style="flex:1" onclick="enviarExtra()">Enviar</button></div>');
-}
-function enviarExtra(){
-  var p={fecha:$('he_f').value,minutos:Number($('he_m').value),motivo:$('he_x').value.trim()};
-  if(!p.minutos||!p.motivo) return toast('Indica minutos y motivo','err');
-  api('pedirHorasExtra',p).then(function(r){
-    cerrarModal(); if(r.ok) toast('Horas extra enviadas a validar','ok'); else toast('Error','err');
-  });
-}
 function modalCorreccion(){
   abrirModal('<div class="mtitle">Solicitar corrección</div>'+
     '<div class="msub">Se envía a control horario. El fichaje original no se toca: se añade la corrección con su motivo.</div>'+
@@ -1546,7 +1615,9 @@ function vAusencias(){
        return '<div class="row" style="padding:5px 0;font-size:13px"><span>'+esc(t)+'</span><div class="sp" style="border-bottom:1px dotted var(--border);margin:0 8px"></div><b>'+tipos[t]+' d</b></div>';
      }).join('')+'</div>':'')+
    '<div class="sec">Calendario '+S.year+'</div>'+
-   '<div class="card">'+calendarioAnual(S.year,S.ausencias)+leyenda()+'</div>'+
+   '<div class="card">'+
+     '<div style="font-size:11.5px;color:var(--sub);margin-bottom:14px">Pulsa el primer día que quieras librar para pedirlo.</div>'+
+     calendarioAnual(S.year,S.ausencias,true)+leyenda()+'</div>'+
    '<div class="sec">Mis solicitudes</div>'+
    (S.ausencias.length? S.ausencias.slice().sort(function(a,b){return a.desde<b.desde?1:-1;}).map(filaAusencia).join('')
      : vacio('Todavía no has solicitado ninguna ausencia','☂'));
@@ -1560,12 +1631,73 @@ function leyenda(){
     '<span><i style="background:#D5D2E8"></i>Baja</span>'+
     '<span><i style="background:var(--bg)"></i>Festivo</span></div>';
 }
-function calendarioAnual(year, listaAus){
+/** Calendario anual del equipo: cada día señala quién falta, con su cara. */
+function calendarioEquipo(year){
+  var porDia={};
+  S.ausEquipo.filter(function(a){return a.estado==='APROBADA';}).forEach(function(a){
+    var d=new Date(a.desde+'T00:00:00'), fin=new Date(a.hasta+'T00:00:00');
+    while(d<=fin){
+      var f=fISO(d);
+      if(f.slice(0,4)===String(year)) (porDia[f]=porDia[f]||[]).push(a);
+      d.setDate(d.getDate()+1);
+    }
+  });
   var out='<div class="cal-year">';
-  for(var m=0;m<12;m++) out+=calendarioMes(year,m,listaAus);
+  for(var m=0;m<12;m++){
+    var primero=new Date(year,m,1), dias=new Date(year,m+1,0).getDate();
+    var offset=(primero.getDay()+6)%7;
+    out+='<div class="cal-m"><div class="cal-mt">'+MESES[m]+'</div><div class="cal-g">'+
+      DOW.map(function(d){return '<div class="cal-dow">'+d+'</div>';}).join('');
+    for(var i=0;i<offset;i++) out+='<div class="cal-d out"></div>';
+    for(var d2=1;d2<=dias;d2++){
+      var f=year+'-'+pad(m+1)+'-'+pad(d2);
+      var quienes=porDia[f]||[];
+      var dow=new Date(year,m,d2).getDay();
+      var cls='cal-d';
+      if(quienes.length) cls+=' '+claseAusencia(quienes[0]);
+      else if(esFestivo(f)) cls+=' fest';
+      else if(dow===0||dow===6) cls+=' wknd';
+      if(f===hoyISO()) cls+=' hoy';
+      out+= quienes.length
+        ? '<div class="'+cls+' con-gente" data-f="'+f+'" onmouseenter="verAusentes(this)" '+
+          'onmouseleave="ocultarAusentes()" onclick="verAusentes(this)">'+d2+
+          (quienes.length>1?'<span class="cal-n">'+quienes.length+'</span>':'')+'</div>'
+        : '<div class="'+cls+'">'+d2+'</div>';
+    }
+    out+='</div></div>';
+  }
+  return out+'</div><div id="pop_aus" class="pop-aus"></div>';
+}
+function verAusentes(el){
+  var f=el.getAttribute('data-f');
+  var gente=S.ausEquipo.filter(function(a){
+    return a.estado==='APROBADA' && f>=a.desde && f<=a.hasta;});
+  if(!gente.length) return;
+  var pop=$('pop_aus'); if(!pop) return;
+  var visibles=gente.slice(0,4);
+  pop.innerHTML='<div style="font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--sub);margin-bottom:9px">'+
+      fBonita(f)+' · '+gente.length+(gente.length===1?' ausente':' ausentes')+'</div>'+
+    '<div class="caras" style="margin-bottom:9px">'+
+      visibles.map(function(a){return avatar(a.trabajador,'sm');}).join('')+
+      (gente.length>4?'<div class="mas">+'+(gente.length-4)+'</div>':'')+'</div>'+
+    gente.slice(0,6).map(function(a){
+      return '<div style="font-size:12px;line-height:1.55"><b>'+esc(a.trabajador.split(' ')[0])+'</b> '+
+        '<span style="color:var(--sub)">'+esc(a.tipo)+'</span></div>';
+    }).join('')+
+    (gente.length>6?'<div style="font-size:11px;color:var(--sub);margin-top:4px">y '+(gente.length-6)+' más</div>':'');
+  var r=el.getBoundingClientRect();
+  pop.style.left=Math.max(8,Math.min(r.left, window.innerWidth-232))+'px';
+  pop.style.top=(r.bottom+window.scrollY+6)+'px';
+  pop.classList.add('on');
+}
+function ocultarAusentes(){ var p=$('pop_aus'); if(p) p.classList.remove('on'); }
+
+function calendarioAnual(year, listaAus, interactivo){
+  var out='<div class="cal-year">';
+  for(var m=0;m<12;m++) out+=calendarioMes(year,m,listaAus,interactivo);
   return out+'</div>';
 }
-function calendarioMes(year,m,listaAus){
+function calendarioMes(year,m,listaAus,interactivo){
   var primero=new Date(year,m,1), dias=new Date(year,m+1,0).getDate();
   var offset=(primero.getDay()+6)%7;
   var h='<div class="cal-m"><div class="cal-mt">'+MESES[m]+'</div><div class="cal-g">'+
@@ -1581,19 +1713,34 @@ function calendarioMes(year,m,listaAus){
     else if(dow===0||dow===6) cls+=' wknd';
     if(f===hoyISO()) cls+=' hoy';
     var tit=a?esc(a.tipo)+' ('+a.estado.toLowerCase()+')':(esFestivo(f)?esc(esFestivo(f).nombre):'');
-    h+='<div class="'+cls+'"'+(tit?' title="'+tit+'"':'')+'>'+d+'</div>';
+    var pinchable = interactivo && !a && !esFestivo(f) && dow!==0 && dow!==6;
+    h+='<div class="'+cls+(pinchable?' pedible':'')+'"'+
+       (tit?' title="'+tit+'"':(pinchable?' title="Pedir ausencia desde este día"':''))+
+       (pinchable?' onclick="pedirDesde(\''+f+'\')"':'')+'>'+d+'</div>';
   }
   return h+'</div></div>';
 }
-function modalAusencia(){
-  var hoy=hoyISO();
+/** Abre la solicitud ya centrada en el día que se ha pulsado. */
+function pedirDesde(fecha){ modalAusencia(fecha); }
+
+function modalAusencia(desdeFecha){
+  var hoy=desdeFecha||hoyISO();
   abrirModal('<div class="mtitle">Solicitar ausencia</div>'+
     '<div class="msub">Se enviará a dirección para su aprobación</div>'+
     '<div class="fld"><label class="lbl">Tipo</label><select class="inp" id="au_tipo" onchange="pintarAvisoTipo()">'+
       tiposAusencia().map(function(t){return '<option>'+esc(t.tipo)+'</option>';}).join('')+'</select>'+
       '<div id="au_aviso" style="margin-top:8px"></div></div>'+
-    '<div class="grid g2 tight"><div class="fld"><label class="lbl">Desde</label><input class="inp" type="date" id="au_d" value="'+hoy+'"></div>'+
-    '<div class="fld"><label class="lbl">Hasta</label><input class="inp" type="date" id="au_h" value="'+hoy+'"></div></div>'+
+    '<div class="grid g2 tight"><div class="fld"><label class="lbl">Desde</label>'+
+      '<input class="inp" type="date" id="au_d" value="'+hoy+'" onchange="ajustarDias()"></div>'+
+    '<div class="fld"><label class="lbl">Hasta</label>'+
+      '<input class="inp" type="date" id="au_h" value="'+hoy+'" onchange="ajustarDias()"></div></div>'+
+    '<div class="row wrap" style="margin:-4px 0 14px;gap:6px">'+
+      '<span style="font-size:11.5px;color:var(--sub)">Cuántos días:</span>'+
+      [1,2,3,5,7,15].map(function(n){
+        return '<button class="btn b-ghost b-sm" onclick="ponerDias('+n+')">'+n+'</button>';
+      }).join('')+
+      '<span id="au_dias" style="font-size:11.5px;color:var(--accent);margin-left:auto"></span>'+
+    '</div>'+
     '<div class="fld"><label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer">'+
       '<input type="checkbox" id="au_medio" style="accent-color:var(--accent)"> Medio día</label></div>'+
     '<div class="fld"><label class="lbl">Justificante <span id="au_oblig" style="color:var(--red)"></span></label>'+
@@ -1602,7 +1749,29 @@ function modalAusencia(){
     '<div class="fld"><label class="lbl">Motivo / comentario</label><textarea class="inp" id="au_motivo" placeholder="Opcional"></textarea></div>'+
     '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
     '<button class="btn b-gold" style="flex:1" id="au_send" onclick="enviarAusencia()">Solicitar</button></div>');
-  pintarAvisoTipo();
+  pintarAvisoTipo(); ajustarDias();
+}
+/** Marca N días laborables seguidos desde la fecha de inicio. */
+function ponerDias(n){
+  var d=new Date($('au_d').value+'T00:00:00');
+  var puestos=0;
+  while(puestos<n){
+    if([0,6].indexOf(d.getDay())<0 && !esFestivo(fISO(d))) puestos++;
+    if(puestos<n) d.setDate(d.getDate()+1);
+  }
+  $('au_h').value=fISO(d);
+  ajustarDias();
+}
+function ajustarDias(){
+  var el=$('au_dias'); if(!el) return;
+  var a=$('au_d').value, b=$('au_h').value;
+  if(!a||!b||b<a) return el.textContent='';
+  var n=0, d=new Date(a+'T00:00:00'), fin=new Date(b+'T00:00:00');
+  while(d<=fin){
+    if([0,6].indexOf(d.getDay())<0 && !esFestivo(fISO(d))) n++;
+    d.setDate(d.getDate()+1);
+  }
+  el.textContent = n===1? '1 día laborable' : n+' días laborables';
 }
 function pintarAvisoTipo(){
   var t=$('au_tipo').value, def=tipoDef(t);
@@ -1749,17 +1918,18 @@ function vEquipo(){
   var mapAus={}; ausHoy.forEach(function(a){mapAus[a.trabajador]=a;});
   return cab('Equipo','Estado en tiempo real y ausencias del equipo')+
    '<div class="grid g4" style="margin-bottom:16px">'+
-     kpi(eq.filter(function(e){return e.estado==='TRABAJANDO';}).length,'Trabajando','')+
-     kpi(eq.filter(function(e){return e.estado==='PAUSA';}).length,'En pausa','')+
+     kpi(eq.filter(function(e){return e.estado==='TRABAJANDO'&&(e.modalidad||'OFICINA')==='OFICINA';}).length,'En oficina','')+
+     kpi(eq.filter(function(e){return e.estado==='TRABAJANDO'&&e.modalidad==='REMOTO';}).length,'Teletrabajando','')+
+     kpi(eq.filter(function(e){return e.estado==='TRABAJANDO'&&e.modalidad==='VISITA';}).length,'De visita','')+
      kpi(ausHoy.length,'De ausencia','')+
-     kpi(eq.length,'Plantilla activa','')+
    '</div>'+
    '<div class="sec">Ahora mismo</div>'+
    eq.map(function(e){
      var a=mapAus[e.nombre];
-     return '<div class="li"><div class="ava sm">'+esc(ini(e.nombre))+'</div>'+
+     return '<div class="li">'+avatar(e.nombre,'sm')+
        '<div style="flex:1;min-width:0"><div class="li-t">'+esc(e.nombre)+'</div>'+
        '<div class="li-s">'+esc(e.departamento||'')+(e.oficina?' · '+esc(e.oficina):'')+'</div></div>'+
+       ((e.estado==='TRABAJANDO'||e.estado==='PAUSA')&&!a? chipModalidad(e.modalidad):'')+
        (a? '<span class="pill p-info">'+esc(a.tipo)+'</span>'
          : '<span class="pill '+({TRABAJANDO:'p-ok',PAUSA:'p-warn',FUERA:'p-grey',SIN_FICHAR:'p-grey'}[e.estado])+'">'+
            '<span class="dot" style="background:'+colorEstado(e.estado)+'"></span>'+
@@ -1767,7 +1937,7 @@ function vEquipo(){
        '</div>';
    }).join('')+
    '<div class="sec">Calendario de ausencias del equipo · '+S.year+'</div>'+
-   '<div class="card">'+calendarioAnual(S.year,S.ausEquipo.filter(function(a){return a.estado==='APROBADA';}))+leyenda()+'</div>';
+   '<div class="card">'+calendarioEquipo(S.year)+leyenda()+'</div>';
 }
 
 /* ── ESTADÍSTICAS ── */
@@ -1867,9 +2037,14 @@ function vPerfil(){
   var p=S.perfil||{};
   return cab('Mi perfil','Tus datos y preferencias de acceso')+
    '<div class="card" style="margin-bottom:8px">'+
-     '<div class="row" style="margin-bottom:20px"><div class="ava lg">'+esc(ini(p.nombre||''))+'</div>'+
+     '<div class="row" style="margin-bottom:20px">'+
+     '<label style="cursor:pointer;position:relative" title="Cambiar foto">'+
+       avatar(p.nombre||'','lg')+
+       '<input type="file" accept="image/*" onchange="subirFoto(this)" style="display:none">'+
+     '</label>'+
      '<div><div style="font-family:var(--serif);font-size:24px;color:var(--navy)">'+esc(p.nombre||'')+'</div>'+
-     '<div class="li-s">'+esc(p.departamento||'')+(p.oficina?' · '+esc(p.oficina):'')+'</div></div></div>'+
+     '<div class="li-s">'+esc(p.departamento||'')+(p.oficina?' · '+esc(p.oficina):'')+
+     '<br><span style="font-size:11px">Pulsa la foto para cambiarla</span></div></div></div>'+
      '<div class="grid g2 tight">'+
        campoLectura('Email',p.email)+campoLectura('Empresa',p.empresa||'Durán Carasso')+
        campoLectura('Alta en la empresa',p.fecha_alta?fBonita(p.fecha_alta):'—')+
@@ -1928,6 +2103,31 @@ function revocarCalendario(){
   api('tokenCalendario',{revocar:true}).then(function(r){
     if(r.ok){ toast('Enlaces revocados','ok'); $('cal_out').innerHTML=''; } else toast('Error','err');
   });
+}
+/** La foto se reduce a 200 px antes de subirla: no hace falta más y pesa poco. */
+function subirFoto(input){
+  var f=input.files&&input.files[0];
+  if(!f) return;
+  if(f.size>6*1048576) return toast('La imagen supera los 6 MB','err');
+  var fr=new FileReader();
+  fr.onload=function(){
+    var img=new Image();
+    img.onload=function(){
+      var lado=Math.min(img.width,img.height);
+      var c=document.createElement('canvas'); c.width=c.height=200;
+      var ctx=c.getContext('2d');
+      ctx.drawImage(img,(img.width-lado)/2,(img.height-lado)/2,lado,lado,0,0,200,200);
+      var datos=c.toDataURL('image/jpeg',0.82);
+      api('guardarFoto',{foto:datos}).then(function(r){
+        if(!r.ok) return toast(r.error==='FOTO_DEMASIADO_GRANDE'?'La imagen pesa demasiado':'Error','err');
+        toast('Foto actualizada','ok');
+        S.empleados.forEach(function(e){ if(e.nombre===S.emp.nombre) e.foto=datos; });
+        ir('perfil');
+      });
+    };
+    img.src=fr.result;
+  };
+  fr.readAsDataURL(f);
 }
 function cambiarGeo(v){
   api('consentimiento',{tipo:'GEO',valor:v}).then(function(){
@@ -1993,30 +2193,37 @@ function vValidaciones(){
        '<div class="row"><button class="btn b-ok b-sm" style="flex:1" onclick="validar(\''+a.id+'\',\'APROBADA\')">Aprobar</button>'+
        '<button class="btn b-no b-sm" style="flex:1" onclick="validar(\''+a.id+'\',\'DENEGADA\')">Denegar</button></div></div>';
    }).join('') : vacio('No hay solicitudes pendientes','✓'))+
-   (S.extras&&S.extras.filter(function(x){return x.estado==='PENDIENTE';}).length?
-     '<div class="sec">Horas extra pendientes</div>'+
-     S.extras.filter(function(x){return x.estado==='PENDIENTE';}).map(function(x){
-       return '<div class="card" style="margin-bottom:8px">'+
-         '<div class="row" style="margin-bottom:9px"><div class="ava sm">'+esc(ini(x.trabajador))+'</div>'+
-         '<div style="flex:1"><div class="li-t">'+esc(x.trabajador)+'</div>'+
-         '<div class="li-s">'+fBonita(x.fecha)+' · '+(x.minutos/60).toFixed(1)+' h de exceso</div></div>'+
-         '<span class="pill p-warn">Pendiente</span></div>'+
-         '<div style="font-size:12px;color:var(--sub);background:var(--bg);border-radius:2px;padding:8px 10px;margin-bottom:9px">'+esc(x.motivo)+'</div>'+
-         '<div class="row"><button class="btn b-ok b-sm" style="flex:1" onclick="validarExtra(\''+x.id+'\',\'APROBADA\')">Aprobar</button>'+
-         '<button class="btn b-no b-sm" style="flex:1" onclick="validarExtra(\''+x.id+'\',\'DENEGADA\')">Denegar</button></div></div>';
-     }).join('') : '')+
-   '<div class="sec">Histórico reciente</div>'+
-   (hist.length? '<div class="scroll-x"><table class="tbl"><tr><th>Persona</th><th>Tipo</th><th>Fechas</th><th>Días</th><th>Estado</th><th>Validó</th></tr>'+
+
+   '<div class="sec">Resueltas · se pueden revertir</div>'+
+   (hist.length? tabla(['Persona','Tipo','Fechas','Días','Estado','Validó'],
      hist.map(function(a){
-       return '<tr><td>'+esc(a.trabajador)+'</td><td>'+esc(a.tipo)+'</td><td>'+fBonita(a.desde)+(a.desde!==a.hasta?' → '+fBonita(a.hasta):'')+'</td>'+
-         '<td>'+a.dias+'</td><td><span class="pill '+({APROBADA:'p-ok',DENEGADA:'p-err',CANCELADA:'p-grey'}[a.estado]||'p-grey')+'">'+esc(a.estado)+'</span></td>'+
-         '<td>'+esc(a.validador||'—')+'</td></tr>';
-     }).join('')+'</table></div>' : vacio('Sin histórico','▦'));
+       return {celdas:[esc(a.trabajador), esc(a.tipo),
+                fBonita(a.desde)+(a.desde!==a.hasta?' → '+fBonita(a.hasta):''), a.dias,
+                '<span class="pill '+({APROBADA:'p-ok',DENEGADA:'p-err',CANCELADA:'p-grey'}[a.estado]||'p-grey')+'">'+esc(a.estado)+'</span>',
+                esc(a.validador||'—')],
+               acciones:(['APROBADA','DENEGADA'].indexOf(a.estado)>=0?
+                 [{t:'Revertir', fn:"modalRevertir('"+a.id+"','"+esc(a.trabajador).replace(/'/g,"\\'")+"','"+a.estado.toLowerCase()+"')"}]:[])};
+     })) : vacio('Sin histórico','▦'));
 }
-function validarExtra(id,decision){
-  api('validarHorasExtra',{id:id,decision:decision}).then(function(r){
-    if(r.ok){ toast('Horas extra '+decision.toLowerCase(),'ok'); ir('validaciones'); }
-    else toast(r.error==='FUERA_DE_TU_EQUIPO'?'Esa persona no está en tu equipo':'Error','err');
+function modalRevertir(id,trabajador,estado){
+  abrirModal('<div class="mtitle">Revertir la solicitud</div>'+
+    '<div class="msub">'+esc(trabajador)+' · ahora mismo está <b>'+esc(estado)+'</b></div>'+
+    '<div style="font-size:12.5px;color:var(--sub);line-height:1.65;margin-bottom:16px">'+
+      'Volverá a <b>pendiente</b> y los días regresan a su saldo. Se le avisa por correo con el motivo, '+
+      'y la reversión queda en la auditoría con tu nombre.</div>'+
+    '<div class="fld"><label class="lbl">Motivo de la reversión</label>'+
+      '<textarea class="inp" id="rv_m" placeholder="Cambio de planificación, error al aprobar…"></textarea></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-no" style="flex:1" onclick="enviarRevertir(\''+id+'\')">Revertir</button></div>');
+}
+function enviarRevertir(id){
+  var motivo=$('rv_m').value.trim();
+  if(!motivo) return toast('El motivo es obligatorio','err');
+  api('revertirAusencia',{id:id,motivo:motivo}).then(function(r){
+    cerrarModal();
+    if(r.ok){ toast('Solicitud revertida a pendiente','ok'); refrescar(); }
+    else toast({NO_ESTABA_RESUELTA:'Esa solicitud no estaba resuelta',
+                FUERA_DE_TU_EQUIPO:'Esa persona no está en tu equipo'}[r.error]||'Error','err');
   });
 }
 function solapes(a){
@@ -2040,7 +2247,7 @@ function vIncidencias(){
      '<div class="fld" style="margin:0"><label class="lbl">Hasta</label><input class="inp" type="date" id="inc_h" value="'+hoyISO()+'"></div>'+
      '<button class="btn b-pri" style="align-self:flex-end" onclick="cargarIncidencias()">Analizar</button>'+
      '<div class="sp"></div>'+
-     '<button class="btn b-ghost" style="align-self:flex-end" onclick="comprobarIntegridad()">Verificar integridad</button>'+
+     (nivelUsuario()>=2?'<button class="btn b-ghost" style="align-self:flex-end" onclick="comprobarIntegridad()">Verificar integridad</button>':'')+
    '</div></div><div id="inc_out">'+vacio('Selecciona un rango y pulsa Analizar','⚠')+'</div>';
 }
 function cargarIncidencias(){
@@ -2229,14 +2436,18 @@ function informePDF(){
 function vPlantilla(){
   var activos=S.empleados.filter(function(e){return String(e.activo).toUpperCase()!=='NO';});
   var roles={ADMIN:'Administrador',DIRECCION:'Administrador',MANAGER:'Manager'};
-  return cab('Plantilla','Personas dadas de alta y su configuración')+
-   '<button class="btn b-gold" style="margin-bottom:16px" onclick="modalAlta()">+ Añadir persona</button>'+
+  return cab('Empleados','Personas dadas de alta y su configuración')+
+   '<div class="row wrap" style="margin-bottom:16px">'+
+     '<button class="btn b-gold" onclick="modalAlta()">+ Añadir persona</button>'+
+     '<button class="btn b-ghost" onclick="modalImportar()">Importar en bloque</button>'+
+     '<div class="sp"></div><span style="font-size:12px;color:var(--sub)">'+activos.length+' activos</span>'+
+   '</div>'+
    tabla(['Nombre','Rol','Email','Departamento','Oficina','Alta','Jornada','Vac.'],
      activos.map(function(e){
        var n=esc(e.nombre).replace(/'/g,"\\'");
        var r=String(e.rol||'EMPLEADO').toUpperCase();
        return {celdas:[
-         esc(e.nombre),
+         '<div class="row" style="gap:9px">'+avatar(e.nombre,'sm')+'<span>'+esc(e.nombre)+'</span></div>',
          '<span class="pill '+({ADMIN:'p-info',DIRECCION:'p-info',MANAGER:'p-warn'}[r]||'p-grey')+'">'+(roles[r]||'Empleado')+'</span>',
          esc(e.email||''), esc(e.departamento||''), esc(e.oficina||''),
          esc(String(e.fecha_alta||'').slice(0,10)||'—'),
@@ -2314,6 +2525,99 @@ function enviarReset(nombre){
   if(!/^\d{4}$/.test(p)) return toast('Deben ser 4 dígitos','err');
   api('resetPin',{nombre:nombre,pin:p}).then(function(r){
     cerrarModal(); if(r.ok) toast('PIN actualizado','ok'); else toast('Error','err');
+  });
+}
+/**
+ * Alta masiva pegando el informe de empleados. Acepta el formato que exporta
+ * Sesame y también un CSV propio: se detectan las columnas por su nombre.
+ */
+function modalImportar(){
+  abrirModal('<div class="mtitle">Importar empleados</div>'+
+    '<div class="msub">Pega aquí el informe de empleados. Se crean los que falten y se actualizan los que ya estén.</div>'+
+    '<div class="fld"><label class="lbl">Datos</label>'+
+      '<textarea class="inp" id="im_d" style="min-height:190px;font-family:ui-monospace,monospace;font-size:11.5px" '+
+      'placeholder="Empleado&#9;Estado&#9;Jornada&#9;...&#9;Departamentos&#9;...&#9;E-mail de empresa&#10;'+
+      'Alex Sellés Amorós&#9;Oficina&#9;8:00&#9;...&#9;Marketing&#9;...&#9;aselles@durancarasso.com"></textarea>'+
+      '<div style="font-size:11.5px;color:var(--sub);margin-top:8px;line-height:1.6">'+
+      'Copia las filas desde el Excel o el CSV, con su cabecera. Se reconocen las columnas '+
+      '<b>Empleado</b> o <b>Nombre</b>, <b>E-mail</b>, <b>Departamento</b>, <b>Centro</b> u <b>Oficina</b>, '+
+      '<b>Fecha de alta</b> y <b>Jornada</b>.</div></div>'+
+    '<div class="fld"><label class="lbl">Fecha de alta por defecto</label>'+
+      '<input class="inp" type="date" id="im_f" value="'+hoyISO()+'">'+
+      '<div style="font-size:11.5px;color:var(--sub);margin-top:6px">Se usa solo si la fila no la trae. '+
+      'Determina las vacaciones que devenga cada uno el primer año.</div></div>'+
+    '<div id="im_prev"></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-ghost" onclick="previsualizarImport()">Comprobar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarImport()">Importar</button></div>');
+}
+function parsearEmpleados(texto){
+  var lineas=texto.split('\n').map(function(l){return l.replace(/\r$/,'');}).filter(function(l){return l.trim();});
+  if(lineas.length<2) return [];
+  var sep=lineas[0].indexOf('\t')>=0 ? '\t' : (lineas[0].split(';').length>lineas[0].split(',').length ? ';' : ',');
+  var partir=function(l){
+    var out=[],act='',dentro=false;
+    for(var i=0;i<l.length;i++){
+      var c=l[i];
+      if(c==='"'){ dentro=!dentro; continue; }
+      if(c===sep && !dentro){ out.push(act.trim()); act=''; continue; }
+      act+=c;
+    }
+    out.push(act.trim()); return out;
+  };
+  var cab=partir(lineas[0]).map(function(c){return c.toLowerCase();});
+  var buscar=function(){
+    for(var i=0;i<arguments.length;i++){
+      var k=cab.findIndex(function(c){return c.indexOf(arguments[i])>=0;}.bind(null));
+      for(var j=0;j<cab.length;j++) if(cab[j].indexOf(arguments[i])>=0) return j;
+    }
+    return -1;
+  };
+  var iN=buscar('empleado','nombre'), iE=buscar('mail','correo'),
+      iD=buscar('departamento','área','area'), iO=buscar('centro','oficina'),
+      iA=buscar('alta','incorporación','incorporacion'), iJ=buscar('jornada');
+  if(iN<0) return [];
+  return lineas.slice(1).map(partir).filter(function(c){return c[iN];}).map(function(c){
+    return { nombre:c[iN], email:iE>=0?(c[iE]||'').toLowerCase():'',
+             departamento:iD>=0?(c[iD]||'').split(',')[0].trim():'',
+             oficina:iO>=0?c[iO]||'':'', fecha_alta:iA>=0?normalizarFecha(c[iA]):'',
+             jornada:iJ>=0?c[iJ]||'':'' };
+  });
+}
+function normalizarFecha(v){
+  v=String(v||'').trim();
+  var m=v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if(m){ var a=m[3].length===2?'20'+m[3]:m[3]; return a+'-'+pad(+m[2])+'-'+pad(+m[1]); }
+  return /^\d{4}-\d{2}-\d{2}$/.test(v)? v : '';
+}
+function previsualizarImport(){
+  var lista=parsearEmpleados($('im_d').value);
+  if(!lista.length) return $('im_prev').innerHTML=
+    '<div class="card" style="background:var(--red-soft);border-color:#EBD7D4;margin-bottom:14px">'+
+    '<div style="font-size:12.5px;color:var(--red)">No se reconoce el formato. Asegúrate de pegar también la fila de cabecera.</div></div>';
+  var conocidos={}; S.empleados.forEach(function(e){ conocidos[e.nombre.trim().toLowerCase()]=true; });
+  var nuevos=lista.filter(function(p){return !conocidos[p.nombre.trim().toLowerCase()];});
+  $('im_prev').innerHTML='<div class="card" style="background:var(--bg);margin-bottom:14px">'+
+    '<div style="font-size:12.5px;line-height:1.7"><b>'+lista.length+'</b> filas reconocidas · '+
+    '<b class="pos">'+nuevos.length+'</b> altas nuevas · <b>'+(lista.length-nuevos.length)+'</b> ya existen'+
+    ' y solo se actualizarán si algo cambió.</div>'+
+    '<div style="font-size:11.5px;color:var(--sub);margin-top:8px">'+
+    lista.slice(0,6).map(function(p){return esc(p.nombre)+(p.departamento?' · '+esc(p.departamento):'');}).join('<br>')+
+    (lista.length>6?'<br>y '+(lista.length-6)+' más…':'')+'</div></div>';
+  return lista;
+}
+function enviarImport(){
+  var lista=parsearEmpleados($('im_d').value);
+  if(!lista.length) return toast('No se reconoce el formato','err');
+  var porDefecto=$('im_f').value;
+  lista.forEach(function(p){ if(!p.fecha_alta) p.fecha_alta=porDefecto; });
+  toast('Importando '+lista.length+' empleados…');
+  api('importarEmpleados',{empleados:lista}).then(function(r){
+    cerrarModal();
+    if(!r.ok) return toast('Error: '+(r.error||''),'err');
+    toast(r.creados+' altas · '+r.actualizados+' actualizados','ok');
+    if(r.aviso) setTimeout(function(){ toast(r.aviso); },3000);
+    refrescar();
   });
 }
 function modalAlta(){
@@ -3077,13 +3381,37 @@ var DEMO_SEED = {
   empleados:[
     {nombre:'Admin de pruebas',    email:'admin@durancarasso.com',   pin:'0000', rol:'ADMIN',    departamento:'Dirección', oficina:'Barcelona', horario_id:'STD', vacaciones_anuales:23, fecha_alta:'2021-01-11'},
     {nombre:'Manager de pruebas',  email:'manager@durancarasso.com', pin:'2222', rol:'MANAGER',  departamento:'Comercial', oficina:'Barcelona', horario_id:'STD', vacaciones_anuales:23, fecha_alta:'2022-03-01'},
-    {nombre:'Empleado de pruebas', email:'empleado@durancarasso.com',pin:'1234', rol:'EMPLEADO', departamento:'Comercial', oficina:'Sitges',    horario_id:'STD', vacaciones_anuales:23, fecha_alta:'2023-09-04', responsable:'Manager de pruebas'},
-    {nombre:'Adrià Pintat',   email:'adriapintat@durancarasso.com', pin:'0000', rol:'ADMIN', departamento:'Marketing',  oficina:'Barcelona', horario_id:'STD', vacaciones_anuales:23},
-    {nombre:'Alex Sellés',    email:'aselles@durancarasso.com',     pin:'1234', rol:'EMPLEADO',  departamento:'Comercial',  oficina:'Sitges',    horario_id:'STD', vacaciones_anuales:23},
-    {nombre:'Anna Pallarés',  email:'apallares@durancarasso.com',   pin:'1234', rol:'EMPLEADO',  departamento:'Comercial',  oficina:'Barcelona', horario_id:'STD', vacaciones_anuales:23},
-    {nombre:'Javier Carasso', email:'jcarasso@durancarasso.com',    pin:'1234', rol:'EMPLEADO',  departamento:'Dirección',  oficina:'Barcelona', horario_id:'INT', vacaciones_anuales:25},
-    {nombre:'Marta Seró',     email:'msero@durancarasso.com',       pin:'1234', rol:'EMPLEADO',  departamento:'Administración', oficina:'Barcelona', horario_id:'STD', vacaciones_anuales:23},
-    {nombre:'Sunsi Guitart',  email:'sguitart@durancarasso.com',    pin:'1234', rol:'EMPLEADO',  departamento:'Comercial',  oficina:'Andorra',   horario_id:'STD', vacaciones_anuales:23}
+    {nombre:'Empleado de pruebas', email:'empleado@durancarasso.com',pin:'1234', rol:'EMPLEADO', departamento:'Comercial', oficina:'Sitges',    horario_id:'STD', vacaciones_anuales:23, fecha_alta:'2026-07-01', responsable:'Manager de pruebas'},
+    {"nombre": "Cinthia Alcaide", "email": "calcaide@durancarasso.com", "pin": "2820", "rol": "EMPLEADO", "departamento": "Propiedades", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Javier Carasso Brillas"},
+    {"nombre": "Judit Martí Esteve", "email": "jmarti@durancarasso.com", "pin": "3001", "rol": "MANAGER", "departamento": "Administración", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09"},
+    {"nombre": "Yolanda Ramírez García", "email": "yramirez@durancarasso.com", "pin": "7425", "rol": "EMPLEADO", "departamento": "Administración", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Judit Martí Esteve"},
+    {"nombre": "Pau Matas", "email": "pmatas@durancarasso.com", "pin": "1311", "rol": "EMPLEADO", "departamento": "Obra nueva", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09"},
+    {"nombre": "Carles Garcia Estades", "email": "cgarcia@durancarasso.com", "pin": "7793", "rol": "EMPLEADO", "departamento": "Inversiones", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09"},
+    {"nombre": "Encarnación López Valderrama", "email": "nlopez@durancarasso.com", "pin": "8076", "rol": "EMPLEADO", "departamento": "Jurídico", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09"},
+    {"nombre": "Alex Sellés Amorós", "email": "aselles@durancarasso.com", "pin": "6083", "rol": "EMPLEADO", "departamento": "Marketing", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09"},
+    {"nombre": "Antxon Iriondo", "email": "airiondo@durancarasso.com", "pin": "1935", "rol": "EMPLEADO", "departamento": "Inversiones", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09"},
+    {"nombre": "Fraldy Aguilera Luna", "email": "faguilera@durancarasso.com", "pin": "5147", "rol": "EMPLEADO", "departamento": "Administración", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Judit Martí Esteve"},
+    {"nombre": "Marta Seró", "email": "msero@durancarasso.com", "pin": "5043", "rol": "EMPLEADO", "departamento": "Propiedades", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Javier Carasso Brillas"},
+    {"nombre": "Rosa López Martínez", "email": "rlopez@durancarasso.com", "pin": "8632", "rol": "EMPLEADO", "departamento": "Obra nueva", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09"},
+    {"nombre": "Jazmina Jimenez", "email": "jjimenez@durancarasso.com", "pin": "3799", "rol": "EMPLEADO", "departamento": "Propiedades", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Javier Carasso Brillas"},
+    {"nombre": "Natalia Merino", "email": "nmerino@durancarasso.com", "pin": "1402", "rol": "EMPLEADO", "departamento": "Propiedades", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Javier Carasso Brillas"},
+    {"nombre": "Bruno Clarasó Hofmann", "email": "bclaraso@durancarasso.com", "pin": "1941", "rol": "EMPLEADO", "departamento": "Propiedades", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Javier Carasso Brillas"},
+    {"nombre": "SANDRA CARBONELL", "email": "scarbonell@durancarasso.com", "pin": "8480", "rol": "EMPLEADO", "departamento": "Propiedades", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Javier Carasso Brillas"},
+    {"nombre": "Joan Carles Rueda", "email": "jcrueda@durancarasso.com", "pin": "6609", "rol": "EMPLEADO", "departamento": "Propiedades", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Javier Carasso Brillas"},
+    {"nombre": "Eva Giménez Casado", "email": "egimenez@durancarasso.com", "pin": "1982", "rol": "EMPLEADO", "departamento": "Obra nueva", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09"},
+    {"nombre": "Eva Lema", "email": "elema@durancarasso.com", "pin": "8443", "rol": "EMPLEADO", "departamento": "Obra nueva", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09"},
+    {"nombre": "Sunsi Guitart", "email": "sguitart@durancarasso.com", "pin": "9093", "rol": "EMPLEADO", "departamento": "Propiedades", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Javier Carasso Brillas"},
+    {"nombre": "Anna Pallarés Aniorte", "email": "apallares@durancarasso.com", "pin": "1966", "rol": "EMPLEADO", "departamento": "Propiedades", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Javier Carasso Brillas"},
+    {"nombre": "Genaro Insua Venturini", "email": "ginsua@durancarasso.com", "pin": "3349", "rol": "EMPLEADO", "departamento": "Propiedades", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Javier Carasso Brillas"},
+    {"nombre": "Javier Carasso Brillas", "email": "jcarasso@durancarasso.com", "pin": "2255", "rol": "ADMIN", "departamento": "Propiedades", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09"},
+    {"nombre": "Jessica Cosme", "email": "jcosme@durancarasso.com", "pin": "8180", "rol": "EMPLEADO", "departamento": "Administración", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Judit Martí Esteve"},
+    {"nombre": "Mario Abad Fernández de la Cigoña", "email": "mabad@durancarasso.com", "pin": "4928", "rol": "ADMIN", "departamento": "Administración", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Judit Martí Esteve"},
+    {"nombre": "Marisol Mañà García", "email": "mmana@durancarasso.com", "pin": "9639", "rol": "EMPLEADO", "departamento": "Obra nueva", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09"},
+    {"nombre": "Mónica Abad Fernández de la Cigoña", "email": "srico@durancarasso.com", "pin": "9795", "rol": "EMPLEADO", "departamento": "", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09"},
+    {"nombre": "Ramona Bragulat Juvé", "email": "rbragulat@durancarasso.com", "pin": "8924", "rol": "EMPLEADO", "departamento": "Propiedades", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Javier Carasso Brillas"},
+    {"nombre": "Robert Nichols", "email": "rnichols@durancarasso.com", "pin": "1785", "rol": "EMPLEADO", "departamento": "Propiedades", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Javier Carasso Brillas"},
+    {"nombre": "Susana Font Pérez", "email": "sfont@durancarasso.com", "pin": "9867", "rol": "EMPLEADO", "departamento": "Propiedades", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Javier Carasso Brillas"},
+    {"nombre": "Txus Dueñas", "email": "tduenas@durancarasso.com", "pin": "6976", "rol": "EMPLEADO", "departamento": "Propiedades", "oficina": "Barcelona", "horario_id": "STD", "vacaciones_anuales": 23, "fecha_alta": "2023-01-09", "responsable": "Javier Carasso Brillas"}
   ],
   horarios:[
     {horario_id:'STD',nombre:'Jornada estándar',lun:'09:00-18:00',mar:'09:00-18:00',mie:'09:00-18:00',jue:'09:00-18:00',vie:'09:00-15:00',sab:'',dom:'',pausa_min:60,horas_semana:38},
@@ -3092,7 +3420,12 @@ var DEMO_SEED = {
   festivos:[
     {fecha:new Date().getFullYear()+'-01-01',nombre:'Año Nuevo',ambito:'Nacional'},
     {fecha:new Date().getFullYear()+'-01-06',nombre:'Reyes',ambito:'Nacional'},
+    {fecha:new Date().getFullYear()+'-05-01',nombre:'Fiesta del Trabajo',ambito:'Nacional'},
     {fecha:new Date().getFullYear()+'-08-15',nombre:'Asunción',ambito:'Nacional'},
+    {fecha:new Date().getFullYear()+'-10-12',nombre:'Fiesta Nacional',ambito:'Nacional'},
+    {fecha:new Date().getFullYear()+'-11-01',nombre:'Todos los Santos',ambito:'Nacional'},
+    {fecha:new Date().getFullYear()+'-12-06',nombre:'Día de la Constitución',ambito:'Nacional'},
+    {fecha:new Date().getFullYear()+'-12-08',nombre:'Inmaculada Concepción',ambito:'Nacional'},
     {fecha:new Date().getFullYear()+'-09-11',nombre:'Diada de Catalunya',ambito:'Autonómico'},
     {fecha:new Date().getFullYear()+'-12-25',nombre:'Navidad',ambito:'Nacional'},
     {fecha:new Date().getFullYear()+'-12-26',nombre:'Sant Esteve',ambito:'Autonómico'}
@@ -3105,6 +3438,15 @@ function dbGet(){
 
   // Migración: una base guardada por una versión anterior no tiene las
   // colecciones nuevas. Se rellenan sin tocar los datos ya existentes.
+  db.festivos=(db.festivos||[]).filter(function(f){return f && f.fecha;});
+  ['05-01','10-12','11-01','12-06','12-08'].forEach(function(md){
+    var f=new Date().getFullYear()+'-'+md;
+    if(!db.festivos.some(function(x){return x.fecha===f;}))
+      db.festivos.push({fecha:f,nombre:{'05-01':'Fiesta del Trabajo','10-12':'Fiesta Nacional',
+        '11-01':'Todos los Santos','12-06':'Día de la Constitución','12-08':'Inmaculada Concepción'}[md],
+        ambito:'Nacional ES'});
+  });
+  db.festivos.sort(function(a,b){return a.fecha<b.fecha?-1:1;});
   var vacias=['fichajes','ausencias','tareas','turnos','compensaciones','objetivos',
               'evaluaciones','encuestas','respuestas','vacantes','candidatos','checklists','auditoria','extras','plan'];
   vacias.forEach(function(k){ if(!Array.isArray(db[k])) db[k]=[]; });
@@ -3115,7 +3457,7 @@ function dbGet(){
     {id:'CT-BCN',nombre:'Barcelona',direccion:'Av. Diagonal',lat:41.3947,lng:2.1503,radio_m:150,activo:'SI'},
     {id:'CT-SIT',nombre:'Sitges',direccion:'Sitges',lat:41.2371,lng:1.8055,radio_m:150,activo:'SI'},
     {id:'CT-AND',nombre:'Andorra',direccion:'Andorra la Vella',lat:42.5063,lng:1.5218,radio_m:150,activo:'SI'}];
-  if(!db.empresa) db.empresa={nombre:'Durán Carasso',razon_social:'Durán Carasso Barcelona S.L.',cif:'',
+  if(!db.empresa) db.empresa={geo_obligatoria:'SI',nombre:'Durán Carasso',razon_social:'Durán Carasso Barcelona S.L.',cif:'',
     logo_url:'',moneda:'EUR',industria:'Inmobiliaria',convenio:'Oficinas y despachos de Cataluña',
     horario_defecto:'STD',dias_vacaciones:'23',dominio_email:'durancarasso.com',
     email_correcciones:'mabad@durancarasso.com'};
@@ -3146,9 +3488,9 @@ function demoApi(action,p){
   }
 }
 // Mismos permisos que el backend: si la demo no los aplica, no prueba nada
-var ACCIONES_GESTOR = ['validarAusencia','corregirFichaje','corregirJornada','informe','incidencias','guardarTurno',
+var ACCIONES_GESTOR = ['validarAusencia','revertirAusencia','corregirFichaje','corregirJornada','informe','incidencias','guardarTurno',
   'borrarTurno','turnosEquipo','horasExtraEquipo','validarHorasExtra'];
-var ACCIONES_ADMIN = ['configuracion','guardarEmpresa','guardarHorario','guardarDescanso',
+var ACCIONES_ADMIN = ['verificarCadena','importarEmpleados','configuracion','guardarEmpresa','guardarHorario','guardarDescanso',
   'guardarFestivo','importarFestivos','guardarCentro','centros','eliminar','auditoria',
   'editarEmpleado','resetPin','altaEmpleado','analytics','guardarTipoAusencia','purgar',
   'publicar','borrarPublicacion','subirDocumento'];
@@ -3201,11 +3543,14 @@ function demoApiInterno(action,p){
       r={ok:true,fichajes:mis,estado:{estado:hoyEv.length?({ENTRADA:'TRABAJANDO',PAUSA_INI:'PAUSA',PAUSA_FIN:'TRABAJANDO',SALIDA:'FUERA'}[hoyEv[hoyEv.length-1].tipo]):'SIN_FICHAR'}};
       break;
     case 'estadoEquipo':
-      r={ok:true,equipo:db.empleados.map(function(x){
-        var ev=db.fichajes.filter(function(f){return f.trabajador===x.nombre&&f.fecha===hoyISO();});
-        return {nombre:x.nombre,departamento:x.departamento,oficina:x.oficina,
-                estado:ev.length?({ENTRADA:'TRABAJANDO',PAUSA_INI:'PAUSA',PAUSA_FIN:'TRABAJANDO',SALIDA:'FUERA'}[ev[ev.length-1].tipo]):'SIN_FICHAR'};
-      })}; break;
+      r={ok:true,equipo:db.empleados.filter(function(x){return String(x.activo||'SI').toUpperCase()!=='NO';})
+        .map(function(x){
+          var ev=db.fichajes.filter(function(f){return f.trabajador===x.nombre&&f.fecha===hoyISO();});
+          var ult=ev[ev.length-1];
+          return {nombre:x.nombre,departamento:x.departamento,oficina:x.oficina,foto:x.foto||'',
+                  modalidad:ult?(ult.modalidad||'OFICINA'):'',
+                  estado:ev.length?({ENTRADA:'TRABAJANDO',PAUSA_INI:'PAUSA',PAUSA_FIN:'TRABAJANDO',SALIDA:'FUERA'}[ult.tipo]):'SIN_FICHAR'};
+        })}; break;
     case 'solicitarAusencia':
       var dias=p.medioDia?0.5:diasLab(p.desde,p.hasta,db.festivos);
       var solapa=db.ausencias.some(function(x){return x.trabajador===yo.nombre&&['PENDIENTE','APROBADA'].indexOf(x.estado)>=0&&p.desde<=x.hasta&&p.hasta>=x.desde;});
@@ -3363,11 +3708,14 @@ function demoApiInterno(action,p){
 
     /* ── RGPD ── */
     case 'avisoPrivacidad':
+      var oblGeo=String((db.empresa||{}).geo_obligatoria||'').toUpperCase()==='SI';
       r={ok:true,aceptado:!!db.avisoAceptado,fechaAceptado:db.avisoAceptado||'',
-         geo:db.geoOk===undefined?null:db.geoOk,
+         geo:db.geoOk===undefined?null:db.geoOk, geoObl:oblGeo,
          aviso:{version:'2026-09',responsable:'Durán Carasso Barcelona S.L.',
            finalidad:'Cumplir la obligación legal de registro diario de jornada y gestionar ausencias, horarios y turnos.',
-           base:'Obligación legal (art. 34.9 del Estatuto de los Trabajadores) y ejecución del contrato de trabajo. La geolocalización es voluntaria y se basa en tu consentimiento, que puedes retirar cuando quieras.',
+           base:oblGeo
+             ?'Obligación legal (art. 34.9 del Estatuto de los Trabajadores) y ejecución del contrato de trabajo. La ubicación se registra en el instante de fichar para acreditar desde dónde se presta el trabajo, por interés legítimo de la empresa en verificar el registro de jornada. No hay seguimiento continuo: solo la posición del momento del fichaje.'
+             :'Obligación legal (art. 34.9 del Estatuto de los Trabajadores) y ejecución del contrato de trabajo. La geolocalización es voluntaria y se basa en tu consentimiento, que puedes retirar cuando quieras.',
            datos:'Nombre, correo corporativo, departamento, centro, horario, fichajes con su hora exacta, ausencias con su justificante y, si lo autorizas, la ubicación en el momento de fichar.',
            conservacion:'Los fichajes se conservan 4 años, como exige la ley, y después se eliminan. El resto de datos, mientras dure la relación laboral y los plazos de prescripción aplicables.',
            destinatarios:'Tu responsable directo, la dirección de la empresa, la gestoría laboral y, si lo requieren, la Inspección de Trabajo y la representación legal de los trabajadores. Los datos se alojan en Google Workspace (Irlanda, Unión Europea).',
@@ -3431,6 +3779,45 @@ function demoApiInterno(action,p){
       demoAudit(db,yo,'VALIDA_HORAS_EXTRA',p.id+' → '+p.decision); dbSet(db); r={ok:true}; break;
     case 'purgar':
       r={ok:true,simulacion:!p.confirmar,corte:(new Date().getFullYear()-4)+'-01-01',afectados:0,borradas:0}; break;
+
+    /* ── Importación masiva ── */
+    case 'importarEmpleados':
+      var conocidos={}; db.empleados.forEach(function(e){ conocidos[e.nombre.trim().toLowerCase()]=e; });
+      var creados=0, actualizados=0;
+      (p.empleados||[]).forEach(function(n){
+        var nom=String(n.nombre||'').trim(); if(!nom) return;
+        var ficha=conocidos[nom.toLowerCase()];
+        if(!ficha){
+          db.empleados.push({nombre:nom,email:n.email||'',pin:String(1000+Math.floor(Math.random()*9000)),
+            rol:'EMPLEADO',departamento:n.departamento||'',oficina:n.oficina||'',
+            horario_id:n.horario_id||'STD',vacaciones_anuales:23,fecha_alta:n.fecha_alta||hoyISO(),activo:'SI'});
+          creados++; return;
+        }
+        var cambio=false;
+        ['email','departamento','oficina'].forEach(function(c){
+          if(n[c] && String(ficha[c]||'')!==String(n[c])){ ficha[c]=n[c]; cambio=true; }
+        });
+        if(n.fecha_alta && !ficha.fecha_alta){ ficha.fecha_alta=n.fecha_alta; cambio=true; }
+        if(cambio) actualizados++;
+      });
+      demoAudit(db,yo,'IMPORTA_EMPLEADOS',creados+' altas, '+actualizados+' actualizados');
+      dbSet(db);
+      r={ok:true,creados:creados,actualizados:actualizados,
+         aviso:creados?'Las altas llevan un PIN provisional: asígnalo desde Empleados → PIN.':''};
+      break;
+
+    /* ── Revertir y foto ── */
+    case 'revertirAusencia':
+      var av=db.ausencias.filter(function(x){return x.id===p.id;})[0];
+      if(!av){ r={ok:false,error:'NO_ENCONTRADA'}; break; }
+      if(!demoDentro(demoAmbito(db,yo),av.trabajador)){ r={ok:false,error:'FUERA_DE_TU_EQUIPO'}; break; }
+      if(['APROBADA','DENEGADA'].indexOf(av.estado)<0){ r={ok:false,error:'NO_ESTABA_RESUELTA'}; break; }
+      av.estado='PENDIENTE'; av.validador=''; av.comentario='Revertida por '+yo.nombre+': '+p.motivo;
+      demoAudit(db,yo,'REVIERTE_AUSENCIA',p.id+' — '+p.motivo); dbSet(db); r={ok:true}; break;
+    case 'guardarFoto':
+      var destino=p.trabajador||yo.nombre;
+      db.empleados.forEach(function(e){ if(e.nombre===destino) e.foto=p.foto; });
+      demoAudit(db,yo,'FOTO_PERFIL',destino); dbSet(db); r={ok:true}; break;
 
     /* ── Configuración ── */
     case 'configuracion':
@@ -3574,7 +3961,19 @@ function demoSaldos(db,yo,year){
     var vigente=hoyISO()<=limite;
     var cons=demoConsumo(db,yo.nombre,t.tipo,year,['APROBADA']);
     var pend=demoConsumo(db,yo.nombre,t.tipo,year,['PENDIENTE']);
-    return {tipo:t.tipo,totales:cupo,prorrateado:false,cupoCompleto:cupo,
+    // Devengo mes a mes desde la incorporación
+    var alta=yo.fecha_alta? new Date(yo.fecha_alta+'T00:00:00') : null;
+    var completo=t.tipo.toUpperCase().indexOf('VACAC')===0? Number(yo.vacaciones_anuales||t.dias) : t.dias;
+    if(alta && !isNaN(alta) && alta.getFullYear()===year){
+      var restantes=12-alta.getMonth();
+      cupo=Math.round(completo*restantes/12*2)/2;
+    }
+    var hoyD=new Date();
+    var inicioMes=(alta&&!isNaN(alta)&&alta.getFullYear()===year)? alta.getMonth() : 0;
+    var meses=hoyD.getFullYear()>year? 12-inicioMes : (hoyD.getFullYear()<year? 0 : hoyD.getMonth()-inicioMes+1);
+    var devengado=meses<=0?0:(meses>=12-inicioMes? cupo : Math.round(cupo*meses/(12-inicioMes)*2)/2);
+    return {tipo:t.tipo,totales:cupo,devengado:devengado,
+            prorrateado:cupo!==completo,cupoCompleto:completo,
             arrastre:arr,arrastreVigente:vigente,limiteArrastre:limite,
             consumidos:cons,pendientes:pend,disponibles:cupo+(vigente?arr:0)-cons-pend};
   });
