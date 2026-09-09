@@ -505,21 +505,53 @@ function vaciarCola(){
 window.addEventListener('online',function(){ vaciarCola().then(refrescar); });
 
 /* ── Sesión ── */
+/**
+ * La sesión se guarda en sessionStorage, no en localStorage: sobrevive a un
+ * refresco de la pestaña, pero al cerrarla o abrir la app de nuevo vuelve a
+ * pedir el PIN. En una app de fichaje el código es la prueba de identidad
+ * de quien ficha, así que pedirlo cada vez es lo correcto.
+ */
 function guardarSesion(){
-  try{localStorage.setItem('dcp_ses',JSON.stringify({token:S.token,emp:S.emp,esDir:S.esDir,ts:Date.now()}));}catch(e){}
+  try{ sessionStorage.setItem('dcp_ses',
+    JSON.stringify({token:S.token,emp:S.emp,esDir:S.esDir,ts:Date.now()})); }catch(e){}
 }
 function leerSesion(){
   try{
-    var v=JSON.parse(localStorage.getItem('dcp_ses'));
-    if(!v||Date.now()-v.ts>30*86400000) return null;
+    var v=JSON.parse(sessionStorage.getItem('dcp_ses'));
+    if(!v||Date.now()-v.ts>12*3600*1000) return null;   // 12 h como tope
     return v;
   }catch(e){return null;}
 }
 function cerrarSesion(){
-  try{localStorage.removeItem('dcp_ses');}catch(e){}
-  S.token=null;S.emp=null;location.reload();
+  try{ sessionStorage.removeItem('dcp_ses'); localStorage.removeItem('dcp_ses'); }catch(e){}
+  volverAlAcceso();
 }
-function salir(){ if(confirm('¿Cerrar sesión en este dispositivo?')) cerrarSesion(); }
+
+/** Devuelve a la pantalla de PIN sin recargar: más rápido y sin sorpresas. */
+function volverAlAcceso(){
+  S.token=null; S.emp=null; S.esDir=false; S.espacio='mi'; S.vista='portal';
+  S.fichajesHoy=[]; S.fichajesRango=[]; S.ausencias=[]; S.equipo=[]; S.pendientes=[];
+  S.plan=[]; S.extras=[]; S.config=null; S.perfil=null; S.geoOk=false;
+  cerrarModal();
+  $('app').classList.remove('on');
+  $('login').style.display='';
+  volverSelect();
+  $('sel_lbl').textContent='Selecciona tu nombre';
+  $('sel_ava').textContent='··';
+  $('sel_trig').classList.remove('open');
+  $('sel_drop').classList.remove('open');
+  pinBuf=''; pinTarget='';
+  $('sel_q').value='';
+  cargarListaAcceso();
+  window.scrollTo(0,0);
+}
+function salir(){
+  cerrarModal();
+  abrirModal('<div class="mtitle">Cerrar sesión</div>'+
+    '<div class="msub">Volverás a la pantalla de acceso. Habrá que introducir el PIN otra vez.</div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Seguir aquí</button>'+
+    '<button class="btn b-no" style="flex:1" onclick="cerrarSesion()">Cerrar sesión</button></div>');
+}
 function menuUsuario(){
   var roles={0:'Empleado',1:'Manager',2:'Administrador'};
   abrirModal('<div class="row" style="margin-bottom:18px"><div class="ava lg">'+esc(ini(S.emp.nombre))+'</div>'+
@@ -532,7 +564,7 @@ function menuUsuario(){
     '<button class="nav-i" style="color:var(--red);margin-top:8px" onclick="salir()">'+
     '<span class="ic">⏻</span>Cerrar sesión</button>');
 }
-function cambiarUsuario(){ cerrarSesion(); }
+function cambiarUsuario(){ cerrarModal(); cerrarSesion(); }
 
 /* ══ LOGIN ══════════════════════════════════════════════════════════════ */
 var pinTarget='', pinBuf='';
@@ -1025,8 +1057,12 @@ function vPortal(){
                           .sort(function(a,b){return a.desde<b.desde?-1:1;}).slice(0,3);
   var sal=S.saldo||{disponibles:0,consumidos:0,totales:0,pendientes:0};
 
-  return cab('Hola, '+S.emp.nombre.split(' ')[0], new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))+
+  var roles={0:'',1:'Manager',2:'Administrador'};
+  return cab('Hola, '+S.emp.nombre.split(' ')[0],
+      new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+
+      (roles[nivelUsuario()]?' · '+roles[nivelUsuario()]:''))+
   '<div class="card" id="portal_estado" style="margin-bottom:14px">'+estadoPortalHTML()+'</div>'+
+  (puedeGestionar()? bloqueGestion() : '')+
   '<div class="sec">Tu jornada</div>'+
   '<div class="grid g4">'+
     kpi(hhmm(minutosHoy()),'Hoy', teoHint(minutosTeoricos(hoyISO())))+
@@ -1047,7 +1083,7 @@ function vPortal(){
   '</div>'+
   '<div class="sec">Tus próximas ausencias</div>'+
   (proximas.length ? proximas.map(filaAusencia).join('') : vacio('No tienes ausencias programadas','☀'))+
-  (puedeGestionar()? bloqueGestion() : '');
+  '';
 }
 /** Lo que un manager o administrador necesita ver nada más entrar. */
 function bloqueGestion(){
@@ -1061,9 +1097,16 @@ function bloqueGestion(){
     return a.estado==='APROBADA' && hoy>=a.desde && hoy<=a.hasta && nombres.indexOf(a.trabajador)>=0;});
   var deAusencia={}; ausHoy.forEach(function(a){ deAusencia[a.trabajador]=a.tipo; });
 
+  // Solo se avisa de quien ya lleva media hora de retraso: antes no es una
+  // incidencia, es que aún no le toca entrar.
   var sinFichar=equipo.filter(function(e){
-    return !deAusencia[e.nombre] && (estados[e.nombre]==='SIN_FICHAR'||!estados[e.nombre]) &&
-           minutosTeoricosDe2(e,hoy)>0;
+    if(deAusencia[e.nombre]) return false;
+    if(estados[e.nombre] && estados[e.nombre]!=='SIN_FICHAR') return false;
+    var h=horarioTeoricoDe(e.nombre,hoy);
+    if(!h) return false;
+    var ahora=new Date();
+    var p=h.desde.split(':');
+    return (ahora.getHours()*60+ahora.getMinutes()) > (+p[0]*60 + +p[1] + 30);
   });
   var dentro=equipo.filter(function(e){return estados[e.nombre]==='TRABAJANDO';});
   var pausa=equipo.filter(function(e){return estados[e.nombre]==='PAUSA';});
@@ -1098,7 +1141,9 @@ function bloqueGestion(){
        sinFichar.map(function(e){
          return '<span class="pill p-err">'+esc(e.nombre.split(' ')[0])+'</span>';
        }).join('')+'<div class="sp"></div>'+
-       '<button class="btn b-ghost b-sm" onclick="ir(\'incidencias\')">Revisar y rellenar</button></div></div>' : '')+
+       '<button class="btn b-ghost b-sm" onclick="ir(\'incidencias\')">Revisar y rellenar</button></div>'+
+       '<div style="font-size:11px;color:var(--red);margin-top:8px;opacity:.75">'+
+       'Con más de 30 minutos de retraso sobre su hora de entrada.</div></div>' : '')+
    (avisos? '<div class="sec">Requiere tu atención</div><div class="grid" style="gap:7px">'+avisos+'</div>'
           : '<div class="card" style="margin-top:10px;background:var(--bg)">'+
             '<div style="font-size:12.5px;color:var(--sub)">Nada pendiente por tu parte. Todo al día.</div></div>');
@@ -3577,7 +3622,12 @@ function prepararPWA(){
 }
 
 /* ══ INIT ═══════════════════════════════════════════════════════════════ */
-function initLogin(){
+/**
+ * Deja la pantalla de acceso lista. Se llama siempre al arrancar, aunque se
+ * entre con sesión: si no, al cerrar sesión el desplegable se queda sin
+ * manejadores y no abre.
+ */
+function prepararLogin(){
   pintarPad();
   $('lg_logo').innerHTML=logo('grande');
   $('sel_trig').onclick=function(){ this.classList.toggle('open'); $('sel_drop').classList.toggle('open'); $('sel_q').focus(); };
@@ -3585,8 +3635,12 @@ function initLogin(){
   if(DEMO) $('lg_hint').innerHTML='Modo demo · <b>Admin</b> 0000 · <b>Manager</b> 2222 · <b>Empleado</b> 1234'+
     '<br><span style="font-size:11px">Para probar los dos a la vez, abre el segundo en una ventana de incógnito</span>'+
     '<br><a href="#" onclick="reiniciarDemo();return false" style="color:var(--accent);font-size:11px">Reiniciar datos de la demo</a>';
-  api('listaEmpleados').then(function(r){
-    S.empleados = (r&&r.ok) ? r.empleados : [];
+}
+
+/** La plantilla del selector: se recarga al volver al acceso. */
+function cargarListaAcceso(){
+  return api('listaEmpleados').then(function(r){
+    if(r&&r.ok) S.empleados=r.empleados;
     pintarSelect();
   }).catch(function(){ toast('No se pudo cargar la plantilla','err'); });
 }
@@ -3598,9 +3652,10 @@ function reiniciarDemo(){
 function arrancar(){
   prepararPWA();
   try{ S.modalidad=localStorage.getItem('dcp_mod')||'OFICINA'; }catch(e){}
+  prepararLogin();
   var ses=leerSesion();
   if(ses && ses.token){ S.token=ses.token; S.emp=ses.emp; S.esDir=ses.esDir; entrarApp(); }
-  else initLogin();
+  else cargarListaAcceso();
   pintarOffline();
 }
 document.addEventListener('visibilitychange',function(){

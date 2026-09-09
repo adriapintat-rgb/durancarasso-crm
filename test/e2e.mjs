@@ -42,7 +42,7 @@ pagina.on('console', m => {
 // ── Acceso ────────────────────────────────────────────────────────────────
 console.log('\nAcceso');
 await pagina.goto(APP);
-await pagina.evaluate(() => localStorage.clear());
+await pagina.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
 await pagina.reload();
 await pagina.waitForTimeout(900);
 
@@ -373,6 +373,44 @@ const extras = await legal.evaluate(async () => {
 });
 comprobar(extras === 1, 'se pueden justificar horas extra desde la herramienta');
 await legal.close();
+
+// ── Sesión ────────────────────────────────────────────────────────────────
+console.log('\nSesión');
+const ctx = await navegador.newContext({ viewport: { width: 1200, height: 900 } });
+const s1 = await ctx.newPage(); s1.on('dialog', d => d.accept());
+await s1.goto(APP); await s1.waitForTimeout(900);
+comprobar(await s1.isVisible('#sel_trig'), 'al abrir la app siempre pide el PIN');
+await s1.click('#sel_trig'); await s1.waitForTimeout(250);
+await s1.click('.sel-item:first-child'); await s1.waitForTimeout(250);
+for (const t of ['0', '0', '0', '0']) await s1.click(`#pad button:has-text("${t}")`);
+await s1.waitForTimeout(1600); await pasarAviso(s1);
+comprobar((await s1.textContent('#main')).includes('Tu equipo hoy'),
+  'el administrador ve su bloque de gestión al entrar');
+
+await s1.reload(); await s1.waitForTimeout(1400);
+comprobar(await s1.isVisible('#app'), 'refrescar la pestaña no echa fuera');
+
+const s2 = await ctx.newPage();
+await s2.goto(APP); await s2.waitForTimeout(1100);
+comprobar(await s2.isVisible('#sel_trig'), 'una pestaña nueva vuelve a pedir el PIN');
+await s2.close();
+
+await s1.click('.tb-user'); await s1.waitForTimeout(500);
+await s1.click('#mbox button:has-text("Cerrar sesión")'); await s1.waitForTimeout(500);
+await s1.click('#mbox button.b-no'); await s1.waitForTimeout(1000);
+comprobar(await s1.isVisible('#sel_trig') && !(await s1.isVisible('#app')),
+  'cerrar sesión devuelve a la pantalla de PIN');
+
+await s1.click('#sel_trig');
+await s1.waitForSelector('.sel-drop.open .sel-item', { state: 'visible' });
+await s1.locator('.sel-item', { hasText: 'Empleado de pruebas' }).first().click();
+await s1.waitForTimeout(300);
+for (const t of ['1', '2', '3', '4']) await s1.click(`#pad button:has-text("${t}")`);
+await s1.waitForTimeout(1600); await pasarAviso(s1);
+const portalEmp = await s1.textContent('#main');
+comprobar(!portalEmp.includes('Tu equipo hoy') && !(await s1.isVisible('#sw_espacio')),
+  'el empleado entra a una pantalla distinta, sin gestión');
+await ctx.close();
 
 // ── Móvil ─────────────────────────────────────────────────────────────────
 console.log('\nMóvil');
