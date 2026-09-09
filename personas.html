@@ -2138,10 +2138,8 @@ function descargarMisDatos(){
   toast('Preparando tus datos…');
   api('misDatos').then(function(r){
     if(!r.ok) return toast('Error','err');
-    var a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([JSON.stringify(r,null,2)],{type:'application/json'}));
-    a.download='mis-datos-'+S.emp.nombre.replace(/\s+/g,'-').toLowerCase()+'-'+hoyISO()+'.json';
-    document.body.appendChild(a); a.click(); a.remove();
+    guardarArchivo('mis-datos-'+S.emp.nombre.replace(/\s+/g,'-').toLowerCase()+'-'+hoyISO()+'.json',
+      new Blob([JSON.stringify(r,null,2)],{type:'application/json'}));
     toast('Descargado','ok');
   });
 }
@@ -3009,14 +3007,29 @@ function enviarTipo(){
   });
 }
 
-/* ── Utilidad común de descarga ── */
+/* ── Utilidad común de descarga ──
+   En el navegador basta con un enlace. Dentro del visor de pruebas de Claude
+   los enlaces de descarga están capados, así que se pide a la plataforma; si
+   no está disponible, se cae al enlace de siempre. */
+var DESCARGAS=null;
+if(window.claude && typeof claude.use==='function')
+  claude.use('downloads').then(function(d){ DESCARGAS=d; },function(){});
+function guardarArchivo(nombre,blob){
+  if(DESCARGAS){
+    DESCARGAS.save({filename:nombre,data:blob}).catch(function(e){
+      if(!e || e.code!=='declined') toast('No se ha podido descargar','err');
+    });
+    return;
+  }
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=nombre;
+  document.body.appendChild(a); a.click(); a.remove();
+}
 function descargarCSV(nombre,cabecera,filas){
   var csv=cabecera.join(';')+'\n'+filas.map(function(f){
     return f.map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';}).join(';');
   }).join('\n');
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download=nombre; document.body.appendChild(a); a.click(); a.remove();
+  guardarArchivo(nombre,new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));
 }
 
 /* ══ CONFIGURACIÓN ══════════════════════════════════════════════════════ */
