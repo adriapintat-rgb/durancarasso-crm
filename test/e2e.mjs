@@ -21,6 +21,16 @@ const comprobar = (condicion, descripcion) => {
   else { console.log('  ✗ ' + descripcion); fallos.push(descripcion); }
 };
 
+// Cada contexto nuevo ve el aviso de privacidad: hay que leerlo antes de seguir
+const pasarAviso = async pg => {
+  await pg.waitForTimeout(700);
+  const visible = await pg.isVisible('#mbox').catch(() => false);
+  if (visible && (await pg.textContent('#mbox')).includes('Protección de datos')) {
+    await pg.click('#mbox button.b-gold');
+    await pg.waitForTimeout(700);
+  }
+};
+
 const navegador = await chromium.launch();
 const pagina = await navegador.newPage({ viewport: { width: 1340, height: 940 } });
 pagina.on('dialog', d => d.accept());
@@ -45,6 +55,13 @@ comprobar((await pagina.textContent('#pin_name')) === 'Admin de pruebas', 'el se
 for (const tecla of ['0', '0', '0', '0']) await pagina.click(`#pad button:has-text("${tecla}")`);
 await pagina.waitForTimeout(1600);
 comprobar(await pagina.isVisible('#app'), 'el PIN da acceso a la aplicación');
+
+// El aviso de protección de datos aparece antes de poder usar nada
+await pagina.waitForTimeout(700);
+comprobar((await pagina.textContent('#mbox')).includes('Protección de datos'),
+  'el aviso de privacidad bloquea la app hasta leerlo');
+await pagina.click('#mbox button.b-gold');
+await pagina.waitForTimeout(800);
 
 // PIN incorrecto
 const otra = await navegador.newPage();
@@ -230,6 +247,7 @@ await empleado.click('.sel-item:nth-child(3)'); await empleado.waitForTimeout(25
 comprobar((await empleado.textContent('#pin_name')) === 'Empleado de pruebas', 'se puede entrar como empleado');
 for (const t of ['1', '2', '3', '4']) await empleado.click(`#pad button:has-text("${t}")`);
 await empleado.waitForTimeout(1500);
+await pasarAviso(empleado);
 const verGestion = await empleado.isVisible('#sw_espacio');
 comprobar(verGestion === false, 'el empleado no ve el espacio de Gestión');
 const menuEmpleado = await empleado.$$eval('.side .nav-i', ns => ns.map(n => n.textContent));
@@ -244,6 +262,7 @@ await manager.click('#sel_trig'); await manager.waitForTimeout(250);
 await manager.click('.sel-item:nth-child(2)'); await manager.waitForTimeout(250);
 for (const t of ['2', '2', '2', '2']) await manager.click(`#pad button:has-text("${t}")`);
 await manager.waitForTimeout(1500);
+await pasarAviso(manager);
 comprobar(await manager.isVisible('#sw_espacio'), 'el manager sí ve el espacio de Gestión');
 await manager.click('#sw_gestion'); await manager.waitForTimeout(700);
 const menuManager = await manager.$$eval('.side .nav-i', ns => ns.map(n => n.textContent));
@@ -271,9 +290,47 @@ await admin.click('#sel_trig'); await admin.waitForTimeout(250);
 await admin.click('.sel-item:first-child'); await admin.waitForTimeout(250);
 for (const t of ['0', '0', '0', '0']) await admin.click(`#pad button:has-text("${t}")`);
 await admin.waitForTimeout(1500);
+await pasarAviso(admin);
 const todosAdmin = await admin.evaluate(() => miEquipo().length);
 comprobar(todosAdmin >= 7, 'el administrador sí ve a toda la plantilla (' + todosAdmin + ')');
 await admin.close();
+
+// ── Requisitos legales ────────────────────────────────────────────────────
+console.log('\nRequisitos legales y RGPD');
+const legal = await navegador.newPage({ viewport: { width: 1200, height: 900 } });
+legal.on('dialog', d => d.accept());
+await legal.goto(APP);
+await legal.evaluate(() => { const db = dbGet(); delete db.avisoAceptado; dbSet(db); });
+await legal.reload(); await legal.waitForTimeout(800);
+await legal.click('#sel_trig'); await legal.waitForTimeout(250);
+await legal.click('.sel-item:nth-child(3)'); await legal.waitForTimeout(250);
+for (const t of ['1', '2', '3', '4']) await legal.click(`#pad button:has-text("${t}")`);
+await legal.waitForTimeout(1800);
+comprobar((await legal.textContent('#mbox')).includes('Protección de datos'),
+  'el aviso de privacidad se muestra antes de usar la app');
+comprobar((await legal.textContent('#mbox')).includes('art. 34.9'),
+  'el aviso indica la base legal del tratamiento');
+comprobar(await legal.isVisible('#av_geo'), 'la geolocalización se pide como consentimiento aparte');
+await legal.click('#mbox button.b-gold'); await legal.waitForTimeout(900);
+comprobar(!(await legal.isVisible('#mbox .mtitle')) || !(await legal.textContent('#mbox')).includes('Protección'),
+  'aceptado el aviso, no vuelve a aparecer');
+
+const paquete = await legal.evaluate(async () => (await api('misDatos')).datos);
+comprobar(paquete && paquete.ficha && paquete.fichajes !== undefined && paquete.ficha.pin === undefined,
+  'el empleado puede descargar todos sus datos, sin exponer su PIN');
+
+// Solo quien tiene permiso corrige, y el original nunca se toca
+const sinPermiso = await legal.evaluate(async () =>
+  (await api('corregirFichaje', { trabajador: 'Admin de pruebas', tipo: 'SALIDA',
+    ts: new Date().toISOString(), motivo: 'intento' })).error);
+comprobar(!!sinPermiso, 'un empleado no puede corregir fichajes (' + sinPermiso + ')');
+
+const extras = await legal.evaluate(async () => {
+  await api('pedirHorasExtra', { fecha: hoyISO(), minutos: 90, motivo: 'Cierre de operación' });
+  return (await api('misHorasExtra')).extras.length;
+});
+comprobar(extras === 1, 'se pueden justificar horas extra desde la herramienta');
+await legal.close();
 
 // ── Móvil ─────────────────────────────────────────────────────────────────
 console.log('\nMóvil');
@@ -285,6 +342,7 @@ await movil.click('#sel_trig'); await movil.waitForTimeout(250);
 await movil.click('.sel-item:nth-child(3)'); await movil.waitForTimeout(250);
 for (const t of ['1', '2', '3', '4']) await movil.click(`#pad button:has-text("${t}")`);
 await movil.waitForTimeout(1500);
+await pasarAviso(movil);
 comprobar(await movil.isVisible('.bottomnav'), 'la navegación inferior aparece en móvil');
 await movil.close();
 

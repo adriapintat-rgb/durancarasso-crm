@@ -33,7 +33,9 @@ var HOJAS = {
   tiposAusencia: 'TiposAusencia',
   intentos:      'Intentos',
   empresa:       'Empresa',
-  descansos:     'Descansos'
+  descansos:     'Descansos',
+  consentimientos:'Consentimientos',
+  extras:        'HorasExtra'
 };
 
 var CABECERAS = {
@@ -50,7 +52,9 @@ var CABECERAS = {
   TiposAusencia:  ['tipo','dias_anuales','cuenta_saldo','requiere_justificante','arrastrable','color','activo'],
   Intentos:       ['ts','nombre','ip','resultado'],
   Empresa:        ['clave','valor'],
-  Descansos:      ['id','nombre','minutos','desde','hasta','remunerado','computa','activo']
+  Descansos:      ['id','nombre','minutos','desde','hasta','remunerado','computa','activo'],
+  Consentimientos:['ts','trabajador','tipo','valor','version','ip'],
+  HorasExtra:     ['id','ts','trabajador','fecha','minutos','motivo','estado','validador','ts_validacion','comentario']
 };
 
 var TIPOS_FICHAJE = ['ENTRADA','PAUSA_INI','PAUSA_FIN','SALIDA'];
@@ -168,8 +172,13 @@ function router(b) {
   if (!ses.ok) return { ok: false, error: 'SESION_CADUCADA' };
   var emp = buscarEmpleado(ses.nombre);
   if (!emp) return { ok: false, error: 'EMPLEADO_NO_ENCONTRADO' };
+  // Una cuenta de Inspección consulta y exporta, pero no ficha ni modifica nada
+  if (esInspector(emp) && ['bootstrap','informe','incidencias','verificarCadena','auditoria',
+      'misAusencias','ausenciasEquipo','estadoEquipo','miPerfil','misFichajes'].indexOf(a) < 0) {
+    return { ok: false, error: 'CUENTA_SOLO_LECTURA' };
+  }
   var nivelUsuario = nivel(emp);
-  var esGestor = nivelUsuario >= 1;      // manager o administrador
+  var esGestor = nivelUsuario >= 1 || esInspector(emp);   // gestión o consulta legal
   var esDir = nivelUsuario >= 2;         // solo administrador
 
   switch (a) {
@@ -205,6 +214,15 @@ function router(b) {
     case 'borrarPublicacion': return esDir ? borrarPublicacion(emp, b) : denegado();
     case 'analytics':       return esDir ? analytics(b)             : denegado();
     case 'tokenCalendario': return tokenCalendario(emp, b);
+    case 'avisoPrivacidad': return avisoPrivacidad(emp);
+    case 'aceptarAviso':    return aceptarAviso(emp, b);
+    case 'consentimiento':  return guardarConsentimiento(emp, b);
+    case 'misDatos':        return misDatos(emp);
+    case 'pedirHorasExtra': return pedirHorasExtra(emp, b);
+    case 'misHorasExtra':   return misHorasExtra(emp);
+    case 'horasExtraEquipo':return esGestor ? horasExtraEquipo(emp)      : denegado();
+    case 'validarHorasExtra':return esGestor ? validarHorasExtra(emp, b) : denegado();
+    case 'purgar':          return esDir ? purgarAntiguos(emp, b)        : denegado();
     case 'auditoria':       return esDir ? auditoria(b)           : denegado();
     case 'editarEmpleado':  return esDir ? editarEmpleado(emp, b) : denegado();
     case 'resetPin':        return esDir ? resetPin(emp, b)       : denegado();
@@ -236,6 +254,10 @@ function nivel(emp) {
   if (r === 'MANAGER' || r === 'RESPONSABLE') return 1;
   return 0;
 }
+/** Cuenta de solo lectura para Inspección de Trabajo o representación legal. */
+function esInspector(emp) {
+  return String(emp && emp.rol || '').toUpperCase() === 'INSPECTOR';
+}
 function esEquipoDe(jefe, nombre) {
   if (nivel(jefe) >= 2) return true;                 // el admin ve a todos
   if (String(nombre).trim() === jefe.nombre) return true;
@@ -249,7 +271,7 @@ function esEquipoDe(jefe, nombre) {
  * "sin límite" y evita filtrar en balde en el caso del administrador.
  */
 function ambito(emp) {
-  if (nivel(emp) >= 2) return null;
+  if (nivel(emp) >= 2 || esInspector(emp)) return null;
   var mios = leer(HOJAS.empleados)
     .filter(function (e) { return String(e.responsable || '').trim() === emp.nombre; })
     .map(function (e) { return String(e.nombre).trim(); });
@@ -1386,6 +1408,162 @@ function configuracion() {
   };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   RGPD
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+var VERSION_AVISO = '2026-09';
+var ANOS_CONSERVACION = 4;
+
+function textoAviso() {
+  var e = datosEmpresa();
+  return {
+    version: VERSION_AVISO,
+    responsable: e.razon_social || e.nombre,
+    finalidad: 'Cumplir la obligación legal de registro diario de jornada y gestionar ausencias, ' +
+               'horarios y turnos.',
+    base: 'Obligación legal (art. 34.9 del Estatuto de los Trabajadores) y ejecución del contrato ' +
+          'de trabajo. La geolocalización es voluntaria y se basa en tu consentimiento, que puedes ' +
+          'retirar cuando quieras.',
+    datos: 'Nombre, correo corporativo, departamento, centro, horario, fichajes con su hora exacta, ' +
+           'ausencias con su justificante y, si lo autorizas, la ubicación en el momento de fichar.',
+    conservacion: 'Los fichajes se conservan ' + ANOS_CONSERVACION + ' años, como exige la ley, y ' +
+                  'después se eliminan. El resto de datos, mientras dure la relación laboral y los ' +
+                  'plazos de prescripción aplicables.',
+    destinatarios: 'Tu responsable directo, la dirección de la empresa, la gestoría laboral y, si lo ' +
+                   'requieren, la Inspección de Trabajo y la representación legal de los trabajadores. ' +
+                   'Los datos se alojan en Google Workspace (Irlanda, Unión Europea).',
+    derechos: 'Puedes acceder a tus datos, rectificarlos, oponerte al tratamiento, limitarlo y pedir ' +
+              'su portabilidad desde «Mi perfil → Mis datos», o escribiendo a ' + (e.email_correcciones || '') +
+              '. También puedes reclamar ante la Agencia Española de Protección de Datos.',
+    noAutomatizado: 'No se toman decisiones automatizadas ni se elabora ningún perfil con estos datos.'
+  };
+}
+
+function avisoPrivacidad(emp) {
+  var aceptado = leer(HOJAS.consentimientos).filter(function (c) {
+    return String(c.trabajador).trim() === emp.nombre && String(c.tipo) === 'AVISO' &&
+           String(c.version) === VERSION_AVISO;
+  }).pop();
+  var geo = leer(HOJAS.consentimientos).filter(function (c) {
+    return String(c.trabajador).trim() === emp.nombre && String(c.tipo) === 'GEO';
+  }).pop();
+  return { ok: true, aviso: textoAviso(),
+           aceptado: !!aceptado, fechaAceptado: aceptado ? String(aceptado.ts) : '',
+           geo: geo ? String(geo.valor).toUpperCase() === 'SI' : null };
+}
+
+function aceptarAviso(emp, b) {
+  hoja(HOJAS.consentimientos).appendRow([new Date().toISOString(), emp.nombre, 'AVISO', 'SI', VERSION_AVISO, '']);
+  if (b.geo !== undefined) guardarConsentimiento(emp, { tipo: 'GEO', valor: !!b.geo });
+  auditar(emp.nombre, 'ACEPTA_AVISO_PRIVACIDAD', VERSION_AVISO);
+  return { ok: true };
+}
+
+function guardarConsentimiento(emp, b) {
+  var tipo = String(b.tipo || 'GEO').toUpperCase();
+  hoja(HOJAS.consentimientos).appendRow([new Date().toISOString(), emp.nombre, tipo,
+    b.valor ? 'SI' : 'NO', VERSION_AVISO, '']);
+  auditar(emp.nombre, 'CONSENTIMIENTO_' + tipo, b.valor ? 'otorgado' : 'retirado');
+  return { ok: true };
+}
+
+/** Derecho de acceso y portabilidad: todo lo que la empresa guarda de una persona. */
+function misDatos(emp) {
+  var mio = function (h, campo) {
+    return leer(h).filter(function (r) { return String(r[campo || 'trabajador']).trim() === emp.nombre; })
+      .map(function (r) { delete r._fila; return r; });
+  };
+  var ficha = {};
+  Object.keys(emp).forEach(function (k) { if (k !== 'pin' && k !== '_fila') ficha[k] = emp[k]; });
+  return { ok: true, generado: new Date().toISOString(), datos: {
+    ficha: ficha,
+    fichajes: mio(HOJAS.fichajes),
+    ausencias: mio(HOJAS.ausencias),
+    tareas: mio(HOJAS.tareas),
+    turnos: mio(HOJAS.turnos),
+    horasExtra: mio(HOJAS.extras),
+    consentimientos: mio(HOJAS.consentimientos),
+    accesos: leer(HOJAS.auditoria).filter(function (a) { return String(a.actor).trim() === emp.nombre; })
+      .map(function (a) { delete a._fila; return a; })
+  }};
+}
+
+/**
+ * Elimina los fichajes que superan el plazo legal de conservación.
+ * Antes de borrar deja copia en Drive: la obligación es conservar cuatro años,
+ * no destruir a ciegas al día siguiente.
+ */
+function purgarAntiguos(dir, b) {
+  var limite = new Date();
+  limite.setFullYear(limite.getFullYear() - ANOS_CONSERVACION);
+  var corte = fmtFecha(limite);
+  if (!b.confirmar) {
+    var cuantos = leer(HOJAS.fichajes).filter(function (f) { return normFecha(f.fecha) < corte; }).length;
+    return { ok: true, simulacion: true, corte: corte, afectados: cuantos };
+  }
+  copiaSeguridad();
+  var h = hoja(HOJAS.fichajes);
+  var filas = leer(HOJAS.fichajes);
+  var borradas = 0;
+  for (var i = filas.length - 1; i >= 0; i--) {
+    if (normFecha(filas[i].fecha) >= corte) continue;
+    h.deleteRow(filas[i]._fila);
+    borradas++;
+  }
+  auditar(dir.nombre, 'PURGA_LEGAL', borradas + ' fichajes anteriores a ' + corte);
+  return { ok: true, borradas: borradas, corte: corte };
+}
+
+/* ── Horas extra ─────────────────────────────────────────────────────────── */
+function pedirHorasExtra(emp, b) {
+  var minutos = Number(b.minutos || 0);
+  var motivo = String(b.motivo || '').trim();
+  if (!minutos || !motivo) return { ok: false, error: 'DATOS_INCOMPLETOS' };
+  var id = uid('HE');
+  hoja(HOJAS.extras).appendRow([id, new Date().toISOString(), emp.nombre,
+    String(b.fecha || fmtFecha(ahora())), minutos, motivo, 'PENDIENTE', '', '', '']);
+  auditar(emp.nombre, 'PIDE_HORAS_EXTRA', b.fecha + ' · ' + minutos + ' min');
+
+  var destinos = emp.responsable ? [String((buscarEmpleado(emp.responsable) || {}).email || '')] : [];
+  destinos = destinos.filter(Boolean);
+  if (!destinos.length) destinos = destinatariosDireccion();
+  enviar(destinos, 'Horas extra · ' + emp.nombre,
+    '<b>' + emp.nombre + '</b> justifica <b>' + (minutos / 60).toFixed(1) + ' h</b> de exceso de jornada ' +
+    'el ' + b.fecha + '.<br><br>Motivo: ' + motivo + '<br><br>Valídalas en Gestión → Horas extra.');
+  return { ok: true, id: id };
+}
+
+function limpiarExtra(x) {
+  return { id: x.id, trabajador: x.trabajador, fecha: normFecha(x.fecha),
+           minutos: Number(x.minutos || 0), motivo: x.motivo,
+           estado: String(x.estado).toUpperCase(), validador: x.validador, comentario: x.comentario };
+}
+function misHorasExtra(emp) {
+  return { ok: true, extras: leer(HOJAS.extras)
+    .filter(function (x) { return String(x.trabajador).trim() === emp.nombre; }).map(limpiarExtra) };
+}
+function horasExtraEquipo(emp) {
+  var lista = ambito(emp);
+  return { ok: true, extras: leer(HOJAS.extras)
+    .filter(function (x) { return dentroDe(lista, x.trabajador); }).map(limpiarExtra) };
+}
+function validarHorasExtra(dir, b) {
+  var decision = String(b.decision || '').toUpperCase();
+  if (['APROBADA', 'DENEGADA'].indexOf(decision) < 0) return { ok: false, error: 'DECISION_INVALIDA' };
+  var filas = leer(HOJAS.extras);
+  for (var i = 0; i < filas.length; i++) {
+    if (String(filas[i].id) !== String(b.id)) continue;
+    if (!esEquipoDe(dir, filas[i].trabajador)) return { ok: false, error: 'FUERA_DE_TU_EQUIPO' };
+    var h = hoja(HOJAS.extras);
+    h.getRange(filas[i]._fila, 7, 1, 4).setValues([[decision, dir.nombre, new Date().toISOString(),
+      String(b.comentario || '')]]);
+    auditar(dir.nombre, 'VALIDA_HORAS_EXTRA', b.id + ' → ' + decision);
+    return { ok: true };
+  }
+  return { ok: false, error: 'NO_ENCONTRADA' };
+}
+
 // ── SETUP INICIAL ────────────────────────────────────────────────────────────
 /**
  * Ejecutar UNA VEZ desde el editor de Apps Script (Ejecutar → setupInicial).
@@ -1681,9 +1859,22 @@ function instalarAutomatismos() {
   ScriptApp.newTrigger('copiaSeguridad').timeBased().atHour(3).everyDays(1).create();
   ScriptApp.newTrigger('avisoValidaciones').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(9).create();
   ScriptApp.newTrigger('tareasMensuales').timeBased().onMonthDay(1).atHour(7).create();
+  ScriptApp.newTrigger('purgaAnual').timeBased().onMonthDay(15).atHour(4).create();
 
   return 'Automatismos instalados: recordatorio 18:30, cierre 23:45, copia 03:00, ' +
          'avisos lunes 09:00 y cierre de mes el día 1.';
+}
+
+/** Cada 15 de enero se eliminan los fichajes que superan el plazo legal. */
+function purgaAnual() {
+  if (ahora().getMonth() !== 0) return;
+  var r = purgarAntiguos({ nombre: 'SISTEMA' }, { confirmar: true });
+  if (r.borradas) {
+    enviar(destinatariosDireccion(), 'Purga legal de fichajes',
+      'Se han eliminado <b>' + r.borradas + '</b> fichajes anteriores al ' + r.corte +
+      ', que ya superaban los ' + ANOS_CONSERVACION + ' años de conservación obligatoria. ' +
+      'Antes se guardó una copia en Drive.');
+  }
 }
 
 function destinatariosDireccion() {

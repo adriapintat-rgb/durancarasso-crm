@@ -375,7 +375,7 @@ var S = {
   ausencias: [], saldo: null, ausEquipo: [], equipo: [],
   tareas: [], documentos: [], pendientes: [],
   centros: [], turnos: [], exigirCentro: false, modalidad: 'OFICINA',
-  ubicacion: {texto:'', manual:false, centro:''},
+  ubicacion: {texto:'', manual:false, centro:''}, geoOk: false, extras: [],
   perfil: null, objetivos: [], evaluacion: [], encuestas: [], publicaciones: [],
   tiposAusencia: [], saldos: [], auditoria: null, empresa: {}, descansos: [],
   checklist: [], compensaciones: [],
@@ -668,6 +668,7 @@ var CARGA = {
   tablon:        function(){ return api('publicaciones').then(function(r){ if(r.ok) S.publicaciones=r.publicaciones; }); },
   perfil:        function(){ return api('miPerfil').then(function(r){ if(r.ok) S.perfil=r.perfil; }); },
   turnos:        function(){ return api('turnosEquipo',{}).then(function(r){ if(r.ok) S.turnosEquipo=r.turnos; }); },
+  validaciones:  function(){ return api('horasExtraEquipo').then(function(r){ if(r.ok) S.extras=r.extras; }); },
   analytics:     function(){ return api('analytics',{desde:S.year+'-01-01',hasta:hoyISO()}).then(function(r){ if(r.ok) S.analytics=r; }); },
   auditoria:     function(){ return api('auditoria',{limite:300}).then(function(r){ if(r.ok) S.auditoria=r; }); },
   configuracion: function(){ return api('configuracion').then(function(r){ if(r.ok) S.config=r; }); }
@@ -820,7 +821,7 @@ function fichar(tipo,descanso){
       toast('Sin conexión · fichaje guardado en cola','err');
     });
   };
-  if(navigator.geolocation){
+  if(navigator.geolocation && S.geoOk){
     navigator.geolocation.getCurrentPosition(function(p){
       geo.lat=p.coords.latitude.toFixed(6); geo.lng=p.coords.longitude.toFixed(6);
       geo.acc=Math.round(p.coords.accuracy); lanzar();
@@ -839,6 +840,34 @@ function colorEstado(e){
 
 /* ══ CARGA DE DATOS ═════════════════════════════════════════════════════ */
 function entrarApp(){
+  api('avisoPrivacidad').then(function(r){
+    if(r.ok && !r.aceptado) mostrarAviso(r);
+    else if(r.ok) S.geoOk = r.geo;
+  }).catch(function(){});
+  entrarApp2();
+}
+function mostrarAviso(r){
+  var a=r.aviso;
+  var fila=function(t,v){ return '<div style="margin-bottom:13px"><div class="lbl">'+esc(t)+'</div>'+
+    '<div style="font-size:12.5px;line-height:1.65">'+esc(v)+'</div></div>'; };
+  abrirModal('<div class="mtitle">Protección de datos</div>'+
+    '<div class="msub">Antes de usar la aplicación, léelo. Solo aparece una vez.</div>'+
+    fila('Responsable',a.responsable)+fila('Para qué usamos tus datos',a.finalidad)+
+    fila('Con qué base legal',a.base)+fila('Qué datos tratamos',a.datos)+
+    fila('Cuánto los guardamos',a.conservacion)+fila('Quién puede verlos',a.destinatarios)+
+    fila('Tus derechos',a.derechos)+fila('Decisiones automatizadas',a.noAutomatizado)+
+    '<label style="display:flex;gap:10px;align-items:flex-start;padding:14px;background:var(--bg);border:1px solid var(--line);cursor:pointer;margin-bottom:16px">'+
+      '<input type="checkbox" id="av_geo" style="accent-color:var(--accent);margin-top:2px">'+
+      '<span style="font-size:12.5px;line-height:1.6">Autorizo que se registre <b>mi ubicación al fichar</b>, '+
+      'para acreditar desde dónde trabajo. Es voluntario: sin ella el fichaje funciona igual y '+
+      'puedes retirarlo cuando quieras desde tu perfil.</span></label>'+
+    '<button class="btn b-gold" style="width:100%" onclick="aceptarAviso()">He leído la información</button>');
+}
+function aceptarAviso(){
+  var geo=$('av_geo').checked;
+  api('aceptarAviso',{geo:geo}).then(function(){ S.geoOk=geo; cerrarModal(); });
+}
+function entrarApp2(){
   $('login').style.display='none';
   $('app').classList.add('on');
   $('tb_logo').innerHTML=logo('cabecera')+'<span class="et">Personas</span>';
@@ -1012,6 +1041,7 @@ function setModalidad(m,manual){
  */
 function detectarModalidad(){
   if(S.ubicacion.manual || !navigator.geolocation || !S.centros.length) return;
+  if(!S.geoOk){ S.ubicacion.texto='Ubicación desactivada · elige la modalidad'; return; }
   S.ubicacion.texto='Detectando ubicación…';
   pintarEstadoPortal();
   navigator.geolocation.getCurrentPosition(function(p){
@@ -1117,6 +1147,24 @@ function vFichajes(){
      '<div style="font-size:11.5px;color:var(--sub);line-height:1.6">Los fichajes no se pueden editar ni borrar. '+
      'Si hay un error, solicita una corrección a dirección: se añadirá un registro nuevo con el motivo y el autor, dejando trazabilidad completa.'+
      '</div><button class="btn b-ghost b-sm" style="margin-top:10px" onclick="modalCorreccion()">Solicitar corrección</button></div>';
+}
+function modalExtra(){
+  abrirModal('<div class="mtitle">Justificar horas extra</div>'+
+    '<div class="msub">Se envía a tu responsable para que las apruebe</div>'+
+    '<div class="grid g2 tight">'+
+      '<div class="fld"><label class="lbl">Día</label><input class="inp" type="date" id="he_f" value="'+hoyISO()+'"></div>'+
+      '<div class="fld"><label class="lbl">Minutos de exceso</label><input class="inp" type="number" id="he_m" value="60" step="15"></div>'+
+    '</div>'+
+    '<div class="fld"><label class="lbl">Motivo</label><textarea class="inp" id="he_x" placeholder="Visita fuera de horario, cierre de operación…"></textarea></div>'+
+    '<div class="row"><button class="btn b-ghost" style="flex:1" onclick="cerrarModal()">Cancelar</button>'+
+    '<button class="btn b-gold" style="flex:1" onclick="enviarExtra()">Enviar</button></div>');
+}
+function enviarExtra(){
+  var p={fecha:$('he_f').value,minutos:Number($('he_m').value),motivo:$('he_x').value.trim()};
+  if(!p.minutos||!p.motivo) return toast('Indica minutos y motivo','err');
+  api('pedirHorasExtra',p).then(function(r){
+    cerrarModal(); if(r.ok) toast('Horas extra enviadas a validar','ok'); else toast('Error','err');
+  });
 }
 function modalCorreccion(){
   abrirModal('<div class="mtitle">Solicitar corrección</div>'+
@@ -1527,7 +1575,18 @@ function vPerfil(){
      '<button class="btn b-ghost" onclick="revocarCalendario()">Revocar enlaces anteriores</button></div>'+
      '<div id="cal_out" style="margin-top:14px"></div></div>'+
    '<div class="sec">La app en tu móvil</div>'+
-   '<div class="card">'+bloqueInstalacion()+'</div>';
+   '<div class="card">'+bloqueInstalacion()+'</div>'+
+   '<div class="sec">Tus datos</div>'+
+   '<div class="card">'+
+     '<div style="font-size:12.5px;color:var(--sub);line-height:1.65;margin-bottom:16px">'+
+       'Tienes derecho a saber qué guardamos de ti, a llevártelo y a retirar la ubicación cuando quieras.</div>'+
+     '<label style="display:flex;gap:10px;align-items:center;padding:12px;background:var(--bg);border:1px solid var(--line);cursor:pointer;margin-bottom:14px">'+
+       '<input type="checkbox" id="pf_geo" '+(S.geoOk?'checked':'')+' onchange="cambiarGeo(this.checked)" style="accent-color:var(--accent)">'+
+       '<span style="font-size:12.5px">Registrar mi ubicación al fichar</span></label>'+
+     '<div class="row wrap">'+
+       '<button class="btn b-ghost" onclick="descargarMisDatos()">Descargar todos mis datos</button>'+
+       '<button class="btn b-ghost" onclick="verAviso()">Información de privacidad</button>'+
+     '</div></div>';
 }
 function bloqueInstalacion(){
   if(yaInstalada()) return '<div class="row"><span class="pill p-ok">Instalada</span>'+
@@ -1549,6 +1608,23 @@ function revocarCalendario(){
     if(r.ok){ toast('Enlaces revocados','ok'); $('cal_out').innerHTML=''; } else toast('Error','err');
   });
 }
+function cambiarGeo(v){
+  api('consentimiento',{tipo:'GEO',valor:v}).then(function(){
+    S.geoOk=v; toast(v?'Ubicación activada':'Ubicación desactivada','ok');
+  });
+}
+function descargarMisDatos(){
+  toast('Preparando tus datos…');
+  api('misDatos').then(function(r){
+    if(!r.ok) return toast('Error','err');
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([JSON.stringify(r,null,2)],{type:'application/json'}));
+    a.download='mis-datos-'+S.emp.nombre.replace(/\s+/g,'-').toLowerCase()+'-'+hoyISO()+'.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('Descargado','ok');
+  });
+}
+function verAviso(){ api('avisoPrivacidad').then(function(r){ if(r.ok) mostrarAviso(r); }); }
 function campoLectura(l,v){
   return '<div class="fld"><label class="lbl">'+esc(l)+'</label>'+
     '<div style="padding:10px 0;font-size:13.5px;border-bottom:1px solid var(--line-soft)">'+esc(v||'—')+'</div></div>';
@@ -1596,6 +1672,18 @@ function vValidaciones(){
        '<div class="row"><button class="btn b-ok b-sm" style="flex:1" onclick="validar(\''+a.id+'\',\'APROBADA\')">Aprobar</button>'+
        '<button class="btn b-no b-sm" style="flex:1" onclick="validar(\''+a.id+'\',\'DENEGADA\')">Denegar</button></div></div>';
    }).join('') : vacio('No hay solicitudes pendientes','✓'))+
+   (S.extras&&S.extras.filter(function(x){return x.estado==='PENDIENTE';}).length?
+     '<div class="sec">Horas extra pendientes</div>'+
+     S.extras.filter(function(x){return x.estado==='PENDIENTE';}).map(function(x){
+       return '<div class="card" style="margin-bottom:8px">'+
+         '<div class="row" style="margin-bottom:9px"><div class="ava sm">'+esc(ini(x.trabajador))+'</div>'+
+         '<div style="flex:1"><div class="li-t">'+esc(x.trabajador)+'</div>'+
+         '<div class="li-s">'+fBonita(x.fecha)+' · '+(x.minutos/60).toFixed(1)+' h de exceso</div></div>'+
+         '<span class="pill p-warn">Pendiente</span></div>'+
+         '<div style="font-size:12px;color:var(--sub);background:var(--bg);border-radius:2px;padding:8px 10px;margin-bottom:9px">'+esc(x.motivo)+'</div>'+
+         '<div class="row"><button class="btn b-ok b-sm" style="flex:1" onclick="validarExtra(\''+x.id+'\',\'APROBADA\')">Aprobar</button>'+
+         '<button class="btn b-no b-sm" style="flex:1" onclick="validarExtra(\''+x.id+'\',\'DENEGADA\')">Denegar</button></div></div>';
+     }).join('') : '')+
    '<div class="sec">Histórico reciente</div>'+
    (hist.length? '<div class="scroll-x"><table class="tbl"><tr><th>Persona</th><th>Tipo</th><th>Fechas</th><th>Días</th><th>Estado</th><th>Validó</th></tr>'+
      hist.map(function(a){
@@ -1603,6 +1691,12 @@ function vValidaciones(){
          '<td>'+a.dias+'</td><td><span class="pill '+({APROBADA:'p-ok',DENEGADA:'p-err',CANCELADA:'p-grey'}[a.estado]||'p-grey')+'">'+esc(a.estado)+'</span></td>'+
          '<td>'+esc(a.validador||'—')+'</td></tr>';
      }).join('')+'</table></div>' : vacio('Sin histórico','▦'));
+}
+function validarExtra(id,decision){
+  api('validarHorasExtra',{id:id,decision:decision}).then(function(r){
+    if(r.ok){ toast('Horas extra '+decision.toLowerCase(),'ok'); ir('validaciones'); }
+    else toast(r.error==='FUERA_DE_TU_EQUIPO'?'Esa persona no está en tu equipo':'Error','err');
+  });
 }
 function solapes(a){
   return S.ausEquipo.filter(function(x){
@@ -2642,7 +2736,7 @@ function dbGet(){
   // Migración: una base guardada por una versión anterior no tiene las
   // colecciones nuevas. Se rellenan sin tocar los datos ya existentes.
   var vacias=['fichajes','ausencias','tareas','turnos','compensaciones','objetivos',
-              'evaluaciones','encuestas','respuestas','vacantes','candidatos','checklists','auditoria'];
+              'evaluaciones','encuestas','respuestas','vacantes','candidatos','checklists','auditoria','extras'];
   vacias.forEach(function(k){ if(!Array.isArray(db[k])) db[k]=[]; });
   if(!Array.isArray(db.empleados) || !db.empleados.length) db.empleados=DEMO_SEED.empleados;
   if(!Array.isArray(db.horarios) || !db.horarios.length) db.horarios=DEMO_SEED.horarios;
@@ -2681,9 +2775,22 @@ function demoApi(action,p){
     return new Promise(function(res){ res({ok:false,error:'DEMO_'+action}); });
   }
 }
+// Mismos permisos que el backend: si la demo no los aplica, no prueba nada
+var ACCIONES_GESTOR = ['validarAusencia','corregirFichaje','informe','incidencias','guardarTurno',
+  'borrarTurno','turnosEquipo','horasExtraEquipo','validarHorasExtra'];
+var ACCIONES_ADMIN = ['configuracion','guardarEmpresa','guardarHorario','guardarDescanso',
+  'guardarFestivo','importarFestivos','guardarCentro','centros','eliminar','auditoria',
+  'editarEmpleado','resetPin','altaEmpleado','analytics','guardarTipoAusencia','purgar',
+  'publicar','borrarPublicacion','subirDocumento'];
+
 function demoApiInterno(action,p){
   var db=dbGet(), yo=S.emp?demoEmp(S.emp.nombre):null;
   var r={ok:false,error:'ACCION_DESCONOCIDA'};
+  if(yo){
+    var n=demoNivel(yo);
+    if(ACCIONES_ADMIN.indexOf(action)>=0 && n<2) return Promise.resolve({ok:false,error:'SIN_PERMISOS'});
+    if(ACCIONES_GESTOR.indexOf(action)>=0 && n<1) return Promise.resolve({ok:false,error:'SIN_PERMISOS'});
+  }
   switch(action){
     case 'listaEmpleados':
       r={ok:true,empleados:db.empleados.map(function(e){return {nombre:e.nombre,departamento:e.departamento,rol:e.rol};})}; break;
@@ -2883,6 +2990,51 @@ function demoApiInterno(action,p){
     case 'resetPin':
       db.empleados.forEach(function(e){ if(e.nombre===p.nombre) e.pin=p.pin; });
       demoAudit(db,yo,'RESET_PIN',p.nombre); dbSet(db); r={ok:true}; break;
+
+    /* ── RGPD ── */
+    case 'avisoPrivacidad':
+      r={ok:true,aceptado:!!db.avisoAceptado,fechaAceptado:db.avisoAceptado||'',
+         geo:db.geoOk===undefined?null:db.geoOk,
+         aviso:{version:'2026-09',responsable:'Durán Carasso Barcelona S.L.',
+           finalidad:'Cumplir la obligación legal de registro diario de jornada y gestionar ausencias, horarios y turnos.',
+           base:'Obligación legal (art. 34.9 del Estatuto de los Trabajadores) y ejecución del contrato de trabajo. La geolocalización es voluntaria y se basa en tu consentimiento, que puedes retirar cuando quieras.',
+           datos:'Nombre, correo corporativo, departamento, centro, horario, fichajes con su hora exacta, ausencias con su justificante y, si lo autorizas, la ubicación en el momento de fichar.',
+           conservacion:'Los fichajes se conservan 4 años, como exige la ley, y después se eliminan. El resto de datos, mientras dure la relación laboral y los plazos de prescripción aplicables.',
+           destinatarios:'Tu responsable directo, la dirección de la empresa, la gestoría laboral y, si lo requieren, la Inspección de Trabajo y la representación legal de los trabajadores. Los datos se alojan en Google Workspace (Irlanda, Unión Europea).',
+           derechos:'Puedes acceder a tus datos, rectificarlos, oponerte al tratamiento, limitarlo y pedir su portabilidad desde «Mi perfil → Tus datos». También puedes reclamar ante la Agencia Española de Protección de Datos.',
+           noAutomatizado:'No se toman decisiones automatizadas ni se elabora ningún perfil con estos datos.'}};
+      break;
+    case 'aceptarAviso':
+      db.avisoAceptado=new Date().toISOString(); db.geoOk=!!p.geo;
+      demoAudit(db,yo,'ACEPTA_AVISO_PRIVACIDAD','2026-09'); dbSet(db); r={ok:true}; break;
+    case 'consentimiento':
+      db.geoOk=!!p.valor; demoAudit(db,yo,'CONSENTIMIENTO_'+(p.tipo||'GEO'),p.valor?'otorgado':'retirado');
+      dbSet(db); r={ok:true}; break;
+    case 'misDatos':
+      var mio=function(a){ return (a||[]).filter(function(x){return x.trabajador===yo.nombre;}); };
+      r={ok:true,generado:new Date().toISOString(),datos:{
+        ficha:Object.keys(yo).reduce(function(o,k){ if(k!=='pin') o[k]=yo[k]; return o; },{}),
+        fichajes:mio(db.fichajes),ausencias:mio(db.ausencias),tareas:mio(db.tareas),
+        turnos:mio(db.turnos),horasExtra:mio(db.extras),
+        accesos:(db.auditoria||[]).filter(function(a){return a.actor===yo.nombre;})}};
+      break;
+
+    /* ── Horas extra ── */
+    case 'pedirHorasExtra':
+      db.extras=db.extras||[];
+      db.extras.push({id:demoId('HE'),trabajador:yo.nombre,fecha:p.fecha,minutos:p.minutos,
+                      motivo:p.motivo,estado:'PENDIENTE',validador:'',comentario:''});
+      demoAudit(db,yo,'PIDE_HORAS_EXTRA',p.fecha+' · '+p.minutos+' min'); dbSet(db); r={ok:true}; break;
+    case 'misHorasExtra':
+      r={ok:true,extras:(db.extras||[]).filter(function(x){return x.trabajador===yo.nombre;})}; break;
+    case 'horasExtraEquipo':
+      var ambE=demoAmbito(db,yo);
+      r={ok:true,extras:(db.extras||[]).filter(function(x){return demoDentro(ambE,x.trabajador);})}; break;
+    case 'validarHorasExtra':
+      (db.extras||[]).forEach(function(x){ if(x.id===p.id){x.estado=p.decision;x.validador=yo.nombre;} });
+      demoAudit(db,yo,'VALIDA_HORAS_EXTRA',p.id+' → '+p.decision); dbSet(db); r={ok:true}; break;
+    case 'purgar':
+      r={ok:true,simulacion:!p.confirmar,corte:(new Date().getFullYear()-4)+'-01-01',afectados:0,borradas:0}; break;
 
     /* ── Configuración ── */
     case 'configuracion':
