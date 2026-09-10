@@ -1,0 +1,199 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@300;400;500;600;700&display=swap">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#05080C}
+body{font-family:'Inter',sans-serif;position:relative}
+canvas{position:absolute;left:0;top:0}
+.ui{position:absolute;inset:0;pointer-events:none}
+
+.top{position:absolute;top:150px;left:80px;right:80px;opacity:0}
+.kick{font-size:23px;letter-spacing:.32em;text-transform:uppercase;color:#8FB4C9;font-weight:500}
+.ttl{font-family:'Playfair Display',serif;font-size:80px;color:#fff;line-height:1.08;
+  letter-spacing:-.015em;margin-top:24px;text-shadow:0 6px 44px rgba(0,0,0,.65)}
+.ttl em{font-style:normal;color:#F2C14E}
+
+.clock{position:absolute;top:150px;right:80px;text-align:right;opacity:0}
+.clock .h{font-family:'Playfair Display',serif;font-size:74px;color:#fff;
+  font-variant-numeric:tabular-nums;line-height:1;text-shadow:0 4px 30px rgba(0,0,0,.7)}
+.clock .l{font-size:20px;letter-spacing:.24em;text-transform:uppercase;color:#8FB4C9;margin-top:10px}
+
+.panel{position:absolute;left:80px;right:80px;bottom:250px;opacity:0}
+.rowz{display:flex;gap:34px}
+.box{flex:1;background:rgba(9,17,24,.82);border:1px solid rgba(255,255,255,.11);
+  border-radius:4px;padding:30px 30px 34px}
+.box.hi{border-color:rgba(242,193,78,.55)}
+.box .lb{font-size:20px;letter-spacing:.2em;text-transform:uppercase;color:#8296A5}
+.box .vl{font-family:'Playfair Display',serif;font-size:82px;color:#fff;line-height:1;
+  margin-top:18px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.box.hi .vl{color:#F2C14E}
+.box .sb{font-size:22px;color:#8296A5;margin-top:14px}
+.verdict{margin-top:32px;font-size:33px;color:#E8EEF3;line-height:1.42;
+  text-shadow:0 3px 24px rgba(0,0,0,.8)}
+.verdict b{color:#F2C14E;font-weight:600}
+
+.brand{position:absolute;left:80px;bottom:120px;display:flex;align-items:center;gap:15px;opacity:0}
+.brand .d{width:10px;height:10px;border-radius:50%;background:#F2C14E}
+.brand .t{font-size:23px;letter-spacing:.3em;text-transform:uppercase;color:#fff}
+.src{position:absolute;right:80px;bottom:126px;font-size:18px;color:#5A6E7D;text-align:right;
+  line-height:1.5;opacity:0}
+
+.end{position:absolute;inset:0;background:#070C11;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:44px;padding:0 96px;opacity:0}
+.end .q{font-family:'Playfair Display',serif;font-size:84px;color:#fff;text-align:center;line-height:1.15}
+.end .q em{font-style:normal;color:#F2C14E}
+.end .s{font-size:30px;color:#8296A5;text-align:center;line-height:1.55}
+.end .m{font-size:22px;letter-spacing:.34em;text-transform:uppercase;color:#4E6070;margin-top:14px}
+</style></head><body>
+<canvas id="cv" width="1080" height="1920"></canvas>
+<div class="ui">
+  <div class="top" id="top"><div class="kick">Andorra · 42,5° N · 21 de enero</div>
+    <div class="ttl">El sol sale<br>para todos.<br><em>No igual.</em></div></div>
+  <div class="clock" id="clock"><div class="h" id="ch">07:00</div><div class="l">Hora solar</div></div>
+  <div class="panel" id="panel">
+    <div class="rowz">
+      <div class="box"><div class="lb">Sol teórico</div><div class="vl" id="v1">0:00</div>
+        <div class="sb">Horizonte plano</div></div>
+      <div class="box hi"><div class="lb">Sol real</div><div class="vl" id="v2">0:00</div>
+        <div class="sb">Con las montañas</div></div>
+    </div>
+    <div class="verdict" id="verd">El valle te quita <b id="dif">0</b> de sol al día.<br>En enero eso no se compensa con calefacción.</div>
+  </div>
+  <div class="brand" id="brand"><div class="d"></div><div class="t">Duran Carasso · Andorra</div></div>
+  <div class="src" id="src">Declinación solar 21 ene: −20,0°<br>Cresta simulada a 18° sobre el horizonte</div>
+  <div class="end" id="end">
+    <div class="q">¿Cuántas horas<br>de sol tiene<br><em>tu piso en enero</em>?</div>
+    <div class="s">Dos pisos a 200 metros pueden llevarse<br>tres horas de diferencia. Y valen lo mismo.</div>
+    <div class="m">Duran Carasso</div>
+  </div>
+</div>
+<script>
+const W=1080,H=1920,ctx=document.getElementById('cv').getContext('2d');
+const RAD=Math.PI/180;
+const LAT=42.51, DEC=-20.0;                 // Andorra, 21 de enero
+const RIDGE=18;                              // cresta simulada (grados)
+// ángulo horario de salida/puesta
+const H0=Math.acos(-Math.tan(LAT*RAD)*Math.tan(DEC*RAD))/RAD;
+const TEO=2*H0/15;                           // horas teóricas
+const alt=h=>Math.asin(Math.sin(LAT*RAD)*Math.sin(DEC*RAD)+
+  Math.cos(LAT*RAD)*Math.cos(DEC*RAD)*Math.cos(h*RAD))/RAD;
+// perfil de cresta visto desde el fondo del valle, en grados, según fracción del recorrido
+function ridgeAt(f){
+  const L=RIDGE*Math.exp(-Math.pow(f/0.30,2))*1.35;
+  const R=RIDGE*Math.exp(-Math.pow((1-f)/0.28,2))*1.25;
+  return Math.max(2.5,Math.max(L,R));
+}
+// horas reales por integración
+let REAL=0; const NS=2000;
+for(let i=0;i<NS;i++){const f=(i+0.5)/NS,h=-H0+2*H0*f;
+  if(alt(h)>ridgeAt(f)) REAL+=(2*H0/15)/NS;}
+const DIF=TEO-REAL;
+const hm=x=>{const t=Math.max(0,x);const a=Math.floor(t);const b=Math.round((t-a)*60);
+  return (b===60?a+1:a)+':'+String(b===60?0:b).padStart(2,'0');};
+
+const HOR=1230;                 // línea de horizonte en px
+const PXDEG=26;                 // px por grado de altura
+const x0=54, x1=W-54;
+const sunXY=f=>[x0+(x1-x0)*f, HOR-alt(-H0+2*H0*f)*PXDEG];
+
+function skyCols(a){            // color de cielo según altura solar
+  if(a<-2) return ['#070C14','#0C1622','#111E2B'];
+  if(a<3)  return ['#131F30','#3A3346','#6E4438'];
+  if(a<9)  return ['#1B2E44','#4A5470','#B4713F'];
+  if(a<16) return ['#1E3A5C','#3E6690','#C79A5A'];
+  return ['#1F4A78','#3F7BAE','#9FC4DC'];
+}
+function draw(f,reveal){
+  const a=alt(-H0+2*H0*f);
+  const c=skyCols(a);
+  const g=ctx.createLinearGradient(0,0,0,HOR);
+  g.addColorStop(0,c[0]); g.addColorStop(.62,c[1]); g.addColorStop(1,c[2]);
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,HOR);
+  // estrellas al principio y al final
+  const st=Math.max(0,1-Math.max(0,(a+4))/7);
+  if(st>0.02){ctx.save();ctx.globalAlpha=st*0.85;ctx.fillStyle='#DCE6F2';
+    for(let i=0;i<90;i++){const sx=(i*137.5)%W, sy=(i*89.7)%760;
+      ctx.fillRect(sx,sy,(i%5===0)?2.6:1.7,(i%5===0)?2.6:1.7);}ctx.restore();}
+  // arco recorrido del sol
+  ctx.save(); ctx.setLineDash([5,13]); ctx.lineWidth=2.4;
+  ctx.strokeStyle='rgba(255,255,255,.24)'; ctx.beginPath();
+  for(let i=0;i<=140;i++){const ff=i/140,[px,py]=sunXY(ff);i?ctx.lineTo(px,py):ctx.moveTo(px,py);}
+  ctx.stroke(); ctx.restore();
+  // tramo con sol real, en oro
+  ctx.save(); ctx.lineWidth=6; ctx.strokeStyle='rgba(242,193,78,.92)';
+  ctx.lineCap='round'; ctx.beginPath(); let pen=false;
+  for(let i=0;i<=300;i++){const ff=i/300;
+    const vis=alt(-H0+2*H0*ff)>ridgeAt(ff) && ff<=f;
+    const [px,py]=sunXY(ff);
+    if(vis){pen?ctx.lineTo(px,py):(ctx.moveTo(px,py),pen=true);} else pen=false;}
+  ctx.stroke(); ctx.restore();
+  // sol
+  const [sx,sy]=sunXY(f);
+  const visible=a>ridgeAt(f);
+  if(a>-3){
+    const rg=ctx.createRadialGradient(sx,sy,0,sx,sy,visible?190:90);
+    rg.addColorStop(0,visible?'rgba(255,236,180,.95)':'rgba(255,225,170,.30)');
+    rg.addColorStop(.35,visible?'rgba(250,197,92,.42)':'rgba(240,190,110,.12)');
+    rg.addColorStop(1,'rgba(250,197,92,0)');
+    ctx.fillStyle=rg; ctx.beginPath(); ctx.arc(sx,sy,visible?190:90,0,7); ctx.fill();
+    ctx.fillStyle=visible?'#FFF3CE':'rgba(255,230,180,.42)';
+    ctx.beginPath(); ctx.arc(sx,sy,visible?27:22,0,7); ctx.fill();
+  }
+  // montañas (dos capas)
+  const ridgePx=ff=>HOR-ridgeAt(ff)*PXDEG;
+  ctx.fillStyle='#0B131C'; ctx.beginPath(); ctx.moveTo(0,HOR);
+  for(let i=0;i<=200;i++){const ff=i/200;ctx.lineTo(x0+(x1-x0)*ff,ridgePx(ff)+34);}
+  ctx.lineTo(W,HOR); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#060B11'; ctx.beginPath(); ctx.moveTo(0,HOR);
+  for(let i=0;i<=200;i++){const ff=i/200;
+    const jag=Math.sin(ff*23)*11+Math.sin(ff*57)*5;
+    ctx.lineTo(x0+(x1-x0)*ff,ridgePx(ff)+jag);}
+  ctx.lineTo(W,HOR); ctx.closePath(); ctx.fill();
+  // suelo del valle
+  const fg=ctx.createLinearGradient(0,HOR,0,H);
+  fg.addColorStop(0,'#070C11'); fg.addColorStop(1,'#05080C');
+  ctx.fillStyle=fg; ctx.fillRect(0,HOR,W,H-HOR);
+  ctx.strokeStyle='rgba(242,193,78,.16)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(0,HOR); ctx.lineTo(W,HOR); ctx.stroke();
+  // casa en el fondo del valle
+  const hx=W/2, hy=HOR;
+  ctx.fillStyle=visible?'#1B2530':'#101821';
+  ctx.beginPath(); ctx.moveTo(hx-46,hy); ctx.lineTo(hx-46,hy-52);
+  ctx.lineTo(hx,hy-88); ctx.lineTo(hx+46,hy-52); ctx.lineTo(hx+46,hy); ctx.closePath(); ctx.fill();
+  ctx.fillStyle=visible?'#F2C14E':'#2A3644';
+  ctx.fillRect(hx-20,hy-42,17,19); ctx.fillRect(hx+5,hy-42,17,19);
+}
+const cl=(a,b,c)=>Math.max(b,Math.min(c,a));
+const ease=t=>1-Math.pow(1-t,3);
+const seg=(t,s,d)=>ease(cl((t-s)/d,0,1));
+const lin=(t,s,d)=>cl((t-s)/d,0,1);
+
+window.seek=function(t){
+  const f=lin(t,0.6,8.4);
+  draw(f);
+  const a=seg(t,0.25,0.9);
+  const top=document.getElementById('top');
+  top.style.opacity=Math.min(a,1-lin(t,8.2,0.6));
+  top.style.transform='translateY('+(26-26*a)+'px)';
+  const ck=document.getElementById('clock');
+  ck.style.opacity=Math.min(seg(t,0.8,0.6),1-lin(t,9.0,0.5));
+  const hrs=12+(-H0+2*H0*f)/15;
+  document.getElementById('ch').textContent=
+    String(Math.floor(hrs)).padStart(2,'0')+':'+String(Math.floor((hrs%1)*60)).padStart(2,'0');
+  const p=seg(t,9.1,0.85);
+  const pn=document.getElementById('panel');
+  pn.style.opacity=p; pn.style.transform='translateY('+(30-30*p)+'px)';
+  const c1=seg(t,9.4,1.1), c2=seg(t,9.9,1.2);
+  document.getElementById('v1').textContent=hm(TEO*c1);
+  document.getElementById('v2').textContent=hm(REAL*c2);
+  document.getElementById('dif').textContent=hm(DIF*seg(t,10.6,0.9))+' h';
+  document.getElementById('verd').style.opacity=seg(t,10.6,0.8);
+  document.getElementById('brand').style.opacity=seg(t,1.4,0.8);
+  document.getElementById('src').style.opacity=seg(t,9.6,0.9)*0.9;
+  const e=seg(t,12.9,0.55);
+  const end=document.getElementById('end'); end.style.opacity=e;
+  end.querySelector('.q').style.transform='translateY('+(26-26*seg(t,13.1,0.8))+'px)';
+  end.querySelector('.s').style.opacity=seg(t,13.5,0.7);
+};
+window.seek(0);
+</script></body></html>
