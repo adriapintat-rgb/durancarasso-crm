@@ -1,0 +1,8 @@
+{
+  "_nota": "Datos REALES de tu CRM. Si un campo está vacío, el motor deja {{DATO}} en vez de inventar.",
+  "actualizado": "",
+  "zonas": [
+    { "zona": "Sitges", "precio_m2": null, "var_anual_pct": null, "dias_medios_venta": null },
+    { "zona": "Andorra", "precio_m2": null, "var_anual_pct": null, "dias_medios_venta": null }
+  ]
+}

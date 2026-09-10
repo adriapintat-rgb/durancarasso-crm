@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DC · Cola de contenido</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0D3550;--accent:#1A8FBF;--gold:#B8922A;--bg:#F5F4F1;--card:#FFF;
+--text:#111;--sub:#6B6B6B;--border:#E2E0DB;--green:#1E6B3A;--orange:#C45E0A}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:14px;padding-bottom:60px}
+header{background:var(--navy);color:#fff;padding:26px 18px 22px}
+h1{font-family:'Playfair Display',serif;font-size:26px;font-weight:500}
+.sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:10px}
+.stats{display:flex;gap:18px;margin-top:14px;font-size:12px;color:rgba(255,255,255,.6)}
+.stats b{color:#fff;font-size:16px;display:block}
+.wrap{max-width:720px;margin:0 auto;padding:18px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+.card.aprobado{border-color:var(--green);box-shadow:inset 3px 0 0 var(--green)}
+.row{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.dia{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--sub)}
+.tag{font-size:10px;padding:3px 9px;border-radius:20px;background:var(--navy);color:#fff;letter-spacing:.5px}
+.tag.f{background:var(--accent)}
+.hook{font-family:'Playfair Display',serif;font-size:17px;line-height:1.35;margin-bottom:10px}
+.copy{white-space:pre-wrap;line-height:1.6;color:#2a2a2a;border-left:2px solid var(--border);padding-left:12px;margin-bottom:10px}
+.hash{font-size:12px;color:var(--accent);margin-bottom:10px}
+.brief{background:#FAF9F6;border:1px dashed var(--border);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--sub);line-height:1.5;margin-bottom:12px}
+.brief b{color:var(--text);display:block;margin-bottom:4px;font-size:11px;letter-spacing:1px;text-transform:uppercase}
+.acts{display:flex;gap:8px}
+button{flex:1;border:1px solid var(--border);background:#fff;border-radius:10px;padding:10px;font-family:inherit;font-size:13px;cursor:pointer;transition:.15s}
+button:hover{background:var(--bg)}
+button.ok{background:var(--green);color:#fff;border-color:var(--green)}
+.empty{text-align:center;padding:60px 20px;color:var(--sub);line-height:1.7}
+.empty code{background:#fff;border:1px solid var(--border);padding:3px 8px;border-radius:6px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap" style="padding:0 0">
+    <div class="sub">Duran Carasso</div>
+    <h1>Cola de contenido</h1>
+    <div class="stats">
+      <div><b id="nTotal">0</b>piezas</div>
+      <div><b id="nOk">0</b>aprobadas</div>
+      <div><b id="nSem">—</b>semana</div>
+    </div>
+  </div>
+</header>
+<div class="wrap" id="lista"></div>
+
+<script>
+const DIAS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+let data={piezas:[]};
+
+function estadoLocal(id){try{return localStorage.getItem('dc-'+id)}catch(e){return null}}
+function guardar(id,v){try{localStorage.setItem('dc-'+id,v)}catch(e){}}
+
+function render(){
+  const l=document.getElementById('lista');
+  document.getElementById('nSem').textContent=data.semana||'—';
+  if(!data.piezas.length){
+    l.innerHTML='<div class="empty">La cola está vacía.<br><br>Pide a Claude:<br><code>genera el plan de la semana</code></div>';
+    return;
+  }
+  document.getElementById('nTotal').textContent=data.piezas.length;
+  let ok=0;
+  l.innerHTML=data.piezas.map((p,i)=>{
+    const id=p.id||('p'+i);
+    const ap=estadoLocal(id)==='aprobado'; if(ap)ok++;
+    return `<div class="card ${ap?'aprobado':''}" id="c-${id}">
+      <div class="row">
+        <span class="dia">${p.dia||DIAS[i]||''}</span>
+        <span class="tag f">${p.formato||''}</span>
+        ${p.propiedad_id?`<span class="tag">${p.propiedad_id}</span>`:''}
+      </div>
+      <div class="hook">${esc(p.hook||'')}</div>
+      <div class="copy" id="t-${id}">${esc(p.copy||'')}</div>
+      <div class="hash">${(p.hashtags||[]).join(' ')}</div>
+      ${p.brief_visual?`<div class="brief"><b>Brief visual</b>${esc(p.brief_visual)}</div>`:''}
+      <div class="acts">
+        <button onclick="copiar('${id}')">Copiar copy</button>
+        <button class="${ap?'ok':''}" onclick="aprobar('${id}')">${ap?'✓ Aprobado':'Aprobar'}</button>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('nOk').textContent=ok;
+}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function copiar(id){
+  const p=data.piezas.find((x,i)=>(x.id||('p'+i))===id); if(!p)return;
+  const txt=(p.copy||'')+'\n\n'+(p.hashtags||[]).join(' ');
+  navigator.clipboard.writeText(txt).catch(()=>{});
+}
+function aprobar(id){
+  guardar(id, estadoLocal(id)==='aprobado'?'pendiente':'aprobado'); render();
+}
+fetch('output/cola.json').then(r=>r.json()).then(d=>{data=d;render()}).catch(()=>render());
+</script>
+</body>
+</html>

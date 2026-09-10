@@ -1,0 +1,41 @@
+{
+  "_nota": "Rellena con tu cartera real. El motor NO inventa precios ni datos.",
+  "propiedades": [
+    {
+      "id": "AND-001",
+      "zona": "Escaldes-Engordany, Andorra",
+      "tipo": "Ático dúplex",
+      "precio": 1450000,
+      "m2": 212,
+      "dormitorios": 4,
+      "diferencial": "Terraza de 60 m² con vistas a Carlemany",
+      "dias_en_mercado": 34,
+      "fotos": [],
+      "antes_despues": false
+    },
+    {
+      "id": "SIT-004",
+      "zona": "Vallpineda, Sitges",
+      "tipo": "Villa",
+      "precio": 2350000,
+      "m2": 410,
+      "dormitorios": 5,
+      "diferencial": "Piscina infinity orientada al mar",
+      "dias_en_mercado": 12,
+      "fotos": [],
+      "antes_despues": true
+    },
+    {
+      "id": "SIT-009",
+      "zona": "Centro, Sitges",
+      "tipo": "Piso reformado",
+      "precio": 690000,
+      "m2": 118,
+      "dormitorios": 3,
+      "diferencial": "Edificio de 1920 con techos de 3,4 m",
+      "dias_en_mercado": 78,
+      "fotos": [],
+      "antes_despues": true
+    }
+  ]
+}
