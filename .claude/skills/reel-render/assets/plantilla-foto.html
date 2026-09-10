@@ -1,0 +1,108 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@300;400;500;600;700&display=swap">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#07100A}
+body{font-family:'Inter',sans-serif;position:relative}
+.shot{position:absolute;inset:0;overflow:hidden;opacity:0}
+.ph{position:absolute;width:100%;height:100%;object-fit:cover;left:0;top:0;
+  transform-origin:center center}
+.slot{position:absolute;inset:0;background:
+  repeating-linear-gradient(45deg,#101A22 0 34px,#0C161D 34px 68px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+.slot .t{font-size:30px;letter-spacing:.28em;text-transform:uppercase;color:#4C6376}
+.slot .n{font-family:'Playfair Display',serif;font-size:150px;color:#22394A}
+.slot .d{font-size:27px;color:#5E7A8E;text-align:center;max-width:640px;line-height:1.5}
+.vig{position:absolute;inset:0;background:
+  linear-gradient(180deg,rgba(4,10,14,.72) 0%,rgba(4,10,14,.12) 34%,rgba(4,10,14,.18) 58%,rgba(4,10,14,.9) 100%)}
+
+.lay{position:absolute;inset:0;padding:170px 80px 210px;display:flex;flex-direction:column}
+.top{opacity:0}
+.kick{font-size:23px;letter-spacing:.32em;text-transform:uppercase;color:#9CC9A8;font-weight:500}
+.line{font-family:'Playfair Display',serif;font-size:82px;color:#fff;line-height:1.08;
+  letter-spacing:-.015em;margin-top:26px;text-shadow:0 4px 40px rgba(0,0,0,.5)}
+.line em{font-style:normal;color:#F0C75A}
+
+.bot{margin-top:auto;opacity:0}
+.stat{display:flex;align-items:flex-end;gap:26px}
+.stat .big{font-family:'Playfair Display',serif;font-size:132px;color:#fff;line-height:.9;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat .unit{font-size:34px;color:#9AB0BF;padding-bottom:16px}
+.note{font-size:29px;color:#C6D4DE;margin-top:24px;line-height:1.45;max-width:780px}
+.rule{height:2px;background:linear-gradient(90deg,#F0C75A,transparent);margin-top:34px;width:0}
+
+.tag{position:absolute;left:80px;bottom:112px;display:flex;align-items:center;gap:16px;opacity:0}
+.tag .dot{width:11px;height:11px;border-radius:50%;background:#F0C75A}
+.tag .txt{font-size:24px;letter-spacing:.3em;text-transform:uppercase;color:#fff}
+
+.end{position:absolute;inset:0;background:#07100A;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:46px;padding:0 96px;opacity:0}
+.end .q{font-family:'Playfair Display',serif;font-size:86px;color:#fff;text-align:center;line-height:1.14}
+.end .q em{font-style:normal;color:#F0C75A}
+.end .s{font-size:31px;color:#7E93A2;text-align:center;line-height:1.5}
+.end .m{font-size:23px;letter-spacing:.34em;text-transform:uppercase;color:#4C6376;margin-top:16px}
+</style></head><body>
+
+<div class="shot" id="s0"><img class="ph" id="p0" src="fotos/1.jpg" onerror="this.style.display='none'">
+  <div class="slot"><div class="t">Foto 1</div><div class="n">01</div>
+  <div class="d">Fachada o exterior · plano fijo, hora dorada</div></div><div class="vig"></div></div>
+<div class="shot" id="s1"><img class="ph" id="p1" src="fotos/2.jpg" onerror="this.style.display='none'">
+  <div class="slot"><div class="t">Foto 2</div><div class="n">02</div>
+  <div class="d">Salón con la ventana visible · luz natural</div></div><div class="vig"></div></div>
+<div class="shot" id="s2"><img class="ph" id="p2" src="fotos/3.jpg" onerror="this.style.display='none'">
+  <div class="slot"><div class="t">Foto 3</div><div class="n">03</div>
+  <div class="d">Terraza o vistas · el argumento de venta</div></div><div class="vig"></div></div>
+<div class="shot" id="s3"><img class="ph" id="p3" src="fotos/4.jpg" onerror="this.style.display='none'">
+  <div class="slot"><div class="t">Foto 4</div><div class="n">04</div>
+  <div class="d">Dormitorio principal o detalle diferencial</div></div><div class="vig"></div></div>
+
+<div class="lay">
+  <div class="top" id="top"><div class="kick" id="kick">Escaldes-Engordany</div>
+    <div class="line" id="line">Este ático tiene<br><em>6 horas de sol</em><br>en enero.</div></div>
+  <div class="bot" id="bot">
+    <div class="stat"><div class="big" id="big">0</div><div class="unit" id="unit">horas · 21 de enero</div></div>
+    <div class="note" id="note">El de enfrente, a 200 metros, tiene dos.<br>Mismo precio por metro cuadrado.</div>
+    <div class="rule" id="rule"></div>
+  </div>
+</div>
+<div class="tag" id="tag"><div class="dot"></div><div class="txt">Duran Carasso · Andorra</div></div>
+
+<div class="end" id="end">
+  <div class="q">¿Sabes cuántas horas<br>de sol tiene<br><em>tu piso en enero</em>?</div>
+  <div class="s">Es el dato que nadie mira hasta que ya ha firmado.<br>Escríbenos y lo miramos por ti.</div>
+  <div class="m">Duran Carasso</div>
+</div>
+
+<script>
+const cl=(a,b,c)=>Math.max(b,Math.min(c,a));
+const ease=t=>1-Math.pow(1-t,3);
+const seg=(t,s,d)=>ease(cl((t-s)/d,0,1));
+const lin=(t,s,d)=>cl((t-s)/d,0,1);
+// cada plano: [inicio, duracion, zoomIni, zoomFin, panX, panY]
+const SHOTS=[[0.0,3.6,1.06,1.16,-14,8],[3.4,3.6,1.18,1.06,16,-10],
+             [6.8,3.6,1.05,1.15,10,12],[10.2,3.4,1.16,1.05,-12,-8]];
+window.seek=function(t){
+  SHOTS.forEach((s,i)=>{
+    const [st,du,z0,z1,px,py]=s;
+    const inn=lin(t,st,0.45), out=1-lin(t,st+du-0.45,0.45);
+    const el=document.getElementById('s'+i);
+    el.style.opacity=cl(Math.min(inn,out),0,1);
+    const k=lin(t,st,du);
+    const z=z0+(z1-z0)*k;
+    el.querySelector('.ph').style.transform='scale('+z+') translate('+(px*k)+'px,'+(py*k)+'px)';
+    el.querySelector('.slot').style.transform='scale('+z+') translate('+(px*k)+'px,'+(py*k)+'px)';
+  });
+  const a=seg(t,0.5,0.8), b=seg(t,2.4,0.9), g=seg(t,1.3,0.7);
+  const top=document.getElementById('top'), bot=document.getElementById('bot');
+  top.style.opacity=a; top.style.transform='translateY('+(30-30*a)+'px)';
+  bot.style.opacity=b; bot.style.transform='translateY('+(28-28*b)+'px)';
+  document.getElementById('big').textContent=(6*b).toFixed(1).replace('.',',');
+  document.getElementById('rule').style.width=(seg(t,3.3,1.1)*72)+'%';
+  const tg=document.getElementById('tag'); tg.style.opacity=g;
+  const e=seg(t,11.6,0.6);
+  const end=document.getElementById('end'); end.style.opacity=e;
+  end.querySelector('.q').style.transform='translateY('+(28-28*seg(t,11.8,0.8))+'px)';
+  end.querySelector('.s').style.opacity=seg(t,12.3,0.7);
+};
+window.seek(0);
+</script></body></html>
