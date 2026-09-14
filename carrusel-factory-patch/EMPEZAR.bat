@@ -14,13 +14,6 @@ echo   DURAN CARASSO - Fabrica de carruseles
 echo  ================================================
 echo.
 
-where git >nul 2>nul
-if errorlevel 1 (
-  echo  ERROR: no tienes Git instalado.
-  echo  Descargalo aqui: https://git-scm.com/download/win
-  echo  Instalalo, cierra esta ventana y vuelve a hacer doble clic.
-  pause & exit /b 1
-)
 where python >nul 2>nul
 if errorlevel 1 (
   echo  ERROR: no tienes Python instalado.
@@ -42,7 +35,7 @@ powershell -NoProfile -Command "Expand-Archive -LiteralPath '%TMPD%\patch.zip' -
 
 if not exist "%DEST%\scripts\generar.py" (
   echo  [2/6] Descargando carrusel-factory...
-  git clone https://github.com/david-ai-pro/carrusel-factory "%DEST%" || (echo  ERROR al descargar. Revisa tu conexion. & pause & exit /b 1)
+  powershell -NoProfile -Command "$ErrorActionPreference='Stop'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://codeload.github.com/david-ai-pro/carrusel-factory/zip/refs/heads/main' -OutFile '%TMPD%\cf.zip'; Expand-Archive -LiteralPath '%TMPD%\cf.zip' -DestinationPath '%TMPD%\cf' -Force; Move-Item -LiteralPath '%TMPD%\cf\carrusel-factory-main' -Destination '%DEST%'" || (echo  ERROR al descargar. Revisa tu conexion a internet. & pause & exit /b 1)
 ) else (
   echo  [2/6] carrusel-factory ya estaba descargado.
 )
