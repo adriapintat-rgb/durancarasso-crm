@@ -14,13 +14,33 @@ echo   DURAN CARASSO - Fabrica de carruseles
 echo  ================================================
 echo.
 
-where python >nul 2>nul
-if errorlevel 1 (
-  echo  ERROR: no tienes Python instalado.
-  echo  Descargalo aqui: https://www.python.org/downloads/
-  echo  IMPORTANTE: marca la casilla "Add python.exe to PATH".
+set "PY="
+REM 1) El lanzador oficial "py" es el mas fiable y no lo secuestra la Store.
+py -3 -c "import sys" >nul 2>nul && set "PY=py -3"
+REM 2) Rutas habituales de instalacion, por si no hay lanzador.
+if not defined PY for %%V in (313 312 311 310) do (
+  if not defined PY if exist "%LOCALAPPDATA%\Programs\Python\Python%%V\python.exe" set "PY=%LOCALAPPDATA%\Programs\Python\Python%%V\python.exe"
+  if not defined PY if exist "C:\Python%%V\python.exe" set "PY=C:\Python%%V\python.exe"
+  if not defined PY if exist "%ProgramFiles%\Python%%V\python.exe" set "PY=%ProgramFiles%\Python%%V\python.exe"
+)
+REM 3) Ultimo recurso: "python" del PATH, siempre que no sea el atajo de la Store.
+if not defined PY (
+  python -c "import sys" >nul 2>nul && set "PY=python"
+)
+if not defined PY (
+  echo  ERROR: no encuentro Python.
+  echo.
+  echo  Si acabas de instalarlo, cierra esta ventana y vuelve a abrirla.
+  echo.
+  echo  Si no lo tienes: https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe
+  echo  Al instalar, marca la casilla "Add python.exe to PATH".
+  echo.
+  echo  Si ya lo instalaste y sigue fallando, es el atajo de Microsoft Store:
+  echo  Configuracion ^> Aplicaciones ^> Configuracion avanzada de aplicaciones
+  echo  ^> Alias de ejecucion de aplicaciones ^> desactiva los dos "python.exe".
   pause & exit /b 1
 )
+echo  Python detectado: %PY%
 
 set "BASE=%~dp0"
 set "DEST=%BASE%carrusel-factory"
@@ -44,7 +64,7 @@ cd /d "%DEST%"
 
 if not exist ".venv\Scripts\python.exe" (
   echo  [3/6] Creando el entorno de Python...
-  python -m venv .venv || (echo  ERROR creando el entorno. & pause & exit /b 1)
+  %PY% -m venv .venv || (echo  ERROR creando el entorno. & pause & exit /b 1)
 )
 
 echo  [4/6] Instalando dependencias ^(tarda un par de minutos^)...
