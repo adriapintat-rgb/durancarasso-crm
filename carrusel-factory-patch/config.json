@@ -1,0 +1,10 @@
+{
+  "marca": {
+    "nombre": "Durán Carasso",
+    "handle": "@durancarasso",
+    "logo": "marca/logo.png",
+    "color_principal": "#133F49"
+  },
+  "claves": { "fal_api_key": "", "pollinations_api_key": "" },
+  "defaults": { "modelo_imagen": "nano-banana-pro", "estilo": "editorial-serif", "formato": "4:5" }
+}

@@ -1,0 +1,7 @@
+{
+  "descripcion": "Foto REAL de la propiedad como fondo, con degradado y texto encima. Editorial de lujo.",
+  "usa_fondo_ia": false,
+  "usa_foto_propia": true,
+  "prompt_base": "",
+  "formatos": ["4:5", "1:1", "9:16"]
+}

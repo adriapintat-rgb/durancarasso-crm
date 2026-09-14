@@ -1,0 +1,12 @@
+<div class="slide {{ rol }}">
+  <div class="velo"></div>
+  <div class="contenido">
+    {% if rol != 'hook' and etiqueta %}<span class="etiqueta">{{ etiqueta }}</span>{% endif %}
+    <h1 class="titulo">{{ titulo }}</h1>
+    {% if cuerpo %}<p class="cuerpo">{{ cuerpo }}</p>{% endif %}
+  </div>
+  <div class="pie">
+    <span class="handle">{{ marca }}</span>
+    <span class="contador">{{ n }} / {{ total }}</span>
+  </div>
+</div>

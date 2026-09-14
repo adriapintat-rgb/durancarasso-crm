@@ -1,0 +1,15 @@
+{
+  "tema": "Villa en Sitges",
+  "estilo": "foto-real",
+  "formato": "4:5",
+  "cta": { "tipo": "web", "texto": "Agenda tu visita en durancarasso.es", "detalle": "web" },
+  "slides": [
+    { "n": 1, "rol": "hook",       "etiqueta": "",            "titulo": "Villa en Sitges",        "cuerpo": "000 m² · 0 dormitorios · vistas al mar", "foto": "fotos/01.jpg" },
+    { "n": 2, "rol": "desarrollo", "etiqueta": "El salon",    "titulo": "Luz de sur\ntodo el dia","cuerpo": "CAMBIAR: detalle real del salon.",       "foto": "fotos/02.jpg" },
+    { "n": 3, "rol": "desarrollo", "etiqueta": "La cocina",   "titulo": "Abierta\ny para vivirla","cuerpo": "CAMBIAR: detalle real de la cocina.",     "foto": "fotos/03.jpg" },
+    { "n": 4, "rol": "desarrollo", "etiqueta": "La terraza",  "titulo": "El metro\nque mas se usa","cuerpo": "CAMBIAR: m² de terraza y orientacion.",  "foto": "fotos/04.jpg" },
+    { "n": 5, "rol": "desarrollo", "etiqueta": "El dormitorio","titulo": "Suite\nprincipal",      "cuerpo": "CAMBIAR: bano en suite, vestidor, vistas.","foto": "fotos/05.jpg" },
+    { "n": 6, "rol": "desarrollo", "etiqueta": "El entorno",  "titulo": "A 5 minutos\ndel mar",   "cuerpo": "CAMBIAR: distancias reales a playa/colegios.","foto": "fotos/06.jpg" },
+    { "n": 7, "rol": "cta",        "etiqueta": "Visitala",    "titulo": "¿La vemos\nesta semana?","cuerpo": "Agenda tu visita en durancarasso.es",    "foto": "fotos/07.jpg" }
+  ]
+}

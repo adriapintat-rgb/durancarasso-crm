@@ -1,0 +1,15 @@
+{
+  "tema": "Interiores que respiran luz",
+  "estilo": "ilustrado-ia",
+  "modelo_imagen": "pollinations-flux",
+  "formato": "4:5",
+  "cta": { "tipo": "web", "texto": "Agenda tu visita en durancarasso.es", "detalle": "web" },
+  "slides": [
+    { "n": 1, "rol": "hook", "titulo": "Interiores\nque respiran luz", "cuerpo": "Lo que separa una casa bonita de una casa que enamora.", "fondo_ia_prompt": "minimalist mediterranean living room at golden hour, large windows, linen textures, warm natural light, deep teal accents, architectural photography, muted, no text, no people" },
+    { "n": 2, "rol": "desarrollo", "titulo": "La orientacion", "cuerpo": "Sur y oeste alargan el dia. Es lo primero que miramos antes que los metros.", "fondo_ia_prompt": "sunlit terrace of a modern mediterranean villa, late afternoon light, stone and wood, soft shadows, muted teal sky, architectural photography, no text, no people" },
+    { "n": 3, "rol": "desarrollo", "titulo": "El vacio", "cuerpo": "Menos muebles, mas aire. La sensacion de amplitud se disena, no se compra.", "fondo_ia_prompt": "minimal empty luxury interior, high ceilings, pale plaster walls, single armchair, dramatic soft daylight, muted palette, architectural photography, no text, no people" },
+    { "n": 4, "rol": "desarrollo", "titulo": "Materiales honestos", "cuerpo": "Piedra, madera, lino. Envejecen bien y no pasan de moda en cinco anos.", "fondo_ia_prompt": "close up of natural stone wall, oak wood and linen curtain in a luxury mediterranean home, warm side light, muted tones, architectural detail photography, no text, no people" },
+    { "n": 5, "rol": "desarrollo", "titulo": "La transicion", "cuerpo": "Interior y exterior sin corte. En Sitges o la Cerdanya, eso es la mitad del valor.", "fondo_ia_prompt": "seamless indoor outdoor transition of a mediterranean villa, sliding glass doors open to a garden, dusk, deep teal and warm interior light, architectural photography, no text, no people" },
+    { "n": 6, "rol": "cta", "titulo": "¿Buscas una asi?", "cuerpo": "Agenda tu visita en durancarasso.es", "fondo_ia_prompt": "dark moody mediterranean villa exterior at blue hour, warm windows glowing, deep teal sky, cinematic architectural photography, no text, no people" }
+  ]
+}
