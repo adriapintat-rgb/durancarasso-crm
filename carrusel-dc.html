@@ -114,6 +114,7 @@ input[type=range]{padding:0;background:transparent;border:none;accent-color:var(
       </div>
       <input type="file" id="file" accept="image/*" multiple hidden>
       <div class="thumbs" id="thumbs"></div>
+      <button class="btn btn-s btn-full btn-mini" id="btn_clear" style="margin-top:10px;display:none">Vaciar todas las fotos</button>
     </div>
 
     <div class="card">
@@ -257,6 +258,7 @@ function renderThumbs(){
   $('thumbs').innerHTML=photos.map(function(p,i){
     return '<div class="thumb"><img src="'+p.src+'"><span class="i">'+(i+1)+'</span><button class="x" data-rm="'+i+'">×</button></div>';
   }).join('');
+  $('btn_clear').style.display=photos.length?'block':'none';
 }
 $('thumbs').addEventListener('click',function(e){
   var i=e.target.getAttribute('data-rm');
@@ -264,6 +266,15 @@ $('thumbs').addEventListener('click',function(e){
   photos.splice(+i,1);
   slides.forEach(function(s){if(s.photo>=photos.length)s.photo=photos.length?photos.length-1:0});
   renderThumbs();renderSlides();save();
+});
+$('btn_clear').addEventListener('click',function(){
+  if(!photos.length)return;
+  photos=[];
+  slides.forEach(function(s){s.photo=0});
+  renderThumbs();renderSlides();
+  $('pv').innerHTML='<div class="empty">Sube fotos, rellena los datos y pulsa <b>Generar carrusel</b>.</div>';
+  $('btn_dl').disabled=true;
+  save();toast('Fotos eliminadas');
 });
 function autoAssign(){slides.forEach(function(s,i){s.photo=Math.min(i,Math.max(0,photos.length-1))})}
 
