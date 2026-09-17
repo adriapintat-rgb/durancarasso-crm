@@ -1,0 +1,562 @@
+<title>Carrusel Duran Carasso</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0D3550;--accent:#1A8FBF;--gold:#B8922A;
+  --bg:#F5F4F1;--card:#FFF;--text:#111;--sub:#6B6B6B;
+  --border:#E2E0DB;--green:#1E6B3A;--red:#B03020;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+
+/* ── HEADER ── */
+.hdr{background:var(--navy);padding:14px 20px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:50}
+.hdr-brand{font-family:'Playfair Display',serif;font-size:18px;color:#fff}
+.hdr-sub{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.35);margin-top:2px}
+.hdr-spacer{flex:1}
+.hdr-note{font-size:11px;color:rgba(255,255,255,.4)}
+
+/* ── LAYOUT ── */
+.wrap{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:20px;padding:20px;max-width:1440px;margin:0 auto;align-items:start}
+@media(max-width:940px){.wrap{grid-template-columns:1fr}}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+.card h2{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--sub);font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h2 .n{width:18px;height:18px;border-radius:50%;background:var(--navy);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;letter-spacing:0}
+
+label{display:block;font-size:11px;color:var(--sub);margin-bottom:4px;font-weight:500}
+input,select,textarea{width:100%;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);background:#FBFAF8;border:1px solid var(--border);border-radius:9px;padding:9px 11px;outline:none;transition:.15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);background:#fff}
+textarea{resize:vertical;line-height:1.5}
+.row{display:grid;gap:10px;margin-bottom:10px}
+.row.c2{grid-template-columns:1fr 1fr}
+.row.c3{grid-template-columns:1fr 1fr 1fr}
+
+.btn{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;border:none;border-radius:9px;padding:10px 16px;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.btn-p{background:var(--navy);color:#fff}
+.btn-p:hover{background:#12456A}
+.btn-g{background:var(--gold);color:#fff}
+.btn-g:hover{filter:brightness(1.08)}
+.btn-s{background:#fff;color:var(--navy);border:1px solid var(--border)}
+.btn-s:hover{border-color:var(--navy)}
+.btn-full{width:100%}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-mini{font-size:11px;padding:5px 9px;border-radius:7px}
+
+/* ── DROPZONE ── */
+.drop{border:1.5px dashed var(--border);border-radius:12px;padding:26px 16px;text-align:center;cursor:pointer;transition:.15s;background:#FBFAF8}
+.drop:hover,.drop.over{border-color:var(--accent);background:#F0F8FC}
+.drop-t{font-size:13px;font-weight:500;margin-bottom:3px}
+.drop-s{font-size:11px;color:var(--sub)}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px;margin-top:12px}
+.thumb{position:relative;aspect-ratio:4/5;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:#eee}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .x{position:absolute;top:3px;right:3px;width:19px;height:19px;border-radius:50%;background:rgba(0,0,0,.62);color:#fff;border:none;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.thumb .i{position:absolute;bottom:3px;left:3px;background:rgba(0,0,0,.62);color:#fff;font-size:9px;padding:2px 5px;border-radius:5px}
+
+/* ── SLIDE EDITOR ── */
+.sl{border:1px solid var(--border);border-radius:11px;margin-bottom:9px;overflow:hidden}
+.sl-h{background:#FBFAF8;padding:9px 12px;display:flex;align-items:center;gap:9px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.sl-n{width:20px;height:20px;border-radius:5px;background:var(--navy);color:#fff;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sl-t{flex:1;font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sl-t span{color:var(--sub);font-weight:400}
+.sl-a{color:var(--sub);font-size:11px;transition:transform .2s}
+.sl.open .sl-a{transform:rotate(180deg)}
+.sl-b{display:none;padding:12px;border-top:1px solid var(--border)}
+.sl.open .sl-b{display:block}
+.mini{font-size:10px;color:var(--sub);margin-top:3px}
+
+input[type=range]{padding:0;background:transparent;border:none;accent-color:var(--accent)}
+
+/* ── PREVIEW ── */
+.pv-bar{display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-wrap:wrap}
+.pv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.pv{border-radius:11px;overflow:hidden;border:1px solid var(--border);background:#fff;position:relative}
+.pv canvas{width:100%;display:block}
+.pv-f{padding:7px 10px;display:flex;align-items:center;gap:7px;border-top:1px solid var(--border)}
+.pv-f b{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--sub);flex:1}
+
+/* ── OUTPUT ── */
+.out{position:relative}
+.out textarea{font-size:12px;min-height:150px;line-height:1.6}
+.copy{position:absolute;top:7px;right:7px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:10px;padding:4px 9px;cursor:pointer;font-family:'Inter',sans-serif}
+.copy.ok{background:var(--green)}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.tag{font-size:10px;background:#EFF5F8;color:var(--navy);border:1px solid #DCE8EF;border-radius:20px;padding:3px 9px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.tag.off{opacity:.35;text-decoration:line-through}
+.cnt{font-size:10px;color:var(--sub);margin-top:5px;text-align:right}
+.cnt.over{color:var(--red);font-weight:600}
+.hint{font-size:11px;color:var(--sub);line-height:1.5;background:#FBFAF8;border-left:2px solid var(--gold);padding:8px 11px;border-radius:0 7px 7px 0;margin-bottom:12px}
+.empty{text-align:center;padding:60px 20px;color:var(--sub);font-size:13px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(90px);background:var(--navy);color:#fff;font-size:12px;padding:10px 20px;border-radius:24px;z-index:99;transition:transform .25s;pointer-events:none}
+.toast.on{transform:translateX(-50%) translateY(0)}
+</style>
+
+<div class="hdr">
+  <div>
+    <div class="hdr-brand">Duran Carasso</div>
+    <div class="hdr-sub">Generador de carrusel</div>
+  </div>
+  <div class="hdr-spacer"></div>
+  <div class="hdr-note">1080 × 1350 · 4:5</div>
+</div>
+
+<div class="wrap">
+
+  <!-- ══ COLUMNA IZQUIERDA ══ -->
+  <div>
+
+    <div class="card">
+      <h2><span class="n">1</span> Fotos</h2>
+      <div class="drop" id="drop">
+        <div class="drop-t">Arrastra las fotos aquí</div>
+        <div class="drop-s">o haz clic para seleccionar · JPG/PNG · 3-10 imágenes</div>
+      </div>
+      <input type="file" id="file" accept="image/*" multiple hidden>
+      <div class="thumbs" id="thumbs"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="n">2</span> Datos de la propiedad</h2>
+      <div class="row"><div><label>Nombre promoción / propiedad</label><input id="f_name" placeholder="Exclusive La Gonarda"></div></div>
+      <div class="row c2">
+        <div><label>Ubicación</label><input id="f_loc" placeholder="La Massana, Andorra"></div>
+        <div><label>Mercado</label><select id="f_mkt"><option value="andorra">Andorra</option><option value="barcelona">Barcelona ciudad</option><option value="sitges">Sitges / Costa Dorada</option><option value="general">General lujo</option></select></div>
+      </div>
+      <div class="row c2">
+        <div><label>Tipología</label><input id="f_type" placeholder="Villa / Apartamento / Parcela"></div>
+        <div><label>Superficie</label><input id="f_m2" placeholder="500–850 m²"></div>
+      </div>
+      <div class="row c3">
+        <div><label>Habitaciones</label><input id="f_hab" placeholder="6"></div>
+        <div><label>Baños</label><input id="f_ban" placeholder="7"></div>
+        <div><label>Plantas / año</label><input id="f_ext" placeholder="3 plantas"></div>
+      </div>
+      <div class="row"><div><label>Amenidades</label><input id="f_amen" placeholder="Piscina int+ext, sauna, gimnasio, cine, garaje 4 coches"></div></div>
+      <div class="row"><div><label>Distancias clave</label><input id="f_dist" placeholder="Vallnord 8 min · Andorra la Vella 12 min · Barcelona 3h"></div></div>
+      <div class="row c2">
+        <div><label>Cuenta Instagram</label><input id="f_ig" placeholder="@durancarassoandorra"></div>
+        <div><label>Web</label><input id="f_web" placeholder="kota.ad"></div>
+      </div>
+      <button class="btn btn-s btn-full" id="btn_tpl">Rellenar slides con plantilla</button>
+      <div class="mini" style="text-align:center;margin-top:6px">Base editable. El copy fino lo genera Claude (paso 3).</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="n">3</span> Copy de los slides</h2>
+      <div class="hint">Pídele a Claude el copy con la skill <b>instagram-inmobiliario</b> y pega aquí el bloque <b>━━━ CARRUSEL ━━━</b> completo: se reparte solo en los 5 slides.</div>
+      <textarea id="paste" rows="3" placeholder="Pega aquí el bloque CARRUSEL de Claude…"></textarea>
+      <button class="btn btn-s btn-full btn-mini" style="margin-top:8px" id="btn_parse">Importar copy pegado</button>
+      <div id="slides" style="margin-top:12px"></div>
+    </div>
+
+  </div>
+
+  <!-- ══ COLUMNA DERECHA ══ -->
+  <div>
+
+    <div class="card">
+      <h2><span class="n">4</span> Previsualización</h2>
+      <div class="pv-bar">
+        <button class="btn btn-p" id="btn_render">Generar carrusel</button>
+        <button class="btn btn-g" id="btn_dl" disabled>Descargar todas</button>
+        <select id="f_theme" style="width:auto"><option value="dark">Overlay oscuro</option><option value="light">Overlay claro</option><option value="none">Sin overlay de texto</option></select>
+      </div>
+      <div class="pv-grid" id="pv"><div class="empty">Sube fotos, rellena los datos y pulsa <b>Generar carrusel</b>.</div></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="n">5</span> Caption</h2>
+      <div class="out">
+        <button class="copy" data-copy="caption">Copiar</button>
+        <textarea id="caption" rows="9" placeholder="Párrafo 1 — gancho emocional…"></textarea>
+      </div>
+      <div class="cnt" id="cap_cnt">0 / 2.200</div>
+      <button class="btn btn-s btn-full btn-mini" style="margin-top:6px" id="btn_cap">Generar caption base</button>
+    </div>
+
+    <div class="card">
+      <h2><span class="n">6</span> Hashtags</h2>
+      <div class="tags" id="tags"></div>
+      <div class="out" style="margin-top:10px">
+        <button class="copy" data-copy="hash">Copiar</button>
+        <textarea id="hash" rows="4"></textarea>
+      </div>
+      <div class="cnt" id="hash_cnt">0 / 30</div>
+    </div>
+
+    <div class="card">
+      <h2><span class="n">7</span> Publicar</h2>
+      <div class="out">
+        <button class="copy" data-copy="full">Copiar todo</button>
+        <textarea id="full" rows="5" placeholder="Caption + hashtags listo para pegar en Instagram"></textarea>
+      </div>
+      <div class="mini" style="margin-top:8px">Descarga las imágenes, súbelas en orden y pega este texto. Publicación automática vía Instagram Graph API = siguiente fase.</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+var W=1080,H=1350;
+var C={navy:'#0D3550',gold:'#B8922A',white:'#FFFFFF'};
+var HASHBANK={
+  barcelona:['#LesTresTorres','#Barcelona','#BarcelonaRealEstate','#SarriaSantGervasi','#PisoDeLujo','#BarcelonaLiving','#InmobiliariaDeLujo','#PropiedadLujo','#LuxuryBarcelona','#DuranCarasso','#LuxuryRealEstate','#ExclusiveProperties','#HighEndRealEstate','#LuxuryLiving','#CasasDeLujo'],
+  andorra:['#Andorra','#AndorraLaVella','#AndorraRealEstate','#AndorraLiving','#ResidenciaAndorra','#LuxuryAndorra','#PropiedadAndorra','#InversionAndorra','#AndorraPropietat','#DuranCarasso','#LuxuryRealEstate','#ExclusiveProperties','#HighEndRealEstate','#MountainLiving','#PrivateResidence'],
+  sitges:['#Sitges','#CostaDorada','#SitgesRealEstate','#SitgesMediterraneo','#VillaSitges','#LuxurySitges','#CasaSitges','#PropiedadLujo','#InmobiliariaDeLujo','#DuranCarasso','#LuxuryRealEstate','#ExclusiveProperties','#MediterraneanLiving','#BarcelonaRealEstate','#CasasDeLujo'],
+  general:['#DuranCarasso','#LuxuryRealEstate','#ExclusiveProperties','#HighEndRealEstate','#LuxuryHome','#DreamHome','#PropertyForSale','#RealEstateLife','#LuxuryLiving','#InmobiliariaDeLujo','#PropiedadesExclusivas']
+};
+var LABELS=['Gancho','El proyecto','El lifestyle','El valor','Consulta privada'];
+var photos=[];   // {src, img, name}
+var slides=[];   // {kicker,title,body,photo,focus,layout}
+var off=[];      // hashtags desactivados
+
+/* ── helpers ── */
+function $(id){return document.getElementById(id)}
+function v(id){return ($(id).value||'').trim()}
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('on')},1900)}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+
+/* ── estado inicial ── */
+function blankSlides(){
+  slides=[];
+  for(var i=0;i<5;i++) slides.push({kicker:'',title:'',body:'',photo:i,focus:50,layout:i===0?'hook':(i===4?'cta':'info')});
+}
+blankSlides();
+
+/* ══ FOTOS ══ */
+var drop=$('drop'),file=$('file');
+drop.addEventListener('click',function(){file.click()});
+drop.addEventListener('dragover',function(e){e.preventDefault();drop.classList.add('over')});
+drop.addEventListener('dragleave',function(){drop.classList.remove('over')});
+drop.addEventListener('drop',function(e){e.preventDefault();drop.classList.remove('over');addFiles(e.dataTransfer.files)});
+file.addEventListener('change',function(e){addFiles(e.target.files);file.value=''});
+
+function addFiles(list){
+  var arr=Array.prototype.slice.call(list).filter(function(f){return /^image\//.test(f.type)});
+  if(!arr.length)return;
+  var pend=arr.length;
+  arr.forEach(function(f){
+    var r=new FileReader();
+    r.onload=function(ev){
+      var im=new Image();
+      im.onload=function(){
+        photos.push({src:ev.target.result,img:im,name:f.name});
+        if(--pend===0){renderThumbs();autoAssign();renderSlides();save()}
+      };
+      im.onerror=function(){if(--pend===0){renderThumbs();autoAssign();renderSlides();save()}};
+      im.src=ev.target.result;
+    };
+    r.readAsDataURL(f);
+  });
+}
+function renderThumbs(){
+  $('thumbs').innerHTML=photos.map(function(p,i){
+    return '<div class="thumb"><img src="'+p.src+'"><span class="i">'+(i+1)+'</span><button class="x" data-rm="'+i+'">×</button></div>';
+  }).join('');
+}
+$('thumbs').addEventListener('click',function(e){
+  var i=e.target.getAttribute('data-rm');
+  if(i===null)return;
+  photos.splice(+i,1);
+  slides.forEach(function(s){if(s.photo>=photos.length)s.photo=photos.length?photos.length-1:0});
+  renderThumbs();renderSlides();save();
+});
+function autoAssign(){slides.forEach(function(s,i){s.photo=Math.min(i,Math.max(0,photos.length-1))})}
+
+/* ══ PLANTILLA ══ */
+$('btn_tpl').addEventListener('click',function(){
+  var name=v('f_name')||'La propiedad',loc=v('f_loc'),type=v('f_type'),m2=v('f_m2');
+  var hab=v('f_hab'),ban=v('f_ban'),ext=v('f_ext'),amen=v('f_amen'),dist=v('f_dist');
+  var ig=v('f_ig'),web=v('f_web'),mkt=$('f_mkt').value;
+
+  slides[0].kicker=loc; slides[0].title=name; slides[0].body='';
+  slides[1].kicker='El proyecto'; slides[1].title=name;
+  slides[1].body=[type,m2?('Superficie · '+m2):'',hab?(hab+' habitaciones'):'',ban?(ban+' baños'):'',ext].filter(Boolean).join('\n');
+  slides[2].kicker='El lifestyle'; slides[2].title='Vivir aquí';
+  slides[2].body=[amen,dist].filter(Boolean).join('\n');
+  slides[3].kicker='El valor'; slides[3].title=mkt==='andorra'?'Residencia y fiscalidad':'Una inversión inteligente';
+  slides[3].body=mkt==='andorra'
+    ? 'Ventajas de residencia en Andorra\nEntorno privado y seguro\nAsesoramiento integral Duran Carasso'
+    : 'Ubicación consolidada y escasa\nProyecto de autor\nAsesoramiento integral Duran Carasso';
+  slides[4].kicker='Consulta privada'; slides[4].title='Hablemos en privado';
+  slides[4].body=[type&&m2?(type+' · '+m2):'','Consulta privada sin compromiso',web,ig].filter(Boolean).join('\n');
+
+  renderSlides();save();toast('Plantilla aplicada — ahora edita el copy');
+});
+
+/* ══ IMPORTAR COPY DE CLAUDE ══ */
+$('btn_parse').addEventListener('click',function(){
+  var txt=$('paste').value;
+  if(!txt.trim()){toast('Pega antes el copy');return}
+  var blocks=txt.split(/\[?\s*SLIDE\s*(\d)\s*[\]—-]*/i);
+  var found=0;
+  for(var i=1;i<blocks.length;i+=2){
+    var n=parseInt(blocks[i],10)-1, body=(blocks[i+1]||'').trim();
+    if(n<0||n>4)continue;
+    body=body.replace(/^[—–\-\s]*[A-ZÁÉÍÓÚÑ ]{3,}\n/,function(m){slides[n].kicker=m.trim().replace(/^[—–\-\s]+/,'');return''});
+    var lines=body.split('\n').map(function(l){return l.replace(/^[-•*·]\s*/,'').trim()}).filter(Boolean);
+    if(!lines.length)continue;
+    slides[n].title=lines.shift();
+    slides[n].body=lines.join('\n');
+    found++;
+  }
+  if(!found){toast('No encontré marcas [SLIDE n]');return}
+  renderSlides();save();toast(found+' slides importados');
+});
+
+/* ══ EDITOR DE SLIDES ══ */
+function renderSlides(){
+  $('slides').innerHTML=slides.map(function(s,i){
+    var opts=photos.map(function(p,j){return '<option value="'+j+'"'+(s.photo===j?' selected':'')+'>Foto '+(j+1)+'</option>'}).join('')||'<option value="0">— sin fotos —</option>';
+    return '<div class="sl'+(i===0?' open':'')+'" data-sl="'+i+'">'+
+      '<div class="sl-h"><span class="sl-n">'+(i+1)+'</span><span class="sl-t">'+esc(s.title||LABELS[i])+' <span>'+esc(s.title?LABELS[i]:'')+'</span></span><span class="sl-a">▾</span></div>'+
+      '<div class="sl-b">'+
+        '<div class="row c2"><div><label>Etiqueta superior</label><input data-f="kicker" value="'+esc(s.kicker)+'" placeholder="'+LABELS[i]+'"></div>'+
+        '<div><label>Foto</label><select data-f="photo">'+opts+'</select></div></div>'+
+        '<div class="row"><div><label>Titular</label><input data-f="title" value="'+esc(s.title)+'" placeholder="≤ 10 palabras"></div></div>'+
+        '<div class="row"><div><label>Líneas (una por fila)</label><textarea data-f="body" rows="4" placeholder="Una línea por bullet">'+esc(s.body)+'</textarea></div></div>'+
+        '<label>Encuadre vertical de la foto</label><input type="range" min="0" max="100" data-f="focus" value="'+s.focus+'">'+
+      '</div></div>';
+  }).join('');
+}
+$('slides').addEventListener('click',function(e){
+  var h=e.target.closest('.sl-h'); if(!h)return;
+  h.parentNode.classList.toggle('open');
+});
+$('slides').addEventListener('input',function(e){
+  var f=e.target.getAttribute('data-f'); if(!f)return;
+  var i=+e.target.closest('.sl').getAttribute('data-sl');
+  slides[i][f]=(f==='photo'||f==='focus')?+e.target.value:e.target.value;
+  if(f==='title'){var t=e.target.closest('.sl').querySelector('.sl-t');t.innerHTML=esc(e.target.value||LABELS[i])+' <span>'+(e.target.value?LABELS[i]:'')+'</span>'}
+  save();
+});
+renderSlides();
+
+/* ══ RENDER CANVAS ══ */
+function wrap(ctx,text,max){
+  var words=String(text).split(/\s+/),lines=[],cur='';
+  for(var i=0;i<words.length;i++){
+    var t=cur?cur+' '+words[i]:words[i];
+    if(ctx.measureText(t).width>max&&cur){lines.push(cur);cur=words[i]}else cur=t;
+  }
+  if(cur)lines.push(cur);
+  return lines;
+}
+function cover(ctx,img,focus){
+  var ir=img.width/img.height, cr=W/H, dw,dh,dx,dy;
+  if(ir>cr){dh=H;dw=H*ir;dy=0;dx=(W-dw)/2}
+  else{dw=W;dh=W/ir;dx=0;dy=(H-dh)*(focus/100)}
+  ctx.drawImage(img,dx,dy,dw,dh);
+}
+function drawSlide(cv,s,idx){
+  var ctx=cv.getContext('2d');
+  cv.width=W;cv.height=H;
+  var theme=$('f_theme').value;
+  var p=photos[s.photo];
+
+  // fondo
+  ctx.fillStyle=C.navy;ctx.fillRect(0,0,W,H);
+  if(p&&p.img)cover(ctx,p.img,s.focus);
+
+  if(theme!=='none'){
+    var g=ctx.createLinearGradient(0,0,0,H);
+    if(theme==='dark'){
+      g.addColorStop(0,'rgba(13,53,80,.55)');g.addColorStop(.42,'rgba(13,53,80,.18)');
+      g.addColorStop(.72,'rgba(13,53,80,.70)');g.addColorStop(1,'rgba(13,53,80,.94)');
+    }else{
+      g.addColorStop(0,'rgba(255,255,255,.30)');g.addColorStop(.45,'rgba(255,255,255,.08)');
+      g.addColorStop(.75,'rgba(13,53,80,.55)');g.addColorStop(1,'rgba(13,53,80,.88)');
+    }
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  }
+
+  var PAD=84, PADB=112;
+  // marca superior
+  ctx.textBaseline='alphabetic';
+  ctx.fillStyle='rgba(255,255,255,.72)';
+  ctx.font='500 24px Inter, sans-serif';
+  ctx.letterSpacing='6px';
+  ctx.fillText('DURAN CARASSO',PAD,PAD+18);
+  ctx.letterSpacing='0px';
+
+  // indicador de slide
+  ctx.fillStyle='rgba(255,255,255,.45)';
+  ctx.font='400 22px Inter, sans-serif';
+  ctx.textAlign='right';
+  ctx.fillText((idx+1)+' / '+slides.length,W-PAD,PAD+18);
+  ctx.textAlign='left';
+
+  // bloque inferior
+  var maxW=W-PAD*2;
+  var bodyLines=String(s.body||'').split('\n').map(function(x){return x.trim()}).filter(Boolean);
+  var big=(s.layout==='hook');
+  var tSize=big?80:60, tLead=big?92:72, bSize=34, bLead=52;
+
+  ctx.font='600 '+tSize+'px "Playfair Display", serif';
+  var tLines=s.title?wrap(ctx,s.title,maxW):[];
+
+  var blockH=(s.kicker?46:0)+tLines.length*tLead+(bodyLines.length?26+bodyLines.length*bLead:0);
+  var y=H-PADB-blockH;
+
+  if(s.kicker){
+    ctx.fillStyle=C.gold;
+    ctx.font='600 22px Inter, sans-serif';
+    ctx.letterSpacing='4px';
+    ctx.fillText(s.kicker.toUpperCase(),PAD,y);
+    ctx.letterSpacing='0px';
+    y+=46;
+  }
+  ctx.fillStyle='#fff';
+  ctx.font='600 '+tSize+'px "Playfair Display", serif';
+  tLines.forEach(function(l){y+=tLead*0.78;ctx.fillText(l,PAD,y);y+=tLead*0.22});
+
+  if(bodyLines.length){
+    y+=26;
+    ctx.font='300 '+bSize+'px Inter, sans-serif';
+    bodyLines.forEach(function(l){
+      y+=bLead*0.72;
+      ctx.fillStyle=C.gold;ctx.fillRect(PAD,y-bSize*0.38,26,2);
+      ctx.fillStyle='rgba(255,255,255,.93)';
+      var ls=wrap(ctx,l,maxW-46);
+      ctx.fillText(ls[0],PAD+46,y);
+      for(var k=1;k<ls.length;k++){y+=bLead*0.8;ctx.fillText(ls[k],PAD+46,y)}
+      y+=bLead*0.28;
+    });
+  }
+}
+
+$('btn_render').addEventListener('click',function(){
+  if(!photos.length){toast('Sube al menos una foto');return}
+  document.fonts.ready.then(function(){
+    var host=$('pv');host.innerHTML='';
+    slides.forEach(function(s,i){
+      var d=document.createElement('div');d.className='pv';
+      var cv=document.createElement('canvas');
+      d.appendChild(cv);
+      var f=document.createElement('div');f.className='pv-f';
+      f.innerHTML='<b>Slide '+(i+1)+' · '+LABELS[i]+'</b>';
+      var b=document.createElement('button');b.className='btn btn-s btn-mini';b.textContent='PNG';
+      b.onclick=function(){dl(cv,i)};
+      f.appendChild(b);d.appendChild(f);host.appendChild(d);
+      drawSlide(cv,s,i);
+    });
+    $('btn_dl').disabled=false;
+    toast('Carrusel generado');
+  });
+});
+var DL;
+if(window.claude&&claude.use){try{claude.use('downloads').then(function(d){DL=d||undefined}).catch(function(){})}catch(e){}}
+function baseName(){return (v('f_name')||'carrusel').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'carrusel'}
+function blobFor(cv){return new Promise(function(res){cv.toBlob(function(b){res(b)},'image/png',0.96)})}
+function saveBlob(b,name){
+  if(DL&&DL.save){return DL.save({filename:name,data:b}).then(function(){return true}).catch(function(){return false})}
+  var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1500);
+  return Promise.resolve(true);
+}
+function dl(cv,i){blobFor(cv).then(function(b){saveBlob(b,baseName()+'-'+(i+1)+'.png')})}
+$('btn_dl').addEventListener('click',async function(){
+  var cvs=$('pv').querySelectorAll('canvas');
+  for(var i=0;i<cvs.length;i++){var b=await blobFor(cvs[i]);var ok=await saveBlob(b,baseName()+'-'+(i+1)+'.png');if(ok===false)break;}
+  toast('Descarga lista');
+});
+
+/* ══ CAPTION ══ */
+$('btn_cap').addEventListener('click',function(){
+  var name=v('f_name')||'Esta propiedad',loc=v('f_loc'),type=v('f_type'),m2=v('f_m2');
+  var amen=v('f_amen'),dist=v('f_dist'),web=v('f_web'),mkt=$('f_mkt').value;
+  var p1=name+(loc?' · '+loc:'')+'.\nUn lugar pensado para vivir con privacidad, sin renunciar a nada.';
+  var p2=[type,m2].filter(Boolean).join(' de ')+(amen?'. '+amen+'.':'.');
+  var p3=mkt==='andorra'
+    ? 'Andorra combina calidad de vida, seguridad y un marco fiscal atractivo para quien busca una inversión inteligente.'
+    : (dist?dist+'.':'Una ubicación consolidada, difícil de repetir.');
+  $('caption').value=p1+'\n\n'+p2+'\n\n'+p3+'\n\n✉️ Escríbenos para una visita privada.'+(web?'\n\n🔗 '+web:'');
+  sync();toast('Caption base lista — revísala');
+});
+$('caption').addEventListener('input',sync);
+$('hash').addEventListener('input',sync);
+
+/* ══ HASHTAGS ══ */
+function renderTags(){
+  var list=HASHBANK[$('f_mkt').value]||[];
+  $('tags').innerHTML=list.map(function(t){
+    return '<span class="tag'+(off.indexOf(t)>=0?' off':'')+'" data-t="'+t+'">'+t+'</span>';
+  }).join('');
+  $('hash').value=list.filter(function(t){return off.indexOf(t)<0}).join(' ');
+  sync();
+}
+$('tags').addEventListener('click',function(e){
+  var t=e.target.getAttribute('data-t'); if(!t)return;
+  var i=off.indexOf(t); if(i<0)off.push(t);else off.splice(i,1);
+  renderTags();save();
+});
+$('f_mkt').addEventListener('change',function(){off=[];renderTags();save()});
+
+function sync(){
+  var cap=$('caption').value,h=$('hash').value;
+  var n=cap.length+h.length+6;
+  $('cap_cnt').textContent=n.toLocaleString('es')+' / 2.200';
+  $('cap_cnt').className='cnt'+(n>2200?' over':'');
+  var hc=(h.match(/#/g)||[]).length;
+  $('hash_cnt').textContent=hc+' / 30';
+  $('hash_cnt').className='cnt'+(hc>30?' over':'');
+  $('full').value=cap+'\n.\n.\n.\n'+h;
+  save();
+}
+document.addEventListener('click',function(e){
+  var k=e.target.getAttribute('data-copy'); if(!k)return;
+  var map={caption:'caption',hash:'hash',full:'full'};
+  var ta=$(map[k]);
+  navigator.clipboard.writeText(ta.value).then(function(){
+    e.target.classList.add('ok');e.target.textContent='Copiado';
+    setTimeout(function(){e.target.classList.remove('ok');e.target.textContent=k==='full'?'Copiar todo':'Copiar'},1400);
+  });
+});
+
+/* ══ PERSISTENCIA (sin fotos: pesan demasiado) ══ */
+var FIELDS=['f_name','f_loc','f_mkt','f_type','f_m2','f_hab','f_ban','f_ext','f_amen','f_dist','f_ig','f_web','f_theme','caption','hash'];
+function save(){
+  try{
+    var d={s:slides,off:off,f:{}};
+    FIELDS.forEach(function(k){d.f[k]=$(k).value});
+    localStorage.setItem('dc_ig_draft',JSON.stringify(d));
+  }catch(e){}
+}
+function load(){
+  try{
+    var d=JSON.parse(localStorage.getItem('dc_ig_draft')||'null'); if(!d)return false;
+    FIELDS.forEach(function(k){if(d.f&&d.f[k]!=null)$(k).value=d.f[k]});
+    if(d.s&&d.s.length===5)slides=d.s;
+    if(d.off)off=d.off;
+    return true;
+  }catch(e){return false}
+}
+FIELDS.forEach(function(k){var el=$(k);if(el)el.addEventListener('input',save)});
+
+
+/* ══ PRESET propiedad (se carga solo si no hay borrador) ══ */
+var PRESET={
+ f:{f_name:'Les Tres Torres',f_loc:'Les Tres Torres, Barcelona',f_mkt:'barcelona',f_type:'Piso de lujo a estrenar',f_m2:'320 m\u00b2 · 40 m\u00b2 terraza',f_hab:'4',f_ban:'5',f_ext:'270 m\u00b2 \u00fatiles',f_amen:'Cocina italiana equipada, parquet natural, clima fr\u00edo/calor, mobiliario incluido',f_dist:'Sarri\u00e0-Sant Gervasi · totalmente exterior · 2 plazas garaje + trastero',f_ig:'@durancarasso',f_web:'durancarasso.es',f_theme:'dark',
+   caption:'Hay pisos que se ocupan. Y otros en los que, simplemente, se empieza a vivir. 🌇\n\nA estrenar en Les Tres Torres: 320 m\u00b2 totalmente exteriores, con una terraza de 40 m\u00b2 que abraza el sal\u00f3n y una luz que no se apaga en todo el d\u00eda. Cuatro habitaciones, tres de ellas en suite, y una master con ba\u00f1o y vestidor.\n\nParquet natural, cocina italiana, mobiliario de dise\u00f1o incluido y el barrio m\u00e1s sereno de Barcelona a tus pies. Llave en mano.\n\n✉️ Escr\u00edbenos para una visita privada.\n\n🔗 durancarasso.es'},
+ s:[
+  {kicker:'Les Tres Torres, Barcelona',title:'Luz, terraza y 320 m\u00b2 a estrenar',body:'',photo:0,focus:50,layout:'hook'},
+  {kicker:'El proyecto',title:'Un piso a estrenar',body:'320 m\u00b2 construidos · totalmente exterior\nTerraza de 40 m\u00b2\n4 habitaciones · 5 ba\u00f1os\n3 suites + master con ba\u00f1o y vestidor',photo:1,focus:50,layout:'info'},
+  {kicker:'El interior',title:'Dise\u00f1o sin concesiones',body:'Parquet natural y acabados exclusivos\nMuebles de dise\u00f1o italiano incluidos\nArmarios empotrados a medida\nClima fr\u00edo/calor en todas las estancias',photo:2,focus:50,layout:'info'},
+  {kicker:'El lifestyle',title:'Vivir en Les Tres Torres',body:'Cocina-office italiana totalmente equipada\nSal\u00f3n-comedor exterior abierto a la terraza\n2 plazas de garaje y trastero\nEl barrio m\u00e1s sereno de Barcelona',photo:3,focus:50,layout:'info'},
+  {kicker:'Consulta privada',title:'Hablemos en privado',body:'Piso de 320 m\u00b2 con terraza · Les Tres Torres\nLlave en mano, listo para entrar a vivir\ndurancarasso.es · @durancarasso',photo:0,focus:50,layout:'cta'}
+ ]
+};
+function applyPreset(){
+  Object.keys(PRESET.f).forEach(function(k){if($(k))$(k).value=PRESET.f[k]});
+  slides=JSON.parse(JSON.stringify(PRESET.s));
+}
+
+if(!load()){applyPreset()}
+renderSlides();
+renderTags();
+</script>
