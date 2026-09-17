@@ -381,16 +381,19 @@ function drawSlide(cv,s,idx){
   }
 
   var PAD=84, PADB=112;
-  // marca superior
+  var markCol=theme==='light'?'rgba(13,53,80,.95)':'rgba(255,255,255,.95)';
+  var subCol=theme==='light'?'rgba(13,53,80,.5)':'rgba(255,255,255,.5)';
+  // logo Durán Carasso (wordmark serif apilado)
   ctx.textBaseline='alphabetic';
-  ctx.fillStyle='rgba(255,255,255,.72)';
-  ctx.font='500 24px Inter, sans-serif';
-  ctx.letterSpacing='6px';
-  ctx.fillText('DURAN CARASSO',PAD,PAD+18);
+  ctx.fillStyle=markCol;
+  ctx.font='500 42px "Playfair Display", serif';
+  ctx.letterSpacing='0.5px';
+  ctx.fillText('Durán',PAD,PAD+16);
+  ctx.fillText('Carasso',PAD,PAD+16+44);
   ctx.letterSpacing='0px';
 
   // indicador de slide
-  ctx.fillStyle='rgba(255,255,255,.45)';
+  ctx.fillStyle=subCol;
   ctx.font='400 22px Inter, sans-serif';
   ctx.textAlign='right';
   ctx.fillText((idx+1)+' / '+slides.length,W-PAD,PAD+18);
