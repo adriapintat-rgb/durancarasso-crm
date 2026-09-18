@@ -17,7 +17,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 const CONFIG = {
   // Email donde quieres recibir los avisos + borradores
-  EMAIL_DESTINO: 'adriapintat@gmail.com',
+  EMAIL_DESTINO: 'adriap@durancarasso.com, aselles@durancarasso.com',
 
   // API key gratuita de Google AI Studio (Gemini) -> https://aistudio.google.com/apikey
   // Se usa para clasificar la reseña y redactar la respuesta.

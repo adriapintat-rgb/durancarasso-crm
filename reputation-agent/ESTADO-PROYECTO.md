@@ -10,7 +10,8 @@ ya redactada para revisar y publicar. Coste: 0 €.
 |---|---|
 | Proyecto Google Cloud (ID) | `duran-carasso-resenas` |
 | Nº de proyecto | `360704400683` |
-| Email de avisos | `adriapintat@gmail.com` |
+| Email de avisos | `adriap@durancarasso.com`, `aselles@durancarasso.com` |
+| Cuenta que gestiona todo | `grupodurancarasso@gmail.com` |
 | Caso solicitud API reseñas | `7-6359000041501` (aprobación 7-10 días hábiles) |
 | Dónde vive el robot | Apps Script → proyecto "Durán Carasso · Reseñas" |
 | Llave IA (Gemini) | Dentro del código Code.gs (rotar por seguridad al final) |
@@ -19,20 +20,22 @@ ya redactada para revisar y publicar. Coste: 0 €.
 - [x] Código del robot pegado en Apps Script
 - [x] Llave de IA (Gemini) puesta
 - [x] Proyecto Google Cloud creado (`duran-carasso-resenas`)
-- [x] API My Business Account Management activada
-- [x] API My Business Business Information activada
+- [x] APIs activadas: Account Management, Business Information, Drive, Sheets, Gmail
 - [x] Solicitud de acceso a la API de reseñas enviada (caso 7-6359000041501)
+- [x] Pantalla de consentimiento OAuth configurada + usuario de prueba añadido
+- [x] Proyecto Cloud vinculado en Apps Script (Paso 7)
+- [x] Código ejecutado OK de principio a fin (crea hoja de registro)
+- [x] Email de avisos configurado: adriap@durancarasso.com + aselles@durancarasso.com
 
 ## 🔲 Pendiente
 
-### Hoy (~5 min)
-- [ ] **Paso 7 — Vincular proyecto en Apps Script**
-  ⚙️ Configuración del proyecto → "Cambiar de proyecto" → pegar `360704400683` → Establecer.
-- [ ] **Paso 8 — Probar detección de fichas**
-  En Apps Script, función `testUbicaciones` → ▶ Ejecutar → autorizar permisos →
-  deben aparecer las 4 fichas en el registro de ejecución.
+### Hoy (~1 min)
 - [ ] **Paso 9 — Encender piloto automático**
   Función `instalarTrigger` → ▶ Ejecutar. Revisa las reseñas cada hora.
+
+> Nota: al ejecutar hoy sale "Sin ubicaciones" porque las APIs de Business
+> Profile tienen la cuota a 0 hasta que Google apruebe el caso
+> 7-6359000041501. Es lo esperado; se desbloquea solo con la aprobación.
 
 ### Esperando a Google (7-10 días hábiles)
 - [ ] Aprobación del acceso a la API de reseñas (caso 7-6359000041501).
