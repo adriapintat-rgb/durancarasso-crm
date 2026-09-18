@@ -131,6 +131,17 @@ input[type=range]:focus{box-shadow:none}
   <!-- ══ IZQUIERDA ══ -->
   <div class="col-l">
 
+    <div class="card ai-card" id="ai_card">
+      <div class="card-h" style="background:linear-gradient(180deg,#12456A,#0D3550)"><span class="n" style="background:linear-gradient(135deg,#CBA43C,#A67F1F)">✦</span><h2 style="color:#fff">Generar con IA</h2><span class="aux" id="ai_mem" style="color:rgba(255,255,255,.55)"></span></div>
+      <div class="card-in">
+        <div class="hint">Pega la <b>ficha</b>, un <b>link + su contenido</b> o tus <b>notas</b>. La IA escribe los 5 slides, la caption y los hashtags con el tono Duran Carasso — y aprende de cada post que apruebas.</div>
+        <textarea id="ai_in" rows="4" placeholder="Ej.: Piso 320 m² en Les Tres Torres, 4 hab, 5 baños, terraza 40 m², a estrenar, cocina italiana, garaje…"></textarea>
+        <label style="display:flex;align-items:center;gap:8px;margin:11px 0 0;font-size:12px;color:var(--ink);cursor:pointer"><input type="checkbox" id="ai_photos" style="width:auto"> Analizar mis fotos como contexto visual</label>
+        <button class="btn btn-g btn-full" id="ai_go" style="margin-top:11px">✦ Generar carrusel con IA</button>
+        <div id="ai_status" class="mini" style="margin-top:9px;text-align:center;min-height:15px"></div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-h"><span class="n">1</span><h2>Fotos</h2><span class="aux" id="ph_cnt">0</span></div>
       <div class="card-in">
@@ -213,12 +224,14 @@ input[type=range]:focus{box-shadow:none}
           <button class="copy" data-copy="caption">Copiar</button>
           <textarea id="caption" rows="9" placeholder="Párrafo 1 — gancho emocional…"></textarea>
         </div>
+        <button class="btn btn-s btn-full btn-mini ai-only" id="btn_hookia" style="margin-top:10px;display:none">✦ Mejorar gancho (viral) con IA</button>
       </div>
     </div>
 
     <div class="card">
       <div class="card-h"><span class="n">6</span><h2>Hashtags</h2><span class="aux" id="hash_cnt">0 / 30</span></div>
       <div class="card-in">
+        <button class="btn btn-s btn-full btn-mini ai-only" id="btn_htia" style="margin-bottom:11px;display:none">✦ Optimizar hashtags con IA</button>
         <div class="tags" id="tags"></div>
         <div class="out">
           <button class="copy" data-copy="hash">Copiar</button>
@@ -234,7 +247,11 @@ input[type=range]:focus{box-shadow:none}
           <button class="copy" data-copy="full">Copiar todo</button>
           <textarea id="full" rows="5" placeholder="Caption + hashtags para Metricool / Instagram"></textarea>
         </div>
-        <div class="mini" style="margin-top:9px">Descarga las imágenes, súbelas en orden y pega este texto. Publicación automática vía Metricool = siguiente fase.</div>
+        <div class="row c2 ai-only" id="learn_row" style="margin-top:11px;display:none">
+          <button class="btn btn-s btn-mini" id="btn_up" style="color:var(--green);border-color:#BEE3C9">👍 Guardar como aprobado</button>
+          <button class="btn btn-s btn-mini" id="btn_down" style="color:var(--red);border-color:#EDC9C1">👎 Descartar</button>
+        </div>
+        <div class="mini" style="margin-top:9px">Descarga las imágenes, súbelas en orden y pega este texto. Cada post que apruebas afina a la IA. Publicación automática vía Metricool = siguiente fase.</div>
       </div>
     </div>
   </div>
@@ -254,7 +271,7 @@ var HASHBANK={
 };
 var LABELS=['Gancho','Proyecto','Interior','Lifestyle','Consulta'];
 var LAYOUTS=['hook','info','info','info','cta'];
-var photos=[], slides=[], off=[];
+var photos=[], slides=[], off=[], curTags=null;
 
 function $(id){return document.getElementById(id)}
 function v(id){return ($(id)&&$(id).value||'').trim()}
@@ -558,8 +575,9 @@ $('caption').addEventListener('input',sync);
 $('hash').addEventListener('input',sync);
 
 /* ══ HASHTAGS ══ */
+function tagList(){return (curTags&&curTags.length)?curTags:(HASHBANK[$('f_mkt').value]||[])}
 function renderTags(){
-  var list=HASHBANK[$('f_mkt').value]||[];
+  var list=tagList();
   $('tags').innerHTML=list.map(function(t){return '<span class="tag'+(off.indexOf(t)>=0?' off':'')+'" data-t="'+t+'">'+t+'</span>'}).join('');
   $('hash').value=list.filter(function(t){return off.indexOf(t)<0}).join(' ');
   sync();
@@ -568,7 +586,7 @@ $('tags').addEventListener('click',function(e){
   var t=e.target.getAttribute('data-t'); if(!t)return;
   var i=off.indexOf(t);if(i<0)off.push(t);else off.splice(i,1);renderTags();save();
 });
-$('f_mkt').addEventListener('change',function(){off=[];renderTags();save()});
+$('f_mkt').addEventListener('change',function(){off=[];curTags=null;renderTags();save()});
 
 function sync(){
   var cap=$('caption').value,h=$('hash').value,n=cap.length+h.length+6;
@@ -590,10 +608,100 @@ document.addEventListener('click',function(e){
 ['f_theme','f_scrim','f_logo'].forEach(function(id){$(id).addEventListener('input',function(){scheduleRender();save()})});
 $('f_name').addEventListener('input',function(){$('chip').textContent=v('f_name')||'Nueva propiedad'});
 
+/* ══ IA (cerebro en vivo vía capability sample) + MEMORIA (db) ══ */
+var SAMPLE=null, DB=null, AICtx={examples:[],count:0};
+var BRAND_RULES='Eres el copywriter senior de Duran Carasso, inmobiliaria de lujo (Andorra, Sitges, Barcelona). Tono exclusivo, aspiracional y cálido; nunca agresivo ni de venta dura. Nunca menciones precio salvo que el material lo pida. Máximo 3 emojis. Privacidad y exclusividad siempre presentes. CTA suave (consulta privada, visita privada). Reescribe, nunca copies literal. Castellano (si el mercado es Andorra puedes mezclar algo de català). Carrusel de 5 slides: 1 Gancho (frase de ≤10 palabras), 2 Proyecto, 3 Interior, 4 Lifestyle/Valor, 5 Consulta privada con web y cuenta.';
+var OUTPUT_SPEC='Devuelve SOLO un JSON válido, sin texto alrededor, con esta forma exacta:\n{"market":"barcelona|andorra|sitges|general","name":"titular corto de la propiedad","slides":[{"kicker":"etiqueta corta","title":"titular","body":"linea1\\nlinea2","layout":"hook|info|cta","photoHint":0}],"caption":"texto con saltos \\n","hashtags":["#Uno","#Dos"]}\nReglas: exactamente 5 slides en este orden -> [0] gancho (layout "hook", body ""), [1] proyecto, [2] interior, [3] lifestyle (los tres layout "info"), [4] cierre (layout "cta"). body: máximo 4 líneas, una idea por línea, sin viñetas. caption: 3 párrafos + CTA suave + web, máximo 3 emojis. hashtags: 15, mezcla de alcance amplio, medio y nicho del mercado, incluye #DuranCarasso.';
+
+function aiBusy(id,t){var b=$(id);if(b){b.textContent=t;b.disabled=true}}
+function aiIdle(id,t){var b=$(id);if(b){b.textContent=t;b.disabled=false}}
+function aiErr(code){var m={not_granted:'Activa el acceso de IA para esta app',sampling_disabled:'IA no disponible en esta cuenta',rate_limited:'Demasiadas peticiones, prueba en un momento',invalid_json:'Respuesta no válida, reintenta',prompt_too_large:'Material demasiado largo, resúmelo',refused:'No pude generarlo, cambia el material'};return m[code]||'Error de IA, reintenta'}
+function photoBlobs(){var jobs=[];for(var i=0;i<Math.min(4,photos.length);i++)jobs.push(fetch(photos[i].src).then(function(r){return r.blob()}).catch(function(){return null}));return Promise.all(jobs).then(function(a){return a.filter(Boolean)})}
+
+function applyAI(r){
+  if(!r||typeof r!=='object')return;
+  if(r.market&&['barcelona','andorra','sitges','general'].indexOf(r.market)>=0)$('f_mkt').value=r.market;
+  if(r.name){$('f_name').value=r.name;$('chip').textContent=r.name}
+  var sl=Array.isArray(r.slides)?r.slides:[];
+  for(var i=0;i<5;i++){
+    var a=sl[i]||{};
+    slides[i].kicker=(a.kicker!=null?a.kicker:slides[i].kicker)||'';
+    slides[i].title=(a.title!=null?a.title:slides[i].title)||'';
+    slides[i].body=(a.body!=null?a.body:slides[i].body)||'';
+    slides[i].layout=(['hook','info','cta'].indexOf(a.layout)>=0)?a.layout:LAYOUTS[i];
+    if(typeof a.photoHint==='number'&&photos.length)slides[i].photo=Math.max(0,Math.min(photos.length-1,a.photoHint|0));
+  }
+  if(r.caption)$('caption').value=String(r.caption);
+  if(Array.isArray(r.hashtags)&&r.hashtags.length){curTags=r.hashtags.map(function(t){t=String(t).trim();return t[0]==='#'?t:'#'+t}).slice(0,30);off=[]}
+  renderSlides();renderTags();scheduleRender();save();
+}
+
+async function generateAI(){
+  if(!SAMPLE)return;
+  var material=$('ai_in').value.trim();
+  if(!material){toast('Pega material primero');return}
+  aiBusy('ai_go','Pensando…');$('ai_status').textContent='La IA está escribiendo tu carrusel…';
+  var ctx=''; if(AICtx.examples.length)ctx='\n\nEJEMPLOS APROBADOS POR EL EQUIPO (imita este tono y longitud):\n'+AICtx.examples.slice(0,4).map(function(e){return '- '+e}).join('\n');
+  var prompt=BRAND_RULES+ctx+'\n\nMATERIAL DE ENTRADA:\n'+material.slice(0,6000)+'\n\n'+OUTPUT_SPEC;
+  var opts={modelTier:'default'};
+  if($('ai_photos').checked&&photos.length){var imgs=await photoBlobs();if(imgs.length){opts.images=imgs;prompt+='\n\nAdjunto las fotos reales del inmueble: adapta el copy a lo que se ve y en cada slide pon photoHint (índice 0-based) con la foto que mejor encaje.'}}
+  try{var r=await SAMPLE.json(prompt,opts);applyAI(r);$('ai_status').textContent='';toast('Carrusel generado con IA ✦')}
+  catch(e){$('ai_status').textContent=aiErr(e.code)}
+  aiIdle('ai_go','✦ Generar carrusel con IA');
+}
+
+async function optimizeHashtags(){
+  if(!SAMPLE)return; aiBusy('btn_htia','Optimizando…');
+  var p='Eres estratega de hashtags inmobiliarios de lujo. Devuelve SOLO un JSON array de 15 hashtags (strings con #), mezcla óptima de alcance amplio, medio y nicho, en el idioma del mercado, para esta propiedad. Incluye #DuranCarasso.\n\nPropiedad: '+[v('f_name'),v('f_loc'),v('f_type'),v('f_m2'),'mercado '+$('f_mkt').value].filter(Boolean).join(' · ');
+  try{var arr=await SAMPLE.json(p);if(Array.isArray(arr)&&arr.length){curTags=arr.map(function(t){t=String(t).trim();return t[0]==='#'?t:'#'+t}).slice(0,30);off=[];renderTags();save();toast('Hashtags optimizados ✦')}}
+  catch(e){toast(aiErr(e.code))}
+  aiIdle('btn_htia','✦ Optimizar hashtags con IA');
+}
+
+async function viralHook(){
+  if(!SAMPLE)return; aiBusy('btn_hookia','Afinando…');
+  var p=BRAND_RULES+'\n\nMejora el GANCHO para máximo scroll-stop en Instagram sin perder elegancia ni caer en clickbait. Devuelve SOLO un JSON {"title":"titular slide 1 de ≤9 palabras","firstLine":"primera línea de la caption"}.\n\nTitular actual: '+(slides[0].title||'—')+'\nPropiedad: '+[v('f_name'),v('f_loc'),v('f_type'),v('f_m2')].filter(Boolean).join(' · ');
+  try{var r=await SAMPLE.json(p);
+    if(r&&r.title){slides[0].title=String(r.title);renderSlides();scheduleRender()}
+    if(r&&r.firstLine){var c=$('caption').value.split('\n');c[0]=String(r.firstLine);$('caption').value=c.join('\n');sync()}
+    toast('Gancho mejorado ✦');save();
+  }catch(e){toast(aiErr(e.code))}
+  aiIdle('btn_hookia','✦ Mejorar gancho (viral) con IA');
+}
+
+/* ── Memoria (aprendizaje) ── */
+function curPost(){return {name:v('f_name'),market:$('f_mkt').value,caption:$('caption').value,hashtags:tagList(),slides:slides.map(function(s){return {kicker:s.kicker,title:s.title,body:s.body,layout:s.layout}})}}
+function saveApproved(rating){
+  if(!DB){toast('Memoria no disponible aquí');return}
+  var doc=curPost();doc.rating=rating;doc.ts=Date.now();
+  DB.collection('posts').add(doc).then(function(){toast(rating==='up'?'Guardado — la IA aprende 👍':'Descartado 👎');loadMemory()}).catch(function(){toast('No se pudo guardar')});
+}
+function loadMemory(){
+  if(!DB)return;
+  try{DB.collection('posts').where('rating','==','up').orderBy('ts','desc').limit(8).get().then(function(q){
+    var ex=[];q.docs.forEach(function(d){var p=d.data();if(p&&p.caption)ex.push((p.name?p.name+': ':'')+String(p.caption).split('\n')[0])});
+    AICtx.examples=ex;AICtx.count=q.size;var el=$('ai_mem');if(el)el.textContent=q.size?('memoria · '+q.size+' aprobados'):'';
+  }).catch(function(){})}catch(e){}
+}
+
+function hideAI(){var c=$('ai_card');if(c)c.style.display='none';var n=document.querySelectorAll('.ai-only');for(var i=0;i<n.length;i++)n[i].style.display='none'}
+function showAIonly(){var n=document.querySelectorAll('.ai-only');for(var i=0;i<n.length;i++)n[i].style.display=(n[i].id==='learn_row')?'grid':'block'}
+(function initCaps(){
+  if(!(window.claude&&claude.use)){hideAI();return}
+  $('ai_go').disabled=true;$('ai_status').textContent='Conectando IA…';
+  claude.use('sample').then(function(s){if(s){SAMPLE=s;$('ai_go').disabled=false;$('ai_status').textContent='';showAIonly()}else hideAI()}).catch(hideAI);
+  claude.use('db').then(function(db){if(db){DB=db;loadMemory()}}).catch(function(){});
+})();
+$('ai_go').addEventListener('click',generateAI);
+$('btn_htia').addEventListener('click',optimizeHashtags);
+$('btn_hookia').addEventListener('click',viralHook);
+$('btn_up').addEventListener('click',function(){saveApproved('up')});
+$('btn_down').addEventListener('click',function(){saveApproved('down')});
+
 /* ══ PERSISTENCIA ══ */
 var FIELDS=['f_name','f_loc','f_mkt','f_type','f_m2','f_hab','f_ban','f_ext','f_amen','f_dist','f_ig','f_web','f_theme','f_scrim','f_logo','caption','hash'];
-function save(){try{var d={s:slides,off:off,f:{}};FIELDS.forEach(function(k){if($(k))d.f[k]=$(k).value});localStorage.setItem('dc_ig_draft2',JSON.stringify(d))}catch(e){}}
-function load(){try{var d=JSON.parse(localStorage.getItem('dc_ig_draft2')||'null');if(!d)return false;FIELDS.forEach(function(k){if($(k)&&d.f&&d.f[k]!=null)$(k).value=d.f[k]});if(d.s&&d.s.length===5)slides=d.s;if(d.off)off=d.off;return true}catch(e){return false}}
+function save(){try{var d={s:slides,off:off,ct:curTags,f:{}};FIELDS.forEach(function(k){if($(k))d.f[k]=$(k).value});localStorage.setItem('dc_ig_draft2',JSON.stringify(d))}catch(e){}}
+function load(){try{var d=JSON.parse(localStorage.getItem('dc_ig_draft2')||'null');if(!d)return false;FIELDS.forEach(function(k){if($(k)&&d.f&&d.f[k]!=null)$(k).value=d.f[k]});if(d.s&&d.s.length===5)slides=d.s;if(d.off)off=d.off;if(d.ct)curTags=d.ct;return true}catch(e){return false}}
 FIELDS.forEach(function(k){var el=$(k);if(el)el.addEventListener('input',save)});
 
 /* ══ PRESET (Les Tres Torres) — solo sin borrador ══ */
