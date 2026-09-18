@@ -27,15 +27,21 @@ ya redactada para revisar y publicar. Coste: 0 €.
 - [x] Código ejecutado OK de principio a fin (crea hoja de registro)
 - [x] Email de avisos configurado: adriap@durancarasso.com + aselles@durancarasso.com
 
-## 🔲 Pendiente
+- [x] **Piloto automático activado** (`instalarTrigger` → revisión cada hora)
 
-### Hoy (~1 min)
-- [ ] **Paso 9 — Encender piloto automático**
-  Función `instalarTrigger` → ▶ Ejecutar. Revisa las reseñas cada hora.
+## 🟢 Sistema montado y armado al 100% por nuestra parte
 
-> Nota: al ejecutar hoy sale "Sin ubicaciones" porque las APIs de Business
-> Profile tienen la cuota a 0 hasta que Google apruebe el caso
-> 7-6359000041501. Es lo esperado; se desbloquea solo con la aprobación.
+Todo lo que dependía de nosotros está hecho. El robot ya se ejecuta solo
+cada hora.
+
+## 🔲 Único pendiente (depende de Google)
+- [ ] Aprobación del acceso a la API de reseñas (caso `7-6359000041501`,
+  7-10 días hábiles).
+
+> Hasta la aprobación, las revisiones horarias registran "Sin ubicaciones"
+> porque las APIs de Business Profile tienen la cuota a 0. Es lo esperado.
+> Al aprobar, empieza a leer fichas y reseñas y a enviar emails **solo**,
+> sin tocar nada. Ver "Reactivación" en MANUAL-SISTEMA.md (punto 5).
 
 ### Esperando a Google (7-10 días hábiles)
 - [ ] Aprobación del acceso a la API de reseñas (caso 7-6359000041501).
