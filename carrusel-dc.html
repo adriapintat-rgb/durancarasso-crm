@@ -10,6 +10,7 @@
   --r:16px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
 html,body{height:100%}
 body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
 img{max-width:100%}
@@ -117,6 +118,33 @@ input[type=range]:focus{box-shadow:none}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(90px);background:var(--navy);color:#fff;font-size:12.5px;padding:11px 22px;border-radius:26px;z-index:99;transition:transform .28s cubic-bezier(.2,.8,.2,1);pointer-events:none;box-shadow:0 10px 30px -8px rgba(0,0,0,.4)}
 .toast.on{transform:translateX(-50%) translateY(0)}
 .divider{height:1px;background:var(--line2);margin:14px 0}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:4px;padding:12px 22px 0;max-width:1500px;margin:0 auto;flex-wrap:wrap}
+.tab{border:none;background:transparent;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--sub);padding:11px 20px;border-radius:12px 12px 0 0;cursor:pointer;transition:.12s}
+.tab:hover{color:var(--navy)}
+.tab.on{color:var(--navy);background:var(--card);box-shadow:var(--shadow-sm)}
+
+/* ── CALENDARIO ── */
+.calwrap{max-width:1000px;margin:0 auto;padding:22px}
+@media(max-width:960px){.calwrap{padding:16px}}
+.cal-h{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.cal-h b{font-size:17px;font-family:'Playfair Display',serif;flex:1;text-transform:capitalize;font-weight:600}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-dow{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--sub);text-align:center;padding:4px 0;font-weight:600}
+.cal-cell{min-height:76px;border:1px solid var(--line);border-radius:10px;background:#fff;padding:6px;cursor:pointer;transition:.12s;display:flex;flex-direction:column;gap:3px;overflow:hidden}
+.cal-cell:hover{border-color:var(--gold)}
+.cal-cell.out{background:#FAF9F6;opacity:.45;cursor:default}
+.cal-cell.sel{border-color:var(--navy);box-shadow:0 0 0 2px rgba(13,53,80,.12)}
+.cal-cell .dn{font-size:11px;color:var(--sub);font-weight:600}
+.cal-cell.today .dn{color:var(--gold)}
+.cal-chip{font-size:8.5px;padding:2px 5px;border-radius:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font-weight:500}
+.cal-chip.scheduled{background:var(--accent)}
+.cal-chip.published{background:var(--green)}
+.cal-chip.error{background:var(--red)}
+.cal-chip.cancelled{background:#9AA0A6;text-decoration:line-through}
+.cal-chip.publishing{background:var(--gold)}
+@media(max-width:520px){.cal-cell{min-height:56px}.cal-chip{font-size:0;padding:3px}.cal-chip:before{content:"•";font-size:12px}}
 </style>
 
 <div class="hdr">
@@ -126,7 +154,12 @@ input[type=range]:focus{box-shadow:none}
   <div class="hdr-fmt">1080×1350</div>
 </div>
 
-<div class="wrap">
+<div class="tabs">
+  <button class="tab on" id="tab_create">✦ Crear</button>
+  <button class="tab" id="tab_cal">🗓 Calendario</button>
+</div>
+
+<div class="wrap" id="view_create">
 
   <!-- ══ IZQUIERDA ══ -->
   <div class="col-l">
@@ -251,21 +284,28 @@ input[type=range]:focus{box-shadow:none}
           <button class="btn btn-s btn-mini" id="btn_up" style="color:var(--green);border-color:#BEE3C9">👍 Guardar como aprobado</button>
           <button class="btn btn-s btn-mini" id="btn_down" style="color:var(--red);border-color:#EDC9C1">👎 Descartar</button>
         </div>
-        <div class="mini" style="margin-top:9px">Descarga las imágenes, súbelas en orden y pega este texto. Cada post que apruebas afina a la IA.</div>
+        <div class="mini" style="margin-top:9px">Descarga las imágenes o ve a <b>Calendario</b> para agendar la publicación. Cada post que apruebas afina a la IA.</div>
       </div>
     </div>
+  </div>
+</div>
 
-    <div class="card">
-      <div class="card-h"><span class="n">8</span><h2>Publicar en Instagram</h2><button class="btn btn-s btn-mini" id="pub_cfg_btn" style="padding:4px 9px">⚙ Conectar</button></div>
-      <div class="card-in">
-        <div class="hint">Conecta tu <b>publicador</b> (Cloudflare Worker, gratis) una vez y publica o agenda con un botón. Guía en <b>publisher/README.md</b>. Funciona en la versión alojada de la app.</div>
-        <div class="row c2">
-          <button class="btn btn-p" id="pub_now">↗ Publicar ahora</button>
-          <button class="btn btn-g" id="pub_sched">🗓 Agendar</button>
-        </div>
-        <div class="row" style="margin-top:10px"><div><label>Fecha y hora (para agendar)</label><input type="datetime-local" id="pub_when"></div></div>
-        <div id="pub_list" style="margin-top:12px"></div>
+<!-- ══ VISTA CALENDARIO ══ -->
+<div id="view_cal" class="calwrap" hidden>
+  <div class="card">
+    <div class="card-h"><span class="n" style="background:linear-gradient(135deg,#CBA43C,#A67F1F)">🗓</span><h2>Calendario de publicaciones</h2><button class="btn btn-s btn-mini" id="pub_cfg_btn" style="padding:4px 9px">⚙ Conectar</button></div>
+    <div class="card-in">
+      <div class="hint" id="cal_note">Prepara el carrusel en <b>Crear</b>, vuelve aquí, elige un <b>día</b> y una <b>hora</b> y pulsa <b>Agendar</b>: se publicará solo, ese día. También puedes <b>publicar ahora</b>.</div>
+      <button class="btn btn-p btn-full" id="pub_now" style="margin-bottom:14px">↗ Publicar el carrusel actual ahora</button>
+      <div class="cal-h">
+        <button class="btn btn-s btn-mini" id="cal_prev" style="padding:6px 11px">‹</button>
+        <b id="cal_title"></b>
+        <button class="btn btn-s btn-mini" id="cal_today">Hoy</button>
+        <button class="btn btn-s btn-mini" id="cal_next" style="padding:6px 11px">›</button>
       </div>
+      <div class="cal-grid" id="cal_dows"></div>
+      <div class="cal-grid" id="cal_grid" style="margin-top:6px"></div>
+      <div id="cal_day" style="margin-top:16px"></div>
     </div>
   </div>
 </div>
@@ -711,7 +751,7 @@ $('btn_hookia').addEventListener('click',viralHook);
 $('btn_up').addEventListener('click',function(){saveApproved('up')});
 $('btn_down').addEventListener('click',function(){saveApproved('down')});
 
-/* ══ PUBLICAR EN INSTAGRAM (vía Worker propio) ══ */
+/* ══ PUBLICAR + CALENDARIO ══ */
 function pubCfg(){try{return JSON.parse(localStorage.getItem('dc_pub_cfg')||'{}')}catch(e){return {}}}
 function setPubCfg(c){try{localStorage.setItem('dc_pub_cfg',JSON.stringify(c))}catch(e){}}
 function pubBase(){var c=pubCfg();return (c.url||'').replace(/\/$/,'')}
@@ -727,39 +767,81 @@ $('pub_cfg_btn').addEventListener('click',function(){
 async function doPublish(when){
   var c=pubCfg(); if(!c.url||!c.secret){toast('Pulsa ⚙ Conectar primero');return}
   var cvs=$('pv').querySelectorAll('canvas');
-  if(!photos.length||cvs.length<2){toast('Sube 2-10 fotos y genera el carrusel');return}
-  var btn=when?'pub_sched':'pub_now'; aiBusy(btn,'Enviando…');
+  if(!photos.length||cvs.length<2){toast('En Crear: sube 2-10 fotos y genera el carrusel');return}
+  toast(when?'Agendando…':'Publicando…');
   try{
     var images=await exportForPublish();
     var r=await fetch(pubBase()+'/publish',{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':c.secret},body:JSON.stringify({images:images,caption:($('full').value||$('caption').value),when:when||0})});
     var j=await r.json();
     if(j.ok)toast('Publicado en Instagram ✓');
-    else if(j.scheduled)toast('Agendado ✓');
+    else if(j.scheduled)toast('Agendado ✓ — se publicará solo');
     else toast('Error: '+(j.error||(j.result&&j.result.step)||'fallo'));
     loadJobs();
   }catch(e){toast('Sin conexión con el publicador (usa la versión alojada)')}
-  aiIdle(btn,when?'🗓 Agendar':'↗ Publicar ahora');
 }
 $('pub_now').addEventListener('click',function(){doPublish(0)});
-$('pub_sched').addEventListener('click',function(){var w=$('pub_when').value;if(!w){toast('Elige fecha y hora');return}doPublish(new Date(w).getTime())});
+
+/* ── datos del calendario ── */
+var JOBSCACHE=[], calY=null, calM=null, calSel=null;
 function loadJobs(){
-  var c=pubCfg(); if(!c.url||!c.secret){$('pub_list').innerHTML='';return}
+  var c=pubCfg();
+  if(!c.url||!c.secret){JOBSCACHE=[];renderCalendar();renderCalDay();return}
   fetch(pubBase()+'/jobs',{headers:{'x-app-secret':c.secret}}).then(function(r){return r.json()}).then(function(d){
-    var jobs=(d.jobs||[]).slice(-12).reverse();
-    if(!jobs.length){$('pub_list').innerHTML='<div class="mini">Sin publicaciones todavía.</div>';return}
-    $('pub_list').innerHTML='<label>Calendario</label>'+jobs.map(function(j){
-      var st={scheduled:'🗓 Agendado',published:'✅ Publicado',error:'⚠️ Error',publishing:'⏳ Publicando',cancelled:'✖ Cancelado'}[j.status]||j.status;
-      var dt=j.when?new Date(j.when):new Date(j.createdAt);
-      var line=(j.caption||'').split('\n')[0].slice(0,42);
-      return '<div style="display:flex;gap:8px;align-items:center;font-size:12px;padding:7px 0;border-bottom:1px solid var(--line2)"><span style="width:96px;color:var(--sub);flex-shrink:0">'+dt.toLocaleString('es',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(line)+'</span><span style="flex-shrink:0">'+st+'</span>'+(j.status==='scheduled'?' <button class="btn btn-s btn-mini" data-cancel="'+j.id+'" style="padding:3px 7px">✖</button>':'')+'</div>';
-    }).join('');
-  }).catch(function(){$('pub_list').innerHTML='<div class="mini">No se pudo cargar (requiere versión alojada).</div>'});
+    JOBSCACHE=d.jobs||[];renderCalendar();renderCalDay();
+  }).catch(function(){JOBSCACHE=[];renderCalendar();renderCalDay()});
 }
-$('pub_list').addEventListener('click',function(e){
+function pad2(n){return String(n).padStart(2,'0')}
+function ymd(d){return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())}
+function jobDay(j){var t=j.when||j.createdAt;return t?ymd(new Date(t)):''}
+function renderCalendar(){
+  if(!$('cal_grid'))return;
+  var now=new Date(); if(calY==null){calY=now.getFullYear();calM=now.getMonth()}
+  var first=new Date(calY,calM,1), start=(first.getDay()+6)%7, days=new Date(calY,calM+1,0).getDate(), prev=new Date(calY,calM,0).getDate();
+  $('cal_title').textContent=first.toLocaleDateString('es',{month:'long',year:'numeric'});
+  $('cal_dows').innerHTML=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(function(x){return '<div class="cal-dow">'+x+'</div>'}).join('');
+  var cells='',ts=ymd(now);
+  for(var i=0;i<start;i++)cells+='<div class="cal-cell out"><span class="dn">'+(prev-start+1+i)+'</span></div>';
+  for(var d=1;d<=days;d++){
+    var ds=calY+'-'+pad2(calM+1)+'-'+pad2(d);
+    var dj=JOBSCACHE.filter(function(j){return jobDay(j)===ds});
+    var chips=dj.slice(0,3).map(function(j){return '<span class="cal-chip '+j.status+'">'+(j.when?new Date(j.when).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})+' ':'')+esc((j.caption||'').split('\n')[0].slice(0,8))+'</span>'}).join('');
+    cells+='<div class="cal-cell'+(ds===ts?' today':'')+(ds===calSel?' sel':'')+'" data-day="'+ds+'"><span class="dn">'+d+'</span>'+chips+'</div>';
+  }
+  $('cal_grid').innerHTML=cells;
+}
+function renderCalDay(){
+  if(!$('cal_day'))return;
+  if(!calSel){$('cal_day').innerHTML='<div class="mini">Elige un día del calendario para agendar el carrusel.</div>';return}
+  var dj=JOBSCACHE.filter(function(j){return jobDay(j)===calSel}), d=new Date(calSel+'T12:00');
+  var html='<label style="font-size:13px;color:var(--ink);text-transform:capitalize">'+d.toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'})+'</label>';
+  html+='<div class="row c2" style="margin:9px 0"><div><label>Hora</label><input type="time" id="cal_time" value="10:00"></div><div style="display:flex;align-items:flex-end"><button class="btn btn-g btn-full" id="cal_sched">🗓 Agendar el carrusel actual</button></div></div>';
+  if(dj.length)html+=dj.map(function(j){var st={scheduled:'🗓',published:'✅',error:'⚠️',publishing:'⏳',cancelled:'✖'}[j.status]||'';return '<div style="display:flex;gap:8px;align-items:center;font-size:12px;padding:7px 0;border-bottom:1px solid var(--line2)"><span style="width:46px;color:var(--sub)">'+(j.when?new Date(j.when).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}):'')+'</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc((j.caption||'').split('\n')[0].slice(0,40))+'</span><span>'+st+'</span>'+(j.status==='scheduled'?' <button class="btn btn-s btn-mini" data-cancel="'+j.id+'" style="padding:2px 6px">✖</button>':'')+'</div>'}).join('');
+  else html+='<div class="mini">Nada agendado este día.</div>';
+  $('cal_day').innerHTML=html;
+  $('cal_sched').onclick=function(){var t=($('cal_time')&&$('cal_time').value)||'10:00';doPublish(new Date(calSel+'T'+t).getTime())};
+}
+$('cal_grid').addEventListener('click',function(e){var c=e.target.closest('[data-day]');if(!c||c.classList.contains('out'))return;calSel=c.getAttribute('data-day');renderCalendar();renderCalDay()});
+$('cal_day').addEventListener('click',function(e){
   var id=e.target.getAttribute('data-cancel'); if(!id)return;
   var c=pubCfg(); if(!c.url)return;
   fetch(pubBase()+'/jobs/cancel',{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':c.secret},body:JSON.stringify({id:id})}).then(function(){toast('Agendado cancelado');loadJobs()}).catch(function(){});
 });
+$('cal_prev').addEventListener('click',function(){calM--;if(calM<0){calM=11;calY--}renderCalendar()});
+$('cal_next').addEventListener('click',function(){calM++;if(calM>11){calM=0;calY++}renderCalendar()});
+$('cal_today').addEventListener('click',function(){var n=new Date();calY=n.getFullYear();calM=n.getMonth();calSel=ymd(n);renderCalendar();renderCalDay()});
+
+/* ── PESTAÑAS ── */
+function showTab(w){
+  $('view_create').hidden=(w==='cal');
+  $('view_cal').hidden=(w!=='cal');
+  $('tab_create').classList.toggle('on',w!=='cal');
+  $('tab_cal').classList.toggle('on',w==='cal');
+  if(w==='cal'){renderCalendar();renderCalDay();loadJobs()}
+  window.scrollTo(0,0);
+}
+$('tab_create').addEventListener('click',function(){showTab('create')});
+$('tab_cal').addEventListener('click',function(){showTab('cal')});
+
 loadJobs();
 
 /* ══ PERSISTENCIA ══ */
