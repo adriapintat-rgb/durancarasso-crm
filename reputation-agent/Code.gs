@@ -224,7 +224,11 @@ function enviarEmail_(id, token, ubicacion, autor, estrellas, texto, a) {
     '</tr></table></div>';
 
   const html =
-    '<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;color:#1c1c1c">' +
+    '<html><head><meta name="color-scheme" content="light only">' +
+    '<meta name="supported-color-schemes" content="light only"></head>' +
+    '<body style="margin:0;background:#eceff3;padding:16px">' +
+    '<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;color:#1c1c1c;' +
+    'background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;padding:20px">' +
     '<div style="border-left:5px solid ' + color + ';padding:8px 16px;margin-bottom:16px">' +
     '<h2 style="margin:0 0 4px">' + emoji + ' Nueva reseña · ' + ubicacion + '</h2>' +
     '<div style="color:#e3b341;font-size:20px">' + stars + '</div>' +
@@ -236,7 +240,7 @@ function enviarEmail_(id, token, ubicacion, autor, estrellas, texto, a) {
     acciones +
     (a.accion_interna && String(a.accion_interna).toLowerCase() !== 'ninguna'
       ? '<div style="background:#fff8e1;border-radius:8px;padding:12px 16px;margin-bottom:16px"><b>🛠️ Acción interna:</b> ' + a.accion_interna + '</div>' : '') +
-    '<p style="color:#999;font-size:11px;margin-top:8px">Nota: "Reportar a Google" abre la gestión de reseñas para marcarla como inapropiada; Google decide (no se pueden borrar reseñas de clientes).<br>Automatización gratuita · Durán Carasso Reputation Agent</p></div>';
+    '<p style="color:#777;font-size:11px;margin-top:8px">Nota: "Reportar a Google" abre la gestión de reseñas para marcarla como inapropiada; Google decide (no se pueden borrar reseñas de clientes).<br>Automatización gratuita · Durán Carasso Reputation Agent</p></div></body></html>';
 
   MailApp.sendEmail({ to: CONFIG.EMAIL_DESTINO, subject: asunto, htmlBody: html });
 }
