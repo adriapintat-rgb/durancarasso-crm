@@ -208,9 +208,11 @@ function enviarEmail_(id, token, ubicacion, autor, estrellas, texto, a) {
   const linkGoogle = 'https://business.google.com/reviews';
 
   const btn = function (href, bg, fg, label, border) {
-    return '<a href="' + href + '" style="display:inline-block;background:' + bg + ';color:' + fg +
-      ';text-decoration:none;padding:11px 18px;border-radius:6px;font-weight:bold;font-size:14px' +
-      (border ? ';border:1px solid #ccc' : '') + '">' + label + '</a>';
+    return '<table border="0" cellspacing="0" cellpadding="0" style="display:inline-block"><tr>' +
+      '<td align="center" bgcolor="' + bg + '" style="border-radius:6px;' + (border ? 'border:1px solid #ccc;' : '') + '">' +
+      '<a href="' + href + '" style="display:inline-block;padding:11px 18px;color:' + fg +
+      ';text-decoration:none;font-weight:bold;font-size:14px;font-family:Arial,sans-serif">' + label + '</a>' +
+      '</td></tr></table>';
   };
 
   const acciones =
