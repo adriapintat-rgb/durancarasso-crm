@@ -1,0 +1,21 @@
+name = "dc-publicador"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Cron: cada 5 minutos publica los posts agendados que ya toca
+[triggers]
+crons = ["*/5 * * * *"]
+
+# Almacenes (crea los IDs con: npx wrangler kv namespace create MEDIA / JOBS)
+[[kv_namespaces]]
+binding = "MEDIA"
+id = "PON_AQUI_EL_ID_DE_MEDIA"
+
+[[kv_namespaces]]
+binding = "JOBS"
+id = "PON_AQUI_EL_ID_DE_JOBS"
+
+# IG_USER_ID puede ir aquí (no es secreto). El token y el secreto van por
+# `wrangler secret put` (ver README): IG_TOKEN y APP_SECRET.
+[vars]
+IG_USER_ID = "PON_AQUI_EL_ID_DE_TU_CUENTA_IG_BUSINESS"

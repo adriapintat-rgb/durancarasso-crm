@@ -251,7 +251,20 @@ input[type=range]:focus{box-shadow:none}
           <button class="btn btn-s btn-mini" id="btn_up" style="color:var(--green);border-color:#BEE3C9">👍 Guardar como aprobado</button>
           <button class="btn btn-s btn-mini" id="btn_down" style="color:var(--red);border-color:#EDC9C1">👎 Descartar</button>
         </div>
-        <div class="mini" style="margin-top:9px">Descarga las imágenes, súbelas en orden y pega este texto. Cada post que apruebas afina a la IA. Publicación automática vía Metricool = siguiente fase.</div>
+        <div class="mini" style="margin-top:9px">Descarga las imágenes, súbelas en orden y pega este texto. Cada post que apruebas afina a la IA.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><span class="n">8</span><h2>Publicar en Instagram</h2><button class="btn btn-s btn-mini" id="pub_cfg_btn" style="padding:4px 9px">⚙ Conectar</button></div>
+      <div class="card-in">
+        <div class="hint">Conecta tu <b>publicador</b> (Cloudflare Worker, gratis) una vez y publica o agenda con un botón. Guía en <b>publisher/README.md</b>. Funciona en la versión alojada de la app.</div>
+        <div class="row c2">
+          <button class="btn btn-p" id="pub_now">↗ Publicar ahora</button>
+          <button class="btn btn-g" id="pub_sched">🗓 Agendar</button>
+        </div>
+        <div class="row" style="margin-top:10px"><div><label>Fecha y hora (para agendar)</label><input type="datetime-local" id="pub_when"></div></div>
+        <div id="pub_list" style="margin-top:12px"></div>
       </div>
     </div>
   </div>
@@ -697,6 +710,57 @@ $('btn_htia').addEventListener('click',optimizeHashtags);
 $('btn_hookia').addEventListener('click',viralHook);
 $('btn_up').addEventListener('click',function(){saveApproved('up')});
 $('btn_down').addEventListener('click',function(){saveApproved('down')});
+
+/* ══ PUBLICAR EN INSTAGRAM (vía Worker propio) ══ */
+function pubCfg(){try{return JSON.parse(localStorage.getItem('dc_pub_cfg')||'{}')}catch(e){return {}}}
+function setPubCfg(c){try{localStorage.setItem('dc_pub_cfg',JSON.stringify(c))}catch(e){}}
+function pubBase(){var c=pubCfg();return (c.url||'').replace(/\/$/,'')}
+function blobB64(b){return new Promise(function(res){var r=new FileReader();r.onload=function(){res(String(r.result).split(',')[1])};r.readAsDataURL(b)})}
+function jpegBlob(cv){return new Promise(function(res){cv.toBlob(function(b){res(b)},'image/jpeg',0.9)})}
+async function exportForPublish(){var cvs=$('pv').querySelectorAll('canvas'),out=[];for(var i=0;i<cvs.length;i++){var b=await jpegBlob(cvs[i]);out.push({b64:await blobB64(b),ct:'image/jpeg'})}return out}
+$('pub_cfg_btn').addEventListener('click',function(){
+  var c=pubCfg();
+  var u=prompt('URL del Worker (https://…workers.dev):',c.url||''); if(u===null)return;
+  var s=prompt('APP_SECRET:',c.secret||''); if(s===null)return;
+  setPubCfg({url:u.trim(),secret:s.trim()});toast('Publicador conectado');loadJobs();
+});
+async function doPublish(when){
+  var c=pubCfg(); if(!c.url||!c.secret){toast('Pulsa ⚙ Conectar primero');return}
+  var cvs=$('pv').querySelectorAll('canvas');
+  if(!photos.length||cvs.length<2){toast('Sube 2-10 fotos y genera el carrusel');return}
+  var btn=when?'pub_sched':'pub_now'; aiBusy(btn,'Enviando…');
+  try{
+    var images=await exportForPublish();
+    var r=await fetch(pubBase()+'/publish',{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':c.secret},body:JSON.stringify({images:images,caption:($('full').value||$('caption').value),when:when||0})});
+    var j=await r.json();
+    if(j.ok)toast('Publicado en Instagram ✓');
+    else if(j.scheduled)toast('Agendado ✓');
+    else toast('Error: '+(j.error||(j.result&&j.result.step)||'fallo'));
+    loadJobs();
+  }catch(e){toast('Sin conexión con el publicador (usa la versión alojada)')}
+  aiIdle(btn,when?'🗓 Agendar':'↗ Publicar ahora');
+}
+$('pub_now').addEventListener('click',function(){doPublish(0)});
+$('pub_sched').addEventListener('click',function(){var w=$('pub_when').value;if(!w){toast('Elige fecha y hora');return}doPublish(new Date(w).getTime())});
+function loadJobs(){
+  var c=pubCfg(); if(!c.url||!c.secret){$('pub_list').innerHTML='';return}
+  fetch(pubBase()+'/jobs',{headers:{'x-app-secret':c.secret}}).then(function(r){return r.json()}).then(function(d){
+    var jobs=(d.jobs||[]).slice(-12).reverse();
+    if(!jobs.length){$('pub_list').innerHTML='<div class="mini">Sin publicaciones todavía.</div>';return}
+    $('pub_list').innerHTML='<label>Calendario</label>'+jobs.map(function(j){
+      var st={scheduled:'🗓 Agendado',published:'✅ Publicado',error:'⚠️ Error',publishing:'⏳ Publicando',cancelled:'✖ Cancelado'}[j.status]||j.status;
+      var dt=j.when?new Date(j.when):new Date(j.createdAt);
+      var line=(j.caption||'').split('\n')[0].slice(0,42);
+      return '<div style="display:flex;gap:8px;align-items:center;font-size:12px;padding:7px 0;border-bottom:1px solid var(--line2)"><span style="width:96px;color:var(--sub);flex-shrink:0">'+dt.toLocaleString('es',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(line)+'</span><span style="flex-shrink:0">'+st+'</span>'+(j.status==='scheduled'?' <button class="btn btn-s btn-mini" data-cancel="'+j.id+'" style="padding:3px 7px">✖</button>':'')+'</div>';
+    }).join('');
+  }).catch(function(){$('pub_list').innerHTML='<div class="mini">No se pudo cargar (requiere versión alojada).</div>'});
+}
+$('pub_list').addEventListener('click',function(e){
+  var id=e.target.getAttribute('data-cancel'); if(!id)return;
+  var c=pubCfg(); if(!c.url)return;
+  fetch(pubBase()+'/jobs/cancel',{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':c.secret},body:JSON.stringify({id:id})}).then(function(){toast('Agendado cancelado');loadJobs()}).catch(function(){});
+});
+loadJobs();
 
 /* ══ PERSISTENCIA ══ */
 var FIELDS=['f_name','f_loc','f_mkt','f_type','f_m2','f_hab','f_ban','f_ext','f_amen','f_dist','f_ig','f_web','f_theme','f_scrim','f_logo','caption','hash'];
