@@ -159,6 +159,7 @@ input[type=range]:focus{box-shadow:none}
 .cal-chip.error{background:var(--red)}
 .cal-chip.cancelled{background:#9AA0A6;text-decoration:line-through}
 .cal-chip.publishing{background:var(--gold)}
+.cal-chip.plan{background:#fff;color:var(--navy);border:1px solid var(--gold)}
 @media(max-width:520px){.cal-cell{min-height:56px}.cal-chip{font-size:0;padding:3px}.cal-chip:before{content:"•";font-size:12px}}
 </style>
 
@@ -758,7 +759,7 @@ function showAIonly(){var n=document.querySelectorAll('.ai-only');for(var i=0;i<
   if(!(window.claude&&claude.use)){hideAI();return}
   $('ai_go').disabled=true;$('ai_status').textContent='Conectando IA…';
   claude.use('sample').then(function(s){if(s){SAMPLE=s;$('ai_go').disabled=false;$('ai_status').textContent='';showAIonly()}else hideAI()}).catch(hideAI);
-  claude.use('db').then(function(db){if(db){DB=db;loadMemory()}}).catch(function(){});
+  claude.use('db').then(function(db){if(db){DB=db;loadMemory();if(typeof plansLoad==='function')plansLoad()}}).catch(function(){});
 })();
 $('ai_go').addEventListener('click',generateAI);
 $('btn_htia').addEventListener('click',optimizeHashtags);
@@ -797,13 +798,52 @@ async function doPublish(when){
 $('pub_now').addEventListener('click',function(){doPublish(0)});
 
 /* ── datos del calendario ── */
-var JOBSCACHE=[], calY=null, calM=null, calSel=null;
+var JOBSCACHE=[], PLANS=[], calY=null, calM=null, calSel=null;
+function genId(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function loadJobs(){
+  plansLoad();
   var c=pubCfg();
   if(!c.url||!c.secret){JOBSCACHE=[];renderCalendar();renderCalDay();return}
   fetch(pubBase()+'/jobs',{headers:{'x-app-secret':c.secret}}).then(function(r){return r.json()}).then(function(d){
     JOBSCACHE=d.jobs||[];renderCalendar();renderCalDay();
   }).catch(function(){JOBSCACHE=[];renderCalendar();renderCalDay()});
+}
+/* ── planes (borradores por día) — persisten en db o en el navegador ── */
+function plansLocal(){try{PLANS=JSON.parse(localStorage.getItem('dc_plans')||'[]')}catch(e){PLANS=[]}}
+function plansSaveLocal(){try{localStorage.setItem('dc_plans',JSON.stringify(PLANS))}catch(e){}}
+function plansLoad(){
+  if(DB){DB.collection('drafts').orderBy('ts','desc').limit(120).get().then(function(q){PLANS=q.docs.map(function(d){var o=d.data()||{};o._id=d.id;return o});renderCalendar();renderCalDay()}).catch(function(){plansLocal();renderCalendar();renderCalDay()});}
+  else {plansLocal();renderCalendar();renderCalDay()}
+}
+function planAdd(p){
+  if(DB){DB.collection('drafts').add(p).then(function(){plansLoad()}).catch(function(){PLANS.unshift(p);plansSaveLocal();renderCalendar();renderCalDay()});}
+  else {PLANS.unshift(p);plansSaveLocal();renderCalendar();renderCalDay()}
+}
+function planRemove(id){
+  if(DB){DB.doc('drafts/'+id).delete().then(function(){plansLoad()}).catch(function(){});}
+  else {PLANS=PLANS.filter(function(p){return (p._id||p.id)!==id});plansSaveLocal();renderCalendar();renderCalDay()}
+}
+function planThumb(){var cv=$('pv').querySelector('canvas');if(!cv)return '';try{var t=document.createElement('canvas');t.width=120;t.height=150;t.getContext('2d').drawImage(cv,0,0,120,150);return t.toDataURL('image/jpeg',0.55)}catch(e){return ''}}
+function addPlanToDay(){
+  if(!calSel){toast('Elige un día');return}
+  var cvs=$('pv').querySelectorAll('canvas');
+  if(cvs.length<2){toast('Prepara el carrusel en «Crear» primero');return}
+  var t=($('cal_time')&&$('cal_time').value)||'10:00';
+  var p=curPost(); p.date=calSel; p.time=t; p.ts=new Date(calSel+'T'+t).getTime(); p.thumb=planThumb(); p.id=genId();
+  planAdd(p);
+  var c=pubCfg();
+  if(c.url&&c.secret){doPublish(p.ts);} // sube imágenes y agenda: se publica solo ese día
+  else toast('Carrusel preparado para el día ✓ — conecta el publicador para que se cuelgue solo');
+}
+function loadPlan(id){
+  var p=PLANS.filter(function(x){return (x._id||x.id)===id})[0]; if(!p)return;
+  if(p.market)$('f_mkt').value=p.market;
+  if(p.name){$('f_name').value=p.name;$('chip').textContent=p.name}
+  if(p.slides&&p.slides.length)for(var i=0;i<5;i++){var a=p.slides[i]||{};slides[i].kicker=a.kicker||'';slides[i].title=a.title||'';slides[i].body=a.body||'';slides[i].layout=a.layout||LAYOUTS[i]}
+  if(p.caption)$('caption').value=p.caption;
+  if(p.hashtags&&p.hashtags.length){curTags=p.hashtags;off=[]}
+  renderSlides();renderTags();scheduleRender();save();
+  showTab('create');toast('Plan cargado en «Crear» — añade las fotos y revisa');
 }
 function pad2(n){return String(n).padStart(2,'0')}
 function ymd(d){return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())}
@@ -819,24 +859,29 @@ function renderCalendar(){
   for(var d=1;d<=days;d++){
     var ds=calY+'-'+pad2(calM+1)+'-'+pad2(d);
     var dj=JOBSCACHE.filter(function(j){return jobDay(j)===ds});
-    var chips=dj.slice(0,3).map(function(j){return '<span class="cal-chip '+j.status+'">'+(j.when?new Date(j.when).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})+' ':'')+esc((j.caption||'').split('\n')[0].slice(0,8))+'</span>'}).join('');
+    var dp=PLANS.filter(function(p){return p.date===ds});
+    var chips=dj.slice(0,2).map(function(j){return '<span class="cal-chip '+j.status+'">'+(j.when?new Date(j.when).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})+' ':'')+esc((j.name||(j.caption||'').split('\n')[0]).slice(0,8))+'</span>'}).join('');
+    chips+=dp.slice(0,2).map(function(p){return '<span class="cal-chip plan">'+(p.time?p.time+' ':'')+esc((p.name||'').slice(0,8))+'</span>'}).join('');
     cells+='<div class="cal-cell'+(ds===ts?' today':'')+(ds===calSel?' sel':'')+'" data-day="'+ds+'"><span class="dn">'+d+'</span>'+chips+'</div>';
   }
   $('cal_grid').innerHTML=cells;
 }
 function renderCalDay(){
   if(!$('cal_day'))return;
-  if(!calSel){$('cal_day').innerHTML='<div class="mini">Elige un día del calendario para agendar el carrusel.</div>';return}
-  var dj=JOBSCACHE.filter(function(j){return jobDay(j)===calSel}), d=new Date(calSel+'T12:00');
-  var html='<label style="font-size:13px;color:var(--ink);text-transform:capitalize">'+d.toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'})+'</label>';
-  html+='<div class="row c2" style="margin:9px 0"><div><label>Hora</label><input type="time" id="cal_time" value="10:00"></div><div style="display:flex;align-items:flex-end"><button class="btn btn-g btn-full" id="cal_sched">🗓 Agendar el carrusel actual</button></div></div>';
-  if(dj.length)html+=dj.map(function(j){var st={scheduled:'🗓',published:'✅',error:'⚠️',publishing:'⏳',cancelled:'✖'}[j.status]||'';return '<div style="display:flex;gap:8px;align-items:center;font-size:12px;padding:7px 0;border-bottom:1px solid var(--line2)"><span style="width:46px;color:var(--sub)">'+(j.when?new Date(j.when).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}):'')+'</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc((j.caption||'').split('\n')[0].slice(0,40))+'</span><span>'+st+'</span>'+(j.status==='scheduled'?' <button class="btn btn-s btn-mini" data-cancel="'+j.id+'" style="padding:2px 6px">✖</button>':'')+'</div>'}).join('');
-  else html+='<div class="mini">Nada agendado este día.</div>';
+  if(!calSel){$('cal_day').innerHTML='<div class="mini">Elige un día del calendario para preparar un carrusel.</div>';return}
+  var dj=JOBSCACHE.filter(function(j){return jobDay(j)===calSel}), dp=PLANS.filter(function(p){return p.date===calSel}), d=new Date(calSel+'T12:00');
+  var html='<label style="font-size:13px;color:var(--ink);text-transform:capitalize;letter-spacing:0">'+d.toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'})+'</label>';
+  html+='<div class="row c2" style="margin:10px 0"><div><label>Hora</label><input type="time" id="cal_time" value="10:00"></div><div style="display:flex;align-items:flex-end"><button class="btn btn-g btn-full" id="cal_add">＋ Añadir este carrusel al día</button></div></div>';
+  if(dp.length)html+='<div style="margin-top:6px">'+dp.map(function(p){return '<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line2)">'+(p.thumb?'<img src="'+p.thumb+'" style="width:34px;height:43px;object-fit:cover;border-radius:5px;border:1px solid var(--line)">':'')+'<div style="flex:1;min-width:0"><div style="font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.name||'Carrusel')+'</div><div class="mini">'+(p.time||'')+' · borrador</div></div><button class="btn btn-s btn-mini" data-load="'+(p._id||p.id)+'" style="padding:4px 9px">Cargar</button> <button class="btn btn-s btn-mini" data-del="'+(p._id||p.id)+'" style="padding:4px 8px">✖</button></div>'}).join('')+'</div>';
+  if(dj.length)html+='<div style="margin-top:8px">'+dj.map(function(j){var st={scheduled:'🗓 Agendado',published:'✅ Publicado',error:'⚠️ Error',publishing:'⏳ Publicando',cancelled:'✖ Cancelado'}[j.status]||j.status;return '<div style="display:flex;gap:8px;align-items:center;font-size:12px;padding:7px 0;border-bottom:1px solid var(--line2)"><span style="width:46px;color:var(--sub)">'+(j.when?new Date(j.when).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}):'')+'</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc((j.caption||'').split('\n')[0].slice(0,36))+'</span><span style="color:var(--sub)">'+st+'</span>'+(j.status==='scheduled'?' <button class="btn btn-s btn-mini" data-cancel="'+j.id+'" style="padding:2px 6px">✖</button>':'')+'</div>'}).join('')+'</div>';
+  if(!dp.length&&!dj.length)html+='<div class="mini" style="margin-top:4px">Nada preparado este día.</div>';
   $('cal_day').innerHTML=html;
-  $('cal_sched').onclick=function(){var t=($('cal_time')&&$('cal_time').value)||'10:00';doPublish(new Date(calSel+'T'+t).getTime())};
+  $('cal_add').onclick=addPlanToDay;
 }
 $('cal_grid').addEventListener('click',function(e){var c=e.target.closest('[data-day]');if(!c||c.classList.contains('out'))return;calSel=c.getAttribute('data-day');renderCalendar();renderCalDay()});
 $('cal_day').addEventListener('click',function(e){
+  var load=e.target.getAttribute('data-load'); if(load){loadPlan(load);return}
+  var del=e.target.getAttribute('data-del'); if(del){planRemove(del);toast('Borrador eliminado');return}
   var id=e.target.getAttribute('data-cancel'); if(!id)return;
   var c=pubCfg(); if(!c.url)return;
   fetch(pubBase()+'/jobs/cancel',{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':c.secret},body:JSON.stringify({id:id})}).then(function(){toast('Agendado cancelado');loadJobs()}).catch(function(){});
