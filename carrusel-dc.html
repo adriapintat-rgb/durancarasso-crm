@@ -726,17 +726,43 @@ function applyAI(r){
   renderSlides();renderTags();scheduleRender();save();
 }
 
+function urlToText(s){
+  // La IA no navega: si es un enlace, extraemos la info legible del propio URL
+  var m=s.match(/https?:\/\/[^\s]+/i); if(!m)return null;
+  try{
+    var u=new URL(m[0]);
+    var parts=(u.pathname||'').split('/').filter(Boolean).map(function(p){return decodeURIComponent(p).replace(/\.[a-z]{2,4}$/i,'').replace(/[-_]+/g,' ')});
+    var txt=parts.join(' · ').replace(/\s+/g,' ').trim();
+    return txt?('Propiedad (datos extraídos del enlace '+u.hostname+'): '+txt):null;
+  }catch(e){return null}
+}
 async function generateAI(){
-  if(!SAMPLE)return;
-  var material=$('ai_in').value.trim();
-  if(!material){toast('Pega material primero');return}
-  aiBusy('ai_go','Pensando…');$('ai_status').textContent='La IA está escribiendo tu carrusel…';
+  if(!SAMPLE){toast('La IA se activa en la app publicada');return}
+  var raw=$('ai_in').value.trim();
+  if(!raw){toast('Pega la ficha o unas notas primero');return}
+  // Si sólo hay un enlace, lo convertimos en texto útil (la IA no puede abrirlo)
+  var onlyUrl=/^https?:\/\/[^\s]+$/i.test(raw);
+  var material=raw, note='';
+  if(onlyUrl){var t=urlToText(raw); if(t){material=t;note=' (desde el enlace)'} }
+  else if(/https?:\/\//i.test(raw)){var t2=urlToText(raw); if(t2)material=raw+'\n'+t2;}
+
+  aiBusy('ai_go','Pensando…');
+  var t0=Date.now(), timer=setInterval(function(){$('ai_status').textContent='La IA está escribiendo tu carrusel… '+Math.round((Date.now()-t0)/1000)+'s';},1000);
+  $('ai_status').textContent='La IA está escribiendo tu carrusel…';
+  var ctl=new AbortController(); var killer=setTimeout(function(){ctl.abort()},95000);
   var ctx=''; if(AICtx.examples.length)ctx='\n\nEJEMPLOS APROBADOS POR EL EQUIPO (imita este tono y longitud):\n'+AICtx.examples.slice(0,4).map(function(e){return '- '+e}).join('\n');
   var prompt=BRAND_RULES+ctx+'\n\nMATERIAL DE ENTRADA:\n'+material.slice(0,6000)+'\n\n'+OUTPUT_SPEC;
-  var opts={modelTier:'default'};
-  if($('ai_photos').checked&&photos.length){var imgs=await photoBlobs();if(imgs.length){opts.images=imgs;prompt+='\n\nAdjunto las fotos reales del inmueble: adapta el copy a lo que se ve y en cada slide pon photoHint (índice 0-based) con la foto que mejor encaje.'}}
-  try{var r=await SAMPLE.json(prompt,opts);applyAI(r);$('ai_status').textContent='';toast('Carrusel generado con IA ✦')}
-  catch(e){$('ai_status').textContent=aiErr(e.code)}
+  var opts={modelTier:'default',signal:ctl.signal};
+  try{
+    if($('ai_photos').checked&&photos.length){var imgs=await photoBlobs();if(imgs.length){opts.images=imgs;prompt+='\n\nAdjunto las fotos reales del inmueble: adapta el copy a lo que se ve y en cada slide pon photoHint (índice 0-based) con la foto que mejor encaje.'}}
+    var r=await SAMPLE.json(prompt,opts);
+    applyAI(r);$('ai_status').textContent='';
+    toast('Carrusel generado con IA ✦'+note);
+    if(onlyUrl)setTimeout(function(){toast('Consejo: pega también el texto de la ficha para más detalle')},2000);
+  }catch(e){
+    $('ai_status').textContent = e && e.code==='cancelled' ? 'La IA tardó demasiado — reintenta o pega la ficha en texto' : aiErr(e&&e.code);
+  }
+  clearInterval(timer);clearTimeout(killer);
   aiIdle('ai_go','✦ Generar carrusel con IA');
 }
 
