@@ -798,7 +798,7 @@ async function doPublish(when){
 $('pub_now').addEventListener('click',function(){doPublish(0)});
 
 /* ── datos del calendario ── */
-var JOBSCACHE=[], PLANS=[], calY=null, calM=null, calSel=null;
+var JOBSCACHE=[], PLANS=[], calY=null, calM=null, calSel=null, calTime='10:00';
 function genId(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function loadJobs(){
   plansLoad();
@@ -826,14 +826,17 @@ function planRemove(id){
 function planThumb(){var cv=$('pv').querySelector('canvas');if(!cv)return '';try{var t=document.createElement('canvas');t.width=120;t.height=150;t.getContext('2d').drawImage(cv,0,0,120,150);return t.toDataURL('image/jpeg',0.55)}catch(e){return ''}}
 function addPlanToDay(){
   if(!calSel){toast('Elige un día');return}
-  var cvs=$('pv').querySelectorAll('canvas');
-  if(cvs.length<2){toast('Prepara el carrusel en «Crear» primero');return}
-  var t=($('cal_time')&&$('cal_time').value)||'10:00';
+  if(photos.length<2){toast('Primero sube fotos en «Crear»');showTab('create');return}
+  var t=calTime||'10:00';
   var p=curPost(); p.date=calSel; p.time=t; p.ts=new Date(calSel+'T'+t).getTime(); p.thumb=planThumb(); p.id=genId();
-  planAdd(p);
+  // Optimista: aparece al instante, no esperamos a la base de datos
+  PLANS.unshift(p); renderCalendar(); renderCalDay();
+  // Persistir en segundo plano
+  if(DB){DB.collection('drafts').add(p).then(function(){plansLoad()}).catch(function(){plansSaveLocal()});}
+  else plansSaveLocal();
   var c=pubCfg();
   if(c.url&&c.secret){doPublish(p.ts);} // sube imágenes y agenda: se publica solo ese día
-  else toast('Carrusel preparado para el día ✓ — conecta el publicador para que se cuelgue solo');
+  else toast('Carrusel preparado para el '+new Date(calSel+'T12:00').toLocaleDateString('es',{day:'numeric',month:'long'})+' ✓');
 }
 function loadPlan(id){
   var p=PLANS.filter(function(x){return (x._id||x.id)===id})[0]; if(!p)return;
@@ -870,13 +873,26 @@ function renderCalDay(){
   if(!$('cal_day'))return;
   if(!calSel){$('cal_day').innerHTML='<div class="mini">Elige un día del calendario para preparar un carrusel.</div>';return}
   var dj=JOBSCACHE.filter(function(j){return jobDay(j)===calSel}), dp=PLANS.filter(function(p){return p.date===calSel}), d=new Date(calSel+'T12:00');
-  var html='<label style="font-size:13px;color:var(--ink);text-transform:capitalize;letter-spacing:0">'+d.toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'})+'</label>';
-  html+='<div class="row c2" style="margin:10px 0"><div><label>Hora</label><input type="time" id="cal_time" value="10:00"></div><div style="display:flex;align-items:flex-end"><button class="btn btn-g btn-full" id="cal_add">＋ Añadir este carrusel al día</button></div></div>';
-  if(dp.length)html+='<div style="margin-top:6px">'+dp.map(function(p){return '<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line2)">'+(p.thumb?'<img src="'+p.thumb+'" style="width:34px;height:43px;object-fit:cover;border-radius:5px;border:1px solid var(--line)">':'')+'<div style="flex:1;min-width:0"><div style="font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.name||'Carrusel')+'</div><div class="mini">'+(p.time||'')+' · borrador</div></div><button class="btn btn-s btn-mini" data-load="'+(p._id||p.id)+'" style="padding:4px 9px">Cargar</button> <button class="btn btn-s btn-mini" data-del="'+(p._id||p.id)+'" style="padding:4px 8px">✖</button></div>'}).join('')+'</div>';
-  if(dj.length)html+='<div style="margin-top:8px">'+dj.map(function(j){var st={scheduled:'🗓 Agendado',published:'✅ Publicado',error:'⚠️ Error',publishing:'⏳ Publicando',cancelled:'✖ Cancelado'}[j.status]||j.status;return '<div style="display:flex;gap:8px;align-items:center;font-size:12px;padding:7px 0;border-bottom:1px solid var(--line2)"><span style="width:46px;color:var(--sub)">'+(j.when?new Date(j.when).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}):'')+'</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc((j.caption||'').split('\n')[0].slice(0,36))+'</span><span style="color:var(--sub)">'+st+'</span>'+(j.status==='scheduled'?' <button class="btn btn-s btn-mini" data-cancel="'+j.id+'" style="padding:2px 6px">✖</button>':'')+'</div>'}).join('')+'</div>';
-  if(!dp.length&&!dj.length)html+='<div class="mini" style="margin-top:4px">Nada preparado este día.</div>';
+  var ready=photos.length>=2, curName=v('f_name')||'Carrusel actual', curThumb=ready?planThumb():'';
+  var html='<div class="divider"></div><label style="font-size:14px;color:var(--ink);text-transform:none;letter-spacing:0;font-weight:600;font-family:\'Playfair Display\',serif">'+d.toLocaleDateString('es',{weekday:'long',day:'numeric',month:'long'})+'</label>';
+  // Qué se va a añadir
+  if(ready){
+    html+='<div style="display:flex;gap:11px;align-items:center;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:11px;margin:12px 0">'+
+      (curThumb?'<img src="'+curThumb+'" style="width:40px;height:50px;object-fit:cover;border-radius:6px;border:1px solid var(--line)">':'')+
+      '<div style="flex:1;min-width:0"><div class="mini">Carrusel actual</div><div style="font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(curName)+'</div></div>'+
+      '<input type="time" id="cal_time" value="'+(calTime||'10:00')+'" style="width:auto">'+
+      '</div><button class="btn btn-p btn-full" id="cal_add">＋ Programar en este día</button>';
+  } else {
+    html+='<div class="hint" style="margin:12px 0">Aún no hay carrusel preparado. Ve a <b>Crear</b>, sube las fotos y genera el post; luego vuelve aquí y prográmalo.</div><button class="btn btn-s btn-full" id="cal_goto">Ir a «Crear»</button>';
+  }
+  // Lo ya preparado / agendado ese día
+  if(dp.length||dj.length)html+='<div style="margin-top:16px"><label>En este día</label></div>';
+  if(dp.length)html+=dp.map(function(p){return '<div style="display:flex;gap:11px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line2)">'+(p.thumb?'<img src="'+p.thumb+'" style="width:34px;height:43px;object-fit:cover;border-radius:5px;border:1px solid var(--line)">':'')+'<div style="flex:1;min-width:0"><div style="font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.name||'Carrusel')+'</div><div class="mini">'+(p.time||'')+' · preparado</div></div><button class="btn btn-s btn-mini" data-load="'+(p._id||p.id)+'" style="padding:5px 10px">Cargar</button> <button class="btn btn-s btn-mini" data-del="'+(p._id||p.id)+'" style="padding:5px 9px">✕</button></div>'}).join('');
+  if(dj.length)html+=dj.map(function(j){var st={scheduled:'🗓 Agendado',published:'✅ Publicado',error:'⚠️ Error',publishing:'⏳ Publicando',cancelled:'✖ Cancelado'}[j.status]||j.status;return '<div style="display:flex;gap:9px;align-items:center;font-size:12px;padding:8px 0;border-bottom:1px solid var(--line2)"><span style="width:46px;color:var(--sub)">'+(j.when?new Date(j.when).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}):'')+'</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc((j.caption||'').split('\n')[0].slice(0,34))+'</span><span style="color:var(--sub)">'+st+'</span>'+(j.status==='scheduled'?' <button class="btn btn-s btn-mini" data-cancel="'+j.id+'" style="padding:3px 7px">✕</button>':'')+'</div>'}).join('');
   $('cal_day').innerHTML=html;
-  $('cal_add').onclick=addPlanToDay;
+  if($('cal_add'))$('cal_add').onclick=addPlanToDay;
+  if($('cal_goto'))$('cal_goto').onclick=function(){showTab('create')};
+  if($('cal_time'))$('cal_time').onchange=function(){calTime=this.value};
 }
 $('cal_grid').addEventListener('click',function(e){var c=e.target.closest('[data-day]');if(!c||c.classList.contains('out'))return;calSel=c.getAttribute('data-day');renderCalendar();renderCalDay()});
 $('cal_day').addEventListener('click',function(e){
@@ -896,7 +912,7 @@ function showTab(w){
   $('view_cal').hidden=(w!=='cal');
   $('tab_create').classList.toggle('on',w!=='cal');
   $('tab_cal').classList.toggle('on',w==='cal');
-  if(w==='cal'){renderCalendar();renderCalDay();loadJobs()}
+  if(w==='cal'){if(!calSel)calSel=ymd(new Date());renderCalendar();renderCalDay();loadJobs()}
   window.scrollTo(0,0);
 }
 $('tab_create').addEventListener('click',function(){showTab('create')});
