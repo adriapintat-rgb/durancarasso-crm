@@ -197,7 +197,7 @@ input[type=range]:focus{box-shadow:none}
         <div class="drop" id="drop">
           <svg class="drop-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4m0 0L7 9m5-5l5 5"/><path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg>
           <div class="drop-t">Arrastra tus fotos</div>
-          <div class="drop-s">o haz clic · JPG/PNG · 3–10 imágenes</div>
+          <div class="drop-s">haz clic, arrastra o pega (Ctrl/⌘+V) · 3–10 imágenes</div>
         </div>
         <input type="file" id="file" accept="image/*" multiple hidden>
         <div class="thumbs" id="thumbs"></div>
@@ -357,6 +357,11 @@ drop.addEventListener('dragover',function(e){e.preventDefault();drop.classList.a
 drop.addEventListener('dragleave',function(){drop.classList.remove('over')});
 drop.addEventListener('drop',function(e){e.preventDefault();drop.classList.remove('over');if(e.dataTransfer.files&&e.dataTransfer.files.length)addFiles(e.dataTransfer.files)});
 file.addEventListener('change',function(e){addFiles(e.target.files);file.value=''});
+document.addEventListener('paste',function(e){
+  var items=(e.clipboardData&&e.clipboardData.items)||[], files=[];
+  for(var i=0;i<items.length;i++){if(items[i].type&&items[i].type.indexOf('image')===0){var f=items[i].getAsFile();if(f)files.push(f)}}
+  if(files.length){e.preventDefault();addFiles(files);toast(files.length+' foto'+(files.length>1?'s':'')+' pegada'+(files.length>1?'s':''));if(typeof showTab==='function')showTab('create')}
+});
 
 function addFiles(list){
   var arr=Array.prototype.slice.call(list).filter(function(f){return /^image\//.test(f.type)});
