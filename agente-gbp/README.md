@@ -26,7 +26,7 @@ Crea estas pestañas en la hoja del CRM: `GBP_Historico` (evolución), `GBP_Tare
 4. En Configuración → Propiedades del script, añade:
    - `ANTHROPIC_API_KEY`
    - `GOOGLE_API_KEY`
-   - `NOTIFY_EMAILS` (ej.: `marketing@…,direccion@…`)
+   - `NOTIFY_EMAILS` (opcional; por defecto `adriap@durancarasso.com`)
    - `CHAT_WEBHOOK` (opcional, para Google Chat)
 5. Ejecuta `instalar()` y acepta los permisos. En el registro, comprueba que los 4 placeId son las sedes correctas. Si alguno no lo es, ajusta `query` en `SEDES`, borra la propiedad `PLACE_XXX` y vuelve a ejecutar.
 6. Ejecuta `ejecutarDiario()` una vez para ver el primer informe.

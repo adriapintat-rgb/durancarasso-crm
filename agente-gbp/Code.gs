@@ -8,7 +8,7 @@
  * Script Properties (Configuración del proyecto → Propiedades del script):
  *   ANTHROPIC_API_KEY   obligatorio
  *   GOOGLE_API_KEY      obligatorio (Places API (New) + PageSpeed Insights API)
- *   NOTIFY_EMAILS       obligatorio, separados por coma
+ *   NOTIFY_EMAILS       opcional, separados por coma (por defecto DEFAULT_EMAILS)
  *   CHAT_WEBHOOK        opcional, webhook de un espacio de Google Chat
  *   GBP_ACCOUNT_ID      opcional, activa reseñas sin responder / posts / publicar
  *   SHEET_ID            opcional, por defecto la hoja del CRM
@@ -33,6 +33,7 @@ var UMBRAL = {
 };
 
 var CLAUDE_MODEL = 'claude-opus-5';
+var DEFAULT_EMAILS = 'adriap@durancarasso.com';
 var DEFAULT_SHEET_ID = '1QtAQ_RbGwsJ18jZeTinkKJfAHl7oYodusJ7xjHKXTa0';
 
 var P = PropertiesService.getScriptProperties();
@@ -484,7 +485,7 @@ function notificar_(snaps, plan) {
 }
 
 function enviar_(asunto, texto, html) {
-  prop_('NOTIFY_EMAILS', true).split(',').forEach(function (to) {
+  (prop_('NOTIFY_EMAILS') || DEFAULT_EMAILS).split(',').forEach(function (to) {
     GmailApp.sendEmail(to.trim(), asunto, texto, { htmlBody: html, name: 'Agente Google DC' });
   });
   var hook = prop_('CHAT_WEBHOOK');
