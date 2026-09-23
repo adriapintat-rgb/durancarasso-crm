@@ -326,6 +326,10 @@ input[type=range]:focus{box-shadow:none}
   </div>
 </div>
 
+<div id="lb" hidden style="position:fixed;inset:0;background:rgba(13,32,43,.92);z-index:120;display:flex;align-items:center;justify-content:center;padding:24px;cursor:zoom-out">
+  <img id="lb_img" alt="Slide" style="max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 24px 70px rgba(0,0,0,.55)">
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -603,18 +607,30 @@ function scheduleRender(){clearTimeout(rT);rT=setTimeout(renderAll,200)}
 function renderAll(){
   document.fonts.ready.then(function(){
     var host=$('pv');host.innerHTML='';
+    if(!photos.length){
+      host.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:44px 22px;border:1px dashed #D8D6CF;border-radius:12px;background:var(--soft)">'
+        +'<div style="font-size:15px;color:var(--ink);font-family:\'Playfair Display\',serif;margin-bottom:6px">Aún no ves el post real</div>'
+        +'<div class="mini" style="max-width:360px;margin:0 auto 16px">Sube o pega tus fotos y aquí verás el carrusel montado con ellas, listo para publicar.</div>'
+        +'<button class="btn btn-p" id="pv_up">Subir fotos ahora</button></div>';
+      $('btn_dl').disabled=true;
+      var u=$('pv_up'); if(u)u.onclick=function(){file.click()};
+      return;
+    }
     slides.forEach(function(s,i){
       var d=document.createElement('div');d.className='pv';
-      var cv=document.createElement('canvas');d.appendChild(cv);
+      var cv=document.createElement('canvas');cv.style.cursor='zoom-in';cv.title='Clic para ver grande';d.appendChild(cv);
       var f=document.createElement('div');f.className='pv-f';
       f.innerHTML='<b>'+(i+1)+' · '+LABELS[i]+'</b>';
       var b=document.createElement('button');b.className='btn btn-s btn-mini';b.textContent='PNG';
       b.onclick=function(){dl(cv,i)};f.appendChild(b);d.appendChild(f);host.appendChild(d);
       drawSlide(cv,s,i);
+      cv.onclick=function(){openLB(cv)};
     });
-    $('btn_dl').disabled=!photos.length;
+    $('btn_dl').disabled=false;
   });
 }
+function openLB(cv){var m=$('lb');if(!m)return;try{$('lb_img').src=cv.toDataURL('image/png')}catch(e){}m.hidden=false}
+if($('lb'))$('lb').addEventListener('click',function(){this.hidden=true});
 
 /* ══ DESCARGA ══ */
 var DL;
