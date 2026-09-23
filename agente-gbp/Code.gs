@@ -107,6 +107,7 @@ function analizarSede_(s) {
   var psi = webUrl ? pageSpeed_(webUrl) : null;
   var gbpRev = resenasGBP_(s);
   var gbpPosts = postsGBP_(s);
+  var gbpInfo = infoGBP_(s);
   var prev = JSON.parse(P.getProperty('SNAP_' + s.code) || 'null');
 
   var snap = {
@@ -121,8 +122,10 @@ function analizarSede_(s) {
     resenasRecientes: gbpRev ? gbpRev.slice(0, 10) : (f.reviews || []).map(mapReviewPlaces_),
     gbpActivo: !!gbpRev,
     ultimoPostDias: gbpPosts ? gbpPosts.dias : null,
-    web: web, pagespeed: psi, anterior: prev, problemas: []
+    web: web, pagespeed: psi, anterior: prev, problemas: [],
+    busquedaGoogle: auditarBusqueda_(s, f)
   };
+  snap.completitud = completitud_(snap, gbpInfo);
   snap.problemas = reglas_(snap);
   return snap;
 }
@@ -245,6 +248,71 @@ function pageSpeed_(url) {
   } catch (e) { return { error: String(e) }; }
 }
 
+// ── FICHA COMPLETA AL 100% ───────────────────────────────────────────────────
+function infoGBP_(s) {
+  if (!prop_('GBP_ACCOUNT_ID') || !s.gbpLocationId) return null;
+  return gbp_('GET', 'https://mybusinessbusinessinformation.googleapis.com/v1/locations/' + s.gbpLocationId +
+    '?readMask=title,categories,profile,regularHours,specialHours,serviceItems,websiteUri,phoneNumbers,openInfo,moreHours');
+}
+
+/** Checklist de lo que un cliente espera ver al buscar la marca. Devuelve % y lo que falta. */
+function completitud_(s, g) {
+  var f = s.ficha, items = [];
+  function chk(ok, texto) { items.push({ ok: !!ok, texto: texto }); }
+  chk(f.telefono, 'Teléfono');
+  chk(f.web, 'Web enlazada');
+  chk(f.tieneHorario, 'Horario habitual');
+  chk(f.fotos >= UMBRAL.fotosMin, 'Fotos suficientes (fachada, oficina, equipo, propiedades)');
+  chk(f.numResenas >= 20, 'Mínimo 20 reseñas');
+  chk(f.rating >= 4.5, 'Nota ≥ 4,5');
+  chk(s.resenasRecientes.every(function (r) { return r.respondida !== false; }), 'Todas las reseñas respondidas');
+  if (s.web && !s.web.error) {
+    chk(s.web.schemaLocal, 'Schema LocalBusiness/RealEstateAgent en la web');
+    chk(s.web.telefonoEnWeb, 'Mismo teléfono en ficha y web');
+    chk(s.web.metaDescription, 'Meta description en la web');
+  }
+  if (g) {
+    var cats = g.categories || {};
+    chk((cats.additionalCategories || []).length >= 2, 'Categorías secundarias (p. ej. Agencia de alquiler, Tasador)');
+    chk(((g.profile || {}).description || '').length >= 500, 'Descripción de negocio ≥ 500 caracteres');
+    chk((g.serviceItems || []).length >= 5, 'Servicios dados de alta (compra, venta, alquiler, valoración, gestión…)');
+    chk((g.specialHours || {}).specialHourPeriods, 'Horarios especiales de festivos');
+    chk(g.openInfo && g.openInfo.openingDate, 'Fecha de apertura');
+    chk(s.ultimoPostDias !== null && s.ultimoPostDias <= UMBRAL.diasSinPost, 'Publicación en los últimos ' + UMBRAL.diasSinPost + ' días');
+  }
+  var ok = items.filter(function (i) { return i.ok; }).length;
+  return {
+    porcentaje: Math.round(100 * ok / items.length),
+    falta: items.filter(function (i) { return !i.ok; }).map(function (i) { return i.texto; }),
+    nota: g ? '' : 'Checklist parcial: con GBP_ACCOUNT_ID se revisan también categorías, descripción, servicios, festivos y posts.'
+  };
+}
+
+/** Qué ve un cliente al buscar la marca. Semanal (lunes o si no hay dato de <7 días). */
+function auditarBusqueda_(s, f) {
+  var k = 'BUSQ_' + s.code, prev = JSON.parse(P.getProperty(k) || 'null');
+  var lunes = new Date().getDay() === 1;
+  if (prev && !lunes && Date.now() - prev.ts < 7 * 864e5) return prev.texto;
+  if (prev && lunes && fecha_() === prev.fecha) return prev.texto;
+  try {
+    var j = claude_({
+      model: CLAUDE_MODEL, max_tokens: 8000,
+      tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 6, user_location: { type: 'approximate', country: s.code === 'AND' ? 'AD' : 'ES' } }],
+      messages: [{ role: 'user', content:
+        'Busca como lo haría un cliente: "Durán Carasso ' + s.nombre + '", "Duran Carasso inmobiliaria ' + s.nombre + '" y "inmobiliaria lujo ' + s.nombre + '".\n' +
+        'Datos oficiales de la ficha: ' + JSON.stringify({ direccion: f.formattedAddress || '', telefono: f.nationalPhoneNumber || '', web: f.websiteUri || '' }) + '\n' +
+        'Responde en español, máx. 1.200 caracteres, en viñetas:\n' +
+        '1) Qué resultados aparecen de la marca (web, portales, directorios, redes) y si la web oficial sale primero.\n' +
+        '2) Datos incoherentes: teléfonos, direcciones u horarios distintos en otros sitios (con la URL).\n' +
+        '3) Qué tienen los competidores que salen para "inmobiliaria lujo ' + s.nombre + '" y a nosotros nos falta.\n' +
+        'Solo hechos encontrados; si no encuentras algo, dilo.' }]
+    });
+    var texto = textoClaude_(j);
+    P.setProperty(k, JSON.stringify({ ts: Date.now(), fecha: fecha_(), texto: texto }));
+    return texto;
+  } catch (e) { return prev ? prev.texto : 'No disponible: ' + e; }
+}
+
 // ── CLAUDE ───────────────────────────────────────────────────────────────────
 var SCHEMA_PLAN = {
   type: 'object', additionalProperties: false, required: ['resumen', 'sedes'],
@@ -255,8 +323,17 @@ var SCHEMA_PLAN = {
       properties: {
         sede: { type: 'string', enum: SEDES.map(function (s) { return s.code; }) },
         acciones: { type: 'array', items: {
-          type: 'object', additionalProperties: false, required: ['prioridad', 'accion', 'motivo'],
-          properties: { prioridad: { type: 'string', enum: ['ALTA', 'MEDIA', 'BAJA'] }, accion: { type: 'string' }, motivo: { type: 'string' } }
+          type: 'object', additionalProperties: false, required: ['prioridad', 'accion', 'motivo', 'opciones', 'recomendada', 'cuando'],
+          properties: {
+            prioridad: { type: 'string', enum: ['ALTA', 'MEDIA', 'BAJA'] },
+            accion: { type: 'string' }, motivo: { type: 'string' },
+            opciones: { type: 'array', items: {
+              type: 'object', additionalProperties: false, required: ['opcion', 'pros', 'contras'],
+              properties: { opcion: { type: 'string' }, pros: { type: 'string' }, contras: { type: 'string' } }
+            } },
+            recomendada: { type: 'string' },
+            cuando: { type: 'string' }
+          }
         } },
         post: { type: 'string' },
         respuestas: { type: 'array', items: {
@@ -271,10 +348,16 @@ var SCHEMA_PLAN = {
 var SYSTEM_PROMPT = [
   'Eres el responsable de SEO local y de las fichas de Google (Perfil de Empresa) de Durán Carasso,',
   'inmobiliaria de lujo con sedes en Barcelona (BCN), Andorra (AND), Cerdanya (CRD) y Sitges (STG).',
-  'Recibes un JSON con el estado actual de cada sede y los problemas detectados por reglas automáticas.',
+  'Objetivo: que quien busque "Durán Carasso" (y "inmobiliaria lujo + ciudad") encuentre en cada sede una ficha 100% completa,',
+  'coherente con la web y mejor que la competencia.',
+  'Recibes un JSON con el estado de cada sede: ficha, web, PageSpeed, completitud (lo que falta), busquedaGoogle',
+  '(lo que aparece al buscar la marca) y problemas detectados por reglas.',
   'Devuelve para cada sede:',
-  '- acciones: máximo 5, concretas y ejecutables hoy por el equipo de marketing (qué tocar y dónde), ordenadas por impacto.',
-  '  Ten en cuenta la fecha: si se acerca un festivo local/nacional (Cataluña o Andorra) recuerda fijar el horario especial.',
+  '- acciones: máximo 5, concretas y ejecutables por marketing (qué tocar y dónde exactamente en el panel de Google), por impacto.',
+  '  Para cada acción: 2-3 opciones reales con pros/contras, cuál recomiendas y por qué (recomendada),',
+  '  y cuándo hacerlo (cuando): fecha o franja concreta según urgencia, día de la semana/hora de más búsquedas,',
+  '  temporada de la zona (Cerdanya/Andorra: esquí dic-mar y verano; Sitges: primavera-verano; Barcelona: todo el año, pico sep-nov y ene-mar)',
+  '  y festivos próximos de Cataluña/Andorra (recuerda fijar horario especial con 1 semana de antelación).',
   '- post: una publicación para la ficha de Google (máx. 1.200 caracteres, tono premium y cercano, sin emojis excesivos,',
   '  con palabras clave locales de esa sede). Cadena vacía si la sede ha publicado hace menos de 4 días.',
   '- respuestas: borrador de respuesta solo para reseñas con respondida=false (usa su id exacto). En el idioma de la reseña,',
@@ -287,32 +370,44 @@ function pedirPlanClaude_(snaps) {
   var body = {
     model: CLAUDE_MODEL,
     max_tokens: 16000,
-    fallbacks: 'default',
     system: SYSTEM_PROMPT,
     output_config: { format: { type: 'json_schema', schema: SCHEMA_PLAN } },
     messages: [{ role: 'user', content: JSON.stringify(input) }]
   };
-  var res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
-    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-    headers: {
-      'x-api-key': prop_('ANTHROPIC_API_KEY', true),
-      'anthropic-version': '2023-06-01',
-      'anthropic-beta': 'server-side-fallback-2026-07-01'
-    },
-    payload: JSON.stringify(body)
-  });
-  var code = res.getResponseCode(), j = JSON.parse(res.getContentText());
-  if (code !== 200) throw new Error('Claude API ' + code + ': ' + res.getContentText().slice(0, 500));
-  if (j.stop_reason === 'refusal') throw new Error('Claude rechazó la petición: ' + JSON.stringify(j.stop_details));
-  if (j.stop_reason === 'max_tokens') throw new Error('Respuesta de Claude truncada (max_tokens)');
-  var txt = j.content.filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('');
-  return JSON.parse(txt);
+  return JSON.parse(textoClaude_(claude_(body)));
+}
+
+/** POST /v1/messages con fallback de servidor; continúa si una búsqueda web devuelve pause_turn. */
+function claude_(body) {
+  body.fallbacks = 'default';
+  for (var i = 0; i < 4; i++) {
+    var res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      headers: {
+        'x-api-key': prop_('ANTHROPIC_API_KEY', true),
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'server-side-fallback-2026-07-01'
+      },
+      payload: JSON.stringify(body)
+    });
+    var code = res.getResponseCode(), j = JSON.parse(res.getContentText());
+    if (code !== 200) throw new Error('Claude API ' + code + ': ' + res.getContentText().slice(0, 500));
+    if (j.stop_reason === 'refusal') throw new Error('Claude rechazó la petición: ' + JSON.stringify(j.stop_details));
+    if (j.stop_reason === 'max_tokens') throw new Error('Respuesta de Claude truncada (max_tokens)');
+    if (j.stop_reason !== 'pause_turn') return j;
+    body.messages = body.messages.concat([{ role: 'assistant', content: j.content }]);
+  }
+  throw new Error('Claude no terminó tras varios pause_turn');
+}
+
+function textoClaude_(j) {
+  return j.content.filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('');
 }
 
 // ── SALIDA: HOJAS + AVISOS ───────────────────────────────────────────────────
 var CABECERAS = {
-  GBP_Historico: ['Fecha', 'Sede', 'Nota', 'Nº reseñas', 'Fotos', 'Horario', 'SEO', 'Rendimiento', 'Problemas'],
-  GBP_Tareas: ['Fecha', 'Sede', 'Prioridad', 'Acción', 'Motivo', 'Estado'],
+  GBP_Historico: ['Fecha', 'Sede', 'Nota', 'Nº reseñas', 'Fotos', 'Horario', 'SEO', 'Rendimiento', 'Problemas', 'Ficha completa %', 'Falta'],
+  GBP_Tareas: ['Fecha', 'Sede', 'Prioridad', 'Acción', 'Motivo', 'Opción recomendada', 'Cuándo', 'Otras opciones', 'Estado'],
   GBP_Borradores: ['Fecha', 'Sede', 'Tipo', 'ID reseña', 'Reseña original', 'Texto propuesto (editable)', 'Estado (PENDIENTE/APROBADO)']
 };
 
@@ -327,13 +422,15 @@ function guardar_(snaps, plan) {
   var hoy = fecha_();
   var hist = snaps.filter(function (s) { return !s.error; }).map(function (s) {
     var ps = s.pagespeed || {};
-    return [hoy, s.sede, s.ficha.rating, s.ficha.numResenas, s.ficha.fotos, s.ficha.tieneHorario ? 'Sí' : 'No', ps.seo || '', ps.perf || '', s.problemas.length];
+    return [hoy, s.sede, s.ficha.rating, s.ficha.numResenas, s.ficha.fotos, s.ficha.tieneHorario ? 'Sí' : 'No', ps.seo || '', ps.perf || '', s.problemas.length,
+      s.completitud.porcentaje, s.completitud.falta.join(' · ')];
   });
   appendRows_(hoja_('GBP_Historico'), hist);
 
   var tareas = [], borr = [];
   plan.sedes.forEach(function (ps) {
-    ps.acciones.forEach(function (a) { tareas.push([hoy, ps.sede, a.prioridad, a.accion, a.motivo, 'PENDIENTE']); });
+    ps.acciones.forEach(function (a) { tareas.push([hoy, ps.sede, a.prioridad, a.accion, a.motivo, a.recomendada, a.cuando,
+      a.opciones.map(function (o) { return o.opcion + ' (+ ' + o.pros + ' / − ' + o.contras + ')'; }).join('\n'), 'PENDIENTE']); });
     if (ps.post) borr.push([hoy, ps.sede, 'POST', '', '', ps.post, 'PENDIENTE']);
     var snap = snaps.filter(function (s) { return s.sede === ps.sede; })[0] || { resenasRecientes: [] };
     ps.respuestas.forEach(function (r) {
@@ -358,14 +455,27 @@ function notificar_(snaps, plan) {
     var ps = plan.sedes.filter(function (x) { return x.sede === s.sede; })[0] || { acciones: [], post: '', respuestas: [] };
     var f = s.ficha || {};
     html += '<h3 style="color:#0D3550;border-bottom:2px solid #B8922A;padding-bottom:4px">' + s.nombre +
-      (s.error ? '' : ' · ' + f.rating + '★ (' + f.numResenas + ') · ' + f.fotos + ' fotos' + (s.pagespeed && s.pagespeed.seo ? ' · SEO ' + s.pagespeed.seo : '')) + '</h3><ul>';
+      (s.error ? '' : ' · ' + f.rating + '★ (' + f.numResenas + ') · ' + f.fotos + ' fotos' + (s.pagespeed && s.pagespeed.seo ? ' · SEO ' + s.pagespeed.seo : '')) + '</h3>';
+    if (s.completitud) {
+      var pc = s.completitud.porcentaje, col = pc >= 90 ? '#1E6B3A' : pc >= 70 ? '#C45E0A' : '#B03020';
+      html += '<p><b style="color:' + col + ';font-size:18px">Ficha completa al ' + pc + '%</b>' +
+        (s.completitud.falta.length ? '<br><span style="color:#6B6B6B">Falta: ' + esc_(s.completitud.falta.join(' · ')) + '</span>' : '') + '</p>';
+      txt += '\n' + s.nombre + ': ficha ' + pc + '%' + (s.completitud.falta.length ? ' · falta: ' + s.completitud.falta.join(', ') : '');
+    }
+    html += '<ul>';
     ps.acciones.forEach(function (a) {
       if (a.prioridad === 'ALTA') altas++;
       var c = a.prioridad === 'ALTA' ? '#B03020' : a.prioridad === 'MEDIA' ? '#C45E0A' : '#6B6B6B';
-      html += '<li><b style="color:' + c + '">' + a.prioridad + '</b> ' + esc_(a.accion) + ' <span style="color:#6B6B6B">— ' + esc_(a.motivo) + '</span></li>';
-      txt += '\n[' + s.sede + '][' + a.prioridad + '] ' + a.accion;
+      html += '<li style="margin-bottom:10px"><b style="color:' + c + '">' + a.prioridad + '</b> ' + esc_(a.accion) +
+        ' <span style="color:#6B6B6B">— ' + esc_(a.motivo) + '</span>' +
+        '<br>✅ <b>Mejor opción:</b> ' + esc_(a.recomendada) + '<br>🗓️ <b>Cuándo:</b> ' + esc_(a.cuando) +
+        (a.opciones.length > 1 ? '<br><span style="font-size:12px;color:#6B6B6B">Alternativas: ' +
+          a.opciones.map(function (o) { return esc_(o.opcion); }).join(' · ') + '</span>' : '') + '</li>';
+      txt += '\n[' + s.sede + '][' + a.prioridad + '] ' + a.accion + ' → ' + a.recomendada + ' (' + a.cuando + ')';
     });
     html += '</ul>';
+    if (s.busquedaGoogle) html += '<details><summary style="cursor:pointer;color:#0D3550">🔎 Qué ve un cliente al buscar la marca</summary>' +
+      '<p style="white-space:pre-wrap;font-size:13px">' + esc_(s.busquedaGoogle) + '</p></details>';
     if (ps.post || ps.respuestas.length) html += '<p style="color:#1A8FBF">✍️ ' + (ps.post ? '1 post' : '') + (ps.post && ps.respuestas.length ? ' + ' : '') +
       (ps.respuestas.length ? ps.respuestas.length + ' respuesta(s)' : '') + ' en GBP_Borradores para aprobar.</p>';
   });

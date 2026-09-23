@@ -1,6 +1,12 @@
 # Agente Google · Durán Carasso
 
-Vigila cada día la ficha de Google de las 4 sedes (BCN, AND, CRD, STG), junto con su web y su SEO. Te avisa por email de lo que falta y te deja preparados los borradores de posts y de respuestas a reseñas.
+Objetivo: que quien busque **"Durán Carasso"** en cualquiera de las 4 sedes (BCN, AND, CRD, STG) encuentre la ficha completa, coherente con la web y mejor que la competencia.
+
+Cada día el agente te dice:
+- **% de ficha completa** y la lista de lo que falta.
+- **Qué hacer**: para cada acción, 2-3 opciones con pros y contras, **cuál es la mejor** y **cuándo** hacerla (según urgencia, temporada de la zona y festivos).
+- **Qué ve un cliente al buscar la marca** (revisión semanal): resultados que aparecen, datos incoherentes en otras webs y lo que tiene la competencia que nos falta. Es una búsqueda web aproximada, no una captura exacta de Google.
+- **Borradores** de posts y de respuestas a reseñas, listos para aprobar.
 
 ## Qué hace
 
