@@ -1,47 +1,47 @@
 # Agente Google · Durán Carasso
 
-Objetivo: que quien busque **"Durán Carasso"** en cualquiera de las 4 sedes (BCN, AND, CRD, STG) encuentre la ficha completa, coherente con la web y mejor que la competencia.
+Gestor semanal de las fichas de Google y del SEO de las 4 sedes (Barcelona, Sitges, Cerdanya y Andorra).
+Analiza, se compara con la competencia, te propone cambios que apruebas o editas **desde el propio email** y aprende de lo que decides.
 
-Cada día el agente te dice:
-- **% de ficha completa** y la lista de lo que falta.
-- **Qué hacer**: para cada acción, 2-3 opciones con pros y contras, **cuál es la mejor** y **cuándo** hacerla (según urgencia, temporada de la zona y festivos).
-- **Qué ve un cliente al buscar la marca** (revisión semanal): resultados que aparecen, datos incoherentes en otras webs y lo que tiene la competencia que nos falta. Es una búsqueda web aproximada, no una captura exacta de Google.
-- **Borradores** de posts y de respuestas a reseñas, listos para aprobar.
-
-## Qué hace
-
-| Cuándo | Qué |
+## Cómo funciona
+| Cuándo | Qué hace |
 |---|---|
-| Cada día a las 8:30 | Revisa la ficha (nota, reseñas, fotos, horario, teléfono, web, estado) y la web (title, meta, H1, schema, NAP, canonical), además del SEO y el rendimiento con PageSpeed. Aplica las reglas, **Claude** prioriza las acciones y redacta los borradores, lo guarda en la hoja y te envía el email |
-| Cada 3 h | Aviso de cada reseña nueva (🔴 si tiene 3★ o menos). No gasta IA |
-| Manual | `publicarAprobados()` publica en Google los borradores marcados como `APROBADO` |
+| **Lunes 8:30** | Analiza ficha, web, SEO, competencia (top 5 en Google Maps) y búsqueda de marca → Claude prepara el plan → **email con botones** |
+| **Cada 3 h** | Si entra una reseña de 3★ o menos: prepara la respuesta y te avisa al momento. Aplica el piloto automático si está activado |
+| **1er lunes de mes** | Añade al email los resultados del mes: nota, reseñas, % de ficha, puesto frente a la competencia, llamadas, rutas y clics |
 
-Crea estas pestañas en la hoja del CRM: `GBP_Historico` (evolución), `GBP_Tareas` (qué hacer) y `GBP_Borradores` (posts y respuestas para aprobar).
+**En el email, cada propuesta tiene:** ✅ Aprobar/Publicar · ✏️ Editar · ❌ Descartar.
+- Los botones abren una página donde editas el texto y confirmas. Abrir el enlace no publica nada.
+- **Nivel 1:** al aprobar te da el texto para copiarlo y pegarlo en Google.
+- **Nivel 2:** lo publica él directamente.
+- **Aprende de ti:** lo que editas o descartas, con el motivo, se lo pasa a Claude la semana siguiente.
 
-## Instalación (15 min)
+**Tipos de propuesta:** publicación semanal, respuesta a reseña, nueva descripción de la ficha (el agente puede hacerlas), y tareas con la mejor opción, cuándo hacerla y el contenido listo para pegar (las hace el equipo).
 
-1. **Google Cloud** → activa **Places API (New)** y **PageSpeed Insights API** → crea una API key.
-2. **Anthropic** → crea una API key en console.anthropic.com.
-3. Ve a script.google.com → Nuevo proyecto → pega `Code.gs`. En Configuración, marca "Mostrar appsscript.json" y pega `appsscript.json`.
-4. En Configuración → Propiedades del script, añade:
-   - `ANTHROPIC_API_KEY`
-   - `GOOGLE_API_KEY`
-   - `NOTIFY_EMAILS` (opcional; por defecto `adriap@durancarasso.com`)
-   - `CHAT_WEBHOOK` (opcional, para Google Chat)
-5. Ejecuta `instalar()` y acepta los permisos. En el registro, comprueba que los 4 placeId son las sedes correctas. Si alguno no lo es, ajusta `query` en `SEDES`, borra la propiedad `PLACE_XXX` y vuelve a ejecutar.
-6. Ejecuta `ejecutarDiario()` una vez para ver el primer informe.
+## Archivos
+`Config.gs` (sedes, umbrales, piloto automático) · `Agente.gs` (flujo) · `Datos.gs` (Google, web, competencia) · `IA.gs` (Claude) · `Propuestas.gs` (hoja, publicar, memoria) · `Email.gs` · `WebApp.gs` + `Pagina.html` (página de los botones) · `test/` (prueba local, no se sube a Apps Script).
 
-## Nivel 2: publicar y ver las reseñas sin responder (opcional)
+## Instalación (20 min)
+1. **Google Cloud:** activa **Places API (New)** y **PageSpeed Insights API** y crea una API key.
+2. **Anthropic:** crea una API key en console.anthropic.com.
+3. En script.google.com crea un nuevo proyecto y un archivo por cada `.gs` y `Pagina.html` (mismo nombre).
+   - En Configuración, marca "Mostrar appsscript.json" y pega `appsscript.json`.
+4. En Propiedades del script añade `ANTHROPIC_API_KEY` y `GOOGLE_API_KEY`.
+5. Pulsa **Implementar → Nueva implementación → Aplicación web**, con "Ejecutar como: yo" y "Acceso: cualquier usuario".
+   - Copia la URL `/exec` en la propiedad `WEBAPP_URL`.
+6. Ejecuta `instalar()` y acepta los permisos. Comprueba en el registro que las 4 sedes son las fichas correctas.
+7. Ejecuta `probarAhora()` y te llegará el primer informe.
 
-Places API solo muestra lo público. Para ver qué reseñas faltan por responder, cuándo fue el último post, y para **publicar** en la ficha:
+Los emails van a `adriap@durancarasso.com`. Para cambiarlo, usa la propiedad `NOTIFY_EMAILS`.
 
-1. Solicita acceso a la Business Profile API (formulario de Google, tarda unos días).
-2. Vincula el script a ese proyecto de GCP (Configuración → Proyecto de GCP) y activa **My Business Account Management**, **Business Information** y **Google My Business API**.
-3. Añade `GBP_ACCOUNT_ID`, ejecuta `listarUbicacionesGBP()` y copia cada ID en `gbpLocationId` de `SEDES`.
+## Nivel 2: publicación automática y métricas
+1. El propietario del Perfil de Empresa solicita acceso a la **Business Profile API** (formulario de Google, tarda unos días).
+2. Vincula el script al proyecto de GCP y activa **My Business Account Management**, **Business Information**, **Google My Business API** y **Business Profile Performance API**.
+3. Añade la propiedad `GBP_ACCOUNT_ID`, ejecuta `listarUbicacionesGBP()` y copia cada ID en `gbpLocationId` de `SEDES`.
 
-## Coste aproximado
-- Claude: 1 llamada al día, unos 4–5 € al mes.
-- Places y PageSpeed: dentro del crédito gratuito de Google.
+## Piloto automático (cuando confíes en él)
+Propiedad `AUTOPILOTO`, por ejemplo: `{"responder5estrellas": true, "postSiNoRespondes48h": true}`. Solo funciona en Nivel 2. Las reseñas negativas y las tareas siempre pasan por ti.
 
-## Ajustes
-Los umbrales (fotos mínimas, días sin post, SEO mínimo…) están en `UMBRAL`, al principio de `Code.gs`.
+## Coste
+- **Claude:** unos 3–5 €/mes (1 plan semanal, 4 búsquedas de marca y las respuestas urgentes).
+- **Google:** dentro del crédito gratuito.
