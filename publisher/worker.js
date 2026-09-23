@@ -44,6 +44,13 @@ function b64ToBytes(b64) {
 function rid() {
   return crypto.randomUUID().replace(/-/g, '');
 }
+function bytesToB64(buf) {
+  let bin = '';
+  const b = new Uint8Array(buf);
+  const chunk = 0x8000;
+  for (let i = 0; i < b.length; i += chunk) bin += String.fromCharCode.apply(null, b.subarray(i, i + chunk));
+  return btoa(bin);
+}
 
 export default {
   async fetch(request, env) {
@@ -65,6 +72,37 @@ export default {
     // A partir de aquí, requiere secreto
     const secret = request.headers.get('x-app-secret');
     if (!env.APP_SECRET || secret !== env.APP_SECRET) return json({ error: 'unauthorized' }, 401);
+
+    // Leer una página de propiedad: devuelve título, texto e imágenes (base64)
+    if (path === '/scrape' && request.method === 'GET') {
+      const target = url.searchParams.get('url');
+      if (!target || !/^https?:\/\//i.test(target)) return json({ error: 'bad_url' }, 400);
+      try {
+        const html = await (await fetch(target, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DuranCarassoBot/1.0)' } })).text();
+        const pick = (re) => { const m = html.match(re); return m ? m[1].trim() : ''; };
+        const title = pick(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) || pick(/<title[^>]*>([^<]+)</i);
+        const desc = pick(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i) || pick(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i);
+        const bodyTxt = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim();
+        const text = ((title ? title + '. ' : '') + (desc ? desc + ' ' : '') + bodyTxt).slice(0, 2200);
+        const urls = [], seen = {};
+        const addUrl = (u) => { if (!u) return; try { u = new URL(u, target).href; } catch (e) { return; } if (seen[u]) return; if (!/\.(jpe?g|png|webp)(\?|$)/i.test(u)) return; if (/logo|icon|sprite|favicon|placeholder|blank|avatar/i.test(u)) return; seen[u] = 1; urls.push(u); };
+        addUrl(pick(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i));
+        const re = /<img[^>]+(?:data-src|data-lazy-src|data-original|src)=["']([^"']+)["']/gi; let mm;
+        while ((mm = re.exec(html)) && urls.length < 20) addUrl(mm[1]);
+        const images = [];
+        for (let i = 0; i < urls.length && images.length < 8; i++) {
+          try {
+            const ir = await fetch(urls[i]);
+            const ct = ir.headers.get('content-type') || 'image/jpeg';
+            if (!/image\//.test(ct)) continue;
+            const buf = await ir.arrayBuffer();
+            if (buf.byteLength < 8000 || buf.byteLength > 6000000) continue; // salta iconos y enormes
+            images.push('data:' + ct + ';base64,' + bytesToB64(buf));
+          } catch (e) {}
+        }
+        return json({ name: title, text, images });
+      } catch (e) { return json({ error: 'fetch_failed', detail: String(e) }, 502); }
+    }
 
     if (path === '/jobs' && request.method === 'GET') {
       const list = await env.JOBS.list({ prefix: 'job:' });
