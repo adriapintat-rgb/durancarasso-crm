@@ -6,7 +6,11 @@ las imágenes y publica. El agendado lo dispara un **cron gratis** cada 5 minuto
 
 ## Qué hace falta de ti (una vez)
 
-### 1. Cuenta de Instagram
+### 0. Clave de IA (obligatoria para generar los posts)
+1. Entra en https://console.anthropic.com/ → **API Keys** → crea una clave (`sk-ant-...`).
+2. Añade saldo (pago por uso; céntimos por post). La guardarás como `ANTHROPIC_KEY` (paso 3).
+
+### 1. Cuenta de Instagram (solo para publicar)
 - Instagram en modo **Business** (o Creator) **vinculado a una Página de Facebook**.
 - Anota el **@usuario**.
 
@@ -32,9 +36,12 @@ las imágenes y publica. El agendado lo dispara un **cron gratis** cada 5 minuto
 3. Pon tu `IG_USER_ID` en `wrangler.toml` ([vars]).
 4. Guarda los secretos:
    ```bash
-   wrangler secret put IG_TOKEN     # pega el token de larga duración
-   wrangler secret put APP_SECRET   # inventa una contraseña larga (la usará la app)
+   wrangler secret put ANTHROPIC_KEY  # clave de la IA (console.anthropic.com → API Keys)
+   wrangler secret put APP_SECRET     # inventa una contraseña larga (la usará la app)
+   wrangler secret put IG_TOKEN       # (para publicar) token de Instagram — puede esperar
    ```
+   > Para probar el modo link + IA basta con `ANTHROPIC_KEY` + `APP_SECRET`.
+   > `IG_TOKEN` solo hace falta para publicar en Instagram.
 5. Despliega:
    ```bash
    wrangler deploy

@@ -104,6 +104,37 @@ export default {
       } catch (e) { return json({ error: 'fetch_failed', detail: String(e) }, 502); }
     }
 
+    // Cerebro de IA: llama a la API de Anthropic (para la versión alojada, sin window.claude)
+    if (path === '/ai' && request.method === 'POST') {
+      if (!env.ANTHROPIC_KEY) return json({ error: 'no_ai_key' }, 500);
+      let body; try { body = await request.json(); } catch (e) { return json({ error: 'bad_json' }, 400); }
+      const { prompt, images } = body;
+      if (!prompt) return json({ error: 'no_prompt' }, 400);
+      const content = [];
+      (images || []).slice(0, 4).forEach((d) => {
+        const m = /^data:([^;]+);base64,(.*)$/.exec(d || '');
+        if (m) content.push({ type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } });
+      });
+      content.push({ type: 'text', text: String(prompt).slice(0, 24000) });
+      const payload = {
+        model: env.AI_MODEL || 'claude-opus-5',
+        max_tokens: 2000,
+        output_config: { effort: 'low' },
+        messages: [{ role: 'user', content }],
+      };
+      try {
+        const r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'x-api-key': env.ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const d = await r.json();
+        if (d.error) return json({ error: 'ai_error', detail: d.error }, 502);
+        const text = (d.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+        return json({ text });
+      } catch (e) { return json({ error: 'ai_failed', detail: String(e) }, 502); }
+    }
+
     if (path === '/jobs' && request.method === 'GET') {
       const list = await env.JOBS.list({ prefix: 'job:' });
       const jobs = [];

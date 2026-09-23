@@ -727,6 +727,31 @@ function applyAI(r){
   renderSlides();renderTags();scheduleRender();save();
 }
 
+/* ── Capa de IA: usa el cerebro de Claude si está, o tu servidor (versión alojada) ── */
+function aiWorker(){var c=pubCfg();return !!(c.url&&c.secret)}
+function aiReady(){return !!SAMPLE || aiWorker()}
+function parseJsonLoose(t){
+  if(t==null)return null;
+  try{return JSON.parse(t)}catch(e){}
+  var f=t.match(/```(?:json)?\s*([\s\S]*?)```/); if(f){try{return JSON.parse(f[1])}catch(e){}}
+  var a=t.indexOf('{'),b=t.lastIndexOf('}'); if(a>=0&&b>a){try{return JSON.parse(t.slice(a,b+1))}catch(e){}}
+  var c=t.indexOf('['),d=t.lastIndexOf(']'); if(c>=0&&d>c){try{return JSON.parse(t.slice(c,d+1))}catch(e){}}
+  var er=new Error('invalid_json');er.code='invalid_json';throw er;
+}
+async function aiJson(prompt,opts){
+  opts=opts||{};
+  if(SAMPLE){
+    var o={}; if(opts.signal)o.signal=opts.signal;
+    if(opts.imageUrls&&opts.imageUrls.length){var bl=[];for(var i=0;i<opts.imageUrls.length;i++){try{bl.push(await (await fetch(opts.imageUrls[i])).blob())}catch(e){}}if(bl.length)o.images=bl;}
+    return await SAMPLE.json(prompt,o);
+  }
+  var c=pubCfg();
+  var body={prompt:prompt}; if(opts.imageUrls&&opts.imageUrls.length)body.images=opts.imageUrls.slice(0,4);
+  var r=await fetch(pubBase()+'/ai',{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':c.secret},body:JSON.stringify(body),signal:opts.signal});
+  var d=await r.json();
+  if(d.error){var er=new Error(String(d.error));er.code=(d.error==='no_ai_key')?'not_granted':'upstream_error';throw er;}
+  return parseJsonLoose(d.text);
+}
 function urlToText(s){
   // La IA no navega: si es un enlace, extraemos la info legible del propio URL
   var m=s.match(/https?:\/\/[^\s]+/i); if(!m)return null;
@@ -738,7 +763,7 @@ function urlToText(s){
   }catch(e){return null}
 }
 async function generateAI(){
-  if(!SAMPLE){toast('La IA se activa en la app publicada');return}
+  if(!aiReady()){toast('Conecta el publicador (⚙) o abre la app dentro de Claude');return}
   var raw=$('ai_in').value.trim();
   if(!raw){toast('Pega la ficha o unas notas primero');return}
   // Si sólo hay un enlace, lo convertimos en texto útil (la IA no puede abrirlo)
@@ -753,10 +778,10 @@ async function generateAI(){
   var ctl=new AbortController(); var killer=setTimeout(function(){ctl.abort()},95000);
   var ctx=''; if(AICtx.examples.length)ctx='\n\nEJEMPLOS APROBADOS POR EL EQUIPO (imita este tono y longitud):\n'+AICtx.examples.slice(0,4).map(function(e){return '- '+e}).join('\n');
   var prompt=BRAND_RULES+ctx+'\n\nMATERIAL DE ENTRADA:\n'+material.slice(0,6000)+'\n\n'+OUTPUT_SPEC;
-  var opts={modelTier:'default',signal:ctl.signal};
+  var aopts={signal:ctl.signal};
   try{
-    if($('ai_photos').checked&&photos.length){var imgs=await photoBlobs();if(imgs.length){opts.images=imgs;prompt+='\n\nAdjunto las fotos reales del inmueble: adapta el copy a lo que se ve y en cada slide pon photoHint (índice 0-based) con la foto que mejor encaje.'}}
-    var r=await SAMPLE.json(prompt,opts);
+    if($('ai_photos').checked&&photos.length){aopts.imageUrls=photos.slice(0,4).map(function(p){return p.src});prompt+='\n\nAdjunto las fotos reales del inmueble: adapta el copy a lo que se ve y en cada slide pon photoHint (índice 0-based) con la foto que mejor encaje.'}
+    var r=await aiJson(prompt,aopts);
     applyAI(r);$('ai_status').textContent='';
     toast('Carrusel generado con IA ✦'+note);
     if(onlyUrl)setTimeout(function(){toast('Consejo: pega también el texto de la ficha para más detalle')},2000);
@@ -768,17 +793,17 @@ async function generateAI(){
 }
 
 async function optimizeHashtags(){
-  if(!SAMPLE)return; aiBusy('btn_htia','Optimizando…');
+  if(!aiReady())return; aiBusy('btn_htia','Optimizando…');
   var p='Eres estratega de hashtags inmobiliarios de lujo. Devuelve SOLO un JSON array de 15 hashtags (strings con #), mezcla óptima de alcance amplio, medio y nicho, en el idioma del mercado, para esta propiedad. Incluye #DuranCarasso.\n\nPropiedad: '+[v('f_name'),v('f_loc'),v('f_type'),v('f_m2'),'mercado '+$('f_mkt').value].filter(Boolean).join(' · ');
-  try{var arr=await SAMPLE.json(p);if(Array.isArray(arr)&&arr.length){curTags=arr.map(function(t){t=String(t).trim();return t[0]==='#'?t:'#'+t}).slice(0,30);off=[];renderTags();save();toast('Hashtags optimizados ✦')}}
+  try{var arr=await aiJson(p);if(Array.isArray(arr)&&arr.length){curTags=arr.map(function(t){t=String(t).trim();return t[0]==='#'?t:'#'+t}).slice(0,30);off=[];renderTags();save();toast('Hashtags optimizados ✦')}}
   catch(e){toast(aiErr(e.code))}
   aiIdle('btn_htia','✦ Optimizar hashtags con IA');
 }
 
 async function viralHook(){
-  if(!SAMPLE)return; aiBusy('btn_hookia','Afinando…');
+  if(!aiReady())return; aiBusy('btn_hookia','Afinando…');
   var p=BRAND_RULES+'\n\nMejora el GANCHO para máximo scroll-stop en Instagram sin perder elegancia ni caer en clickbait. Devuelve SOLO un JSON {"title":"titular slide 1 de ≤9 palabras","firstLine":"primera línea de la caption"}.\n\nTitular actual: '+(slides[0].title||'—')+'\nPropiedad: '+[v('f_name'),v('f_loc'),v('f_type'),v('f_m2')].filter(Boolean).join(' · ');
-  try{var r=await SAMPLE.json(p);
+  try{var r=await aiJson(p);
     if(r&&r.title){slides[0].title=String(r.title);renderSlides();scheduleRender()}
     if(r&&r.firstLine){var c=$('caption').value.split('\n');c[0]=String(r.firstLine);$('caption').value=c.join('\n');sync()}
     toast('Gancho mejorado ✦');save();
@@ -786,28 +811,37 @@ async function viralHook(){
   aiIdle('btn_hookia','✦ Mejorar gancho (viral) con IA');
 }
 
-/* ── Memoria (aprendizaje) ── */
+/* ── Memoria (aprendizaje) — db si hay, si no localStorage ── */
 function curPost(){return {name:v('f_name'),market:$('f_mkt').value,caption:$('caption').value,hashtags:tagList(),slides:slides.map(function(s){return {kicker:s.kicker,title:s.title,body:s.body,layout:s.layout}})}}
+function memLocalAdd(doc){try{var a=JSON.parse(localStorage.getItem('dc_mem')||'[]');a.unshift(doc);localStorage.setItem('dc_mem',JSON.stringify(a.slice(0,40)))}catch(e){}}
+function memBadge(n){var el=$('ai_mem');if(el)el.textContent=n?('memoria · '+n+' aprobados'):''}
 function saveApproved(rating){
-  if(!DB){toast('Memoria no disponible aquí');return}
   var doc=curPost();doc.rating=rating;doc.ts=Date.now();
-  DB.collection('posts').add(doc).then(function(){toast(rating==='up'?'Guardado — la IA aprende 👍':'Descartado 👎');loadMemory()}).catch(function(){toast('No se pudo guardar')});
+  if(DB){DB.collection('posts').add(doc).then(function(){toast(rating==='up'?'Guardado — la IA aprende 👍':'Descartado 👎');loadMemory()}).catch(function(){memLocalAdd(doc);loadMemory();toast('Guardado 👍')});}
+  else{memLocalAdd(doc);loadMemory();toast(rating==='up'?'Guardado — la IA aprende 👍':'Descartado 👎')}
 }
+function memLocalLoad(){try{var a=JSON.parse(localStorage.getItem('dc_mem')||'[]').filter(function(p){return p.rating==='up'});AICtx.examples=a.slice(0,8).map(function(p){return (p.name?p.name+': ':'')+String(p.caption||'').split('\n')[0]});AICtx.count=a.length;memBadge(a.length)}catch(e){}}
 function loadMemory(){
-  if(!DB)return;
-  try{DB.collection('posts').where('rating','==','up').orderBy('ts','desc').limit(8).get().then(function(q){
+  if(DB){try{DB.collection('posts').where('rating','==','up').orderBy('ts','desc').limit(8).get().then(function(q){
     var ex=[];q.docs.forEach(function(d){var p=d.data();if(p&&p.caption)ex.push((p.name?p.name+': ':'')+String(p.caption).split('\n')[0])});
-    AICtx.examples=ex;AICtx.count=q.size;var el=$('ai_mem');if(el)el.textContent=q.size?('memoria · '+q.size+' aprobados'):'';
-  }).catch(function(){})}catch(e){}
+    AICtx.examples=ex;AICtx.count=q.size;memBadge(q.size);
+  }).catch(function(){memLocalLoad()})}catch(e){memLocalLoad()}}
+  else memLocalLoad();
 }
 
-function hideAI(){var c=$('ai_card');if(c)c.style.display='none';var n=document.querySelectorAll('.ai-only');for(var i=0;i<n.length;i++)n[i].style.display='none'}
-function showAIonly(){var n=document.querySelectorAll('.ai-only');for(var i=0;i<n.length;i++)n[i].style.display=(n[i].id==='learn_row')?'grid':'block'}
+function refreshAIui(){
+  var on=aiReady();
+  var card=$('ai_card'); if(card)card.style.display=on?'':'none';
+  var n=document.querySelectorAll('.ai-only'); for(var i=0;i<n.length;i++)n[i].style.display=on?((n[i].id==='learn_row')?'grid':'block'):'none';
+  if($('ai_go')){$('ai_go').disabled=!on; if(on&&$('ai_status').textContent==='Conectando IA…')$('ai_status').textContent='';}
+}
 (function initCaps(){
-  if(!(window.claude&&claude.use)){hideAI();return}
-  $('ai_go').disabled=true;$('ai_status').textContent='Conectando IA…';
-  claude.use('sample').then(function(s){if(s){SAMPLE=s;$('ai_go').disabled=false;$('ai_status').textContent='';showAIonly()}else hideAI()}).catch(hideAI);
-  claude.use('db').then(function(db){if(db){DB=db;loadMemory();if(typeof plansLoad==='function')plansLoad()}}).catch(function(){});
+  if(window.claude&&claude.use){
+    $('ai_status').textContent='Conectando IA…';
+    claude.use('sample').then(function(s){if(s)SAMPLE=s;refreshAIui()}).catch(function(){refreshAIui()});
+    claude.use('db').then(function(db){if(db){DB=db;loadMemory();if(typeof plansLoad==='function')plansLoad()}}).catch(function(){});
+  }
+  refreshAIui();loadMemory();
 })();
 function addPhotoDataUrls(urls){
   urls.forEach(function(src){var im=new Image();im.onload=function(){photos.push({src:src,img:im});renderThumbs();autoAssign();renderSlides();scheduleRender();save()};im.src=src});
@@ -853,6 +887,7 @@ $('pub_cfg_btn').addEventListener('click',function(){
   var u=prompt('URL del Worker (https://…workers.dev):',c.url||''); if(u===null)return;
   var s=prompt('APP_SECRET:',c.secret||''); if(s===null)return;
   setPubCfg({url:u.trim(),secret:s.trim()});toast('Publicador conectado');loadJobs();
+  if(typeof refreshAIui==='function')refreshAIui();
 });
 async function doPublish(when){
   var c=pubCfg(); if(!c.url||!c.secret){toast('Pulsa ⚙ Conectar primero');return}
