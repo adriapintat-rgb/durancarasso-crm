@@ -19,9 +19,9 @@
 
 var SEDES = [
   { code: 'BCN', nombre: 'Barcelona', query: 'Durán Carasso Inmobiliaria Carrer de Muntaner 259 Barcelona', mercado: 'inmobiliaria de lujo en Barcelona', web: '', gbpLocationId: '' },
-  { code: 'STG', nombre: 'Sitges',    query: 'Durán Carasso Sitges',    mercado: 'inmobiliaria de lujo en Sitges',    web: '', gbpLocationId: '' },
-  { code: 'CRD', nombre: 'Cerdanya',  query: 'Durán Carasso Cerdanya',  mercado: 'inmobiliaria de lujo en Puigcerdà Cerdanya', web: '', gbpLocationId: '' },
-  { code: 'AND', nombre: 'Andorra',   query: 'Durán Carasso Andorra',   mercado: 'inmobiliaria de lujo en Andorra',   web: '', gbpLocationId: '' }
+  { code: 'STG', nombre: 'Sitges',    query: 'Durán Carasso Camí dels Capellans 73 Sitges', mercado: 'inmobiliaria de lujo en Sitges', web: '', gbpLocationId: '' },
+  { code: 'CRD', nombre: 'Cerdanya',  query: 'Durán Carasso Puigcerdà Cerdanya', mercado: 'inmobiliaria en Puigcerdà Cerdanya', web: '', gbpLocationId: '' },
+  { code: 'AND', nombre: 'Andorra',   query: 'Durán Carasso Escaldes-Engordany Andorra', mercado: 'inmobiliaria de lujo en Andorra', web: '', gbpLocationId: '' }
 ];
 // web vacío → se usa la web que tenga la ficha de Google.
 // gbpLocationId → Nivel 2 (ver listarUbicacionesGBP()).
@@ -462,8 +462,9 @@ function placeId_(s) {
     'X-Goog-Api-Key': prop_('GOOGLE_API_KEY', true), 'X-Goog-FieldMask': 'places.id,places.displayName'
   }, { textQuery: s.query, languageCode: 'es' });
   if (!r.places || !r.places.length) throw new Error('No encuentro la ficha de ' + s.nombre + ' (revisa SEDES.query)');
-  P.setProperty(k, r.places[0].id);
-  return r.places[0].id;
+  var nuestra = r.places.filter(function (p) { return /dur[aá]n\s*carasso/i.test((p.displayName || {}).text || ''); })[0] || r.places[0];
+  P.setProperty(k, nuestra.id);
+  return nuestra.id;
 }
 
 function fichaPlaces_(id) {

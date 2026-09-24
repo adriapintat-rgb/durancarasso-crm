@@ -16,9 +16,9 @@
 
 var SEDES = [
   { code: 'BCN', nombre: 'Barcelona', query: 'Durán Carasso Inmobiliaria Carrer de Muntaner 259 Barcelona', mercado: 'inmobiliaria de lujo en Barcelona', web: '', gbpLocationId: '' },
-  { code: 'STG', nombre: 'Sitges',    query: 'Durán Carasso Sitges',    mercado: 'inmobiliaria de lujo en Sitges',    web: '', gbpLocationId: '' },
-  { code: 'CRD', nombre: 'Cerdanya',  query: 'Durán Carasso Cerdanya',  mercado: 'inmobiliaria de lujo en Puigcerdà Cerdanya', web: '', gbpLocationId: '' },
-  { code: 'AND', nombre: 'Andorra',   query: 'Durán Carasso Andorra',   mercado: 'inmobiliaria de lujo en Andorra',   web: '', gbpLocationId: '' }
+  { code: 'STG', nombre: 'Sitges',    query: 'Durán Carasso Camí dels Capellans 73 Sitges', mercado: 'inmobiliaria de lujo en Sitges', web: '', gbpLocationId: '' },
+  { code: 'CRD', nombre: 'Cerdanya',  query: 'Durán Carasso Puigcerdà Cerdanya', mercado: 'inmobiliaria en Puigcerdà Cerdanya', web: '', gbpLocationId: '' },
+  { code: 'AND', nombre: 'Andorra',   query: 'Durán Carasso Escaldes-Engordany Andorra', mercado: 'inmobiliaria de lujo en Andorra', web: '', gbpLocationId: '' }
 ];
 // web vacío → se usa la web que tenga la ficha de Google.
 // gbpLocationId → Nivel 2 (ver listarUbicacionesGBP()).

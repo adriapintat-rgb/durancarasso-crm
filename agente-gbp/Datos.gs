@@ -125,8 +125,9 @@ function placeId_(s) {
     'X-Goog-Api-Key': prop_('GOOGLE_API_KEY', true), 'X-Goog-FieldMask': 'places.id,places.displayName'
   }, { textQuery: s.query, languageCode: 'es' });
   if (!r.places || !r.places.length) throw new Error('No encuentro la ficha de ' + s.nombre + ' (revisa SEDES.query)');
-  P.setProperty(k, r.places[0].id);
-  return r.places[0].id;
+  var nuestra = r.places.filter(function (p) { return /dur[aá]n\s*carasso/i.test((p.displayName || {}).text || ''); })[0] || r.places[0];
+  P.setProperty(k, nuestra.id);
+  return nuestra.id;
 }
 
 function fichaPlaces_(id) {
