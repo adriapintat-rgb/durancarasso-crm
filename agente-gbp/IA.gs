@@ -61,7 +61,8 @@ var SYSTEM_PROMPT = [
   'Usa "empresa" y "perfil_sedes": propón solo servicios que la empresa ofrece, usa las zonas reales de cada sede,',
   'escribe posts y descripción en el primer idioma de la sede (y respuestas en el idioma de la reseña), y compara',
   'también con los competidores de referencia si aparecen en los datos. Si la dirección o el teléfono de la ficha no',
-  'coinciden con perfil_sedes, avísalo como acción ALTA.',
+  'coinciden con perfil_sedes, avísalo como acción ALTA. Si el nombre de la ficha añade palabras clave al nombre real',
+  '(p. ej. "Durán Carasso | Inmobiliaria en …"), avisa de que incumple las normas de Google y puede provocar suspensión.',
   'No inventes datos que no estén en el JSON.'
 ].join('\n');
 

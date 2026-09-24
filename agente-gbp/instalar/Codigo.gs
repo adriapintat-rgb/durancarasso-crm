@@ -20,7 +20,7 @@
 var SEDES = [
   { code: 'BCN', nombre: 'Barcelona', query: 'Durán Carasso Inmobiliaria Carrer de Muntaner 259 Barcelona', mercado: 'inmobiliaria de lujo en Barcelona', web: '', gbpLocationId: '' },
   { code: 'STG', nombre: 'Sitges',    query: 'Durán Carasso Camí dels Capellans 73 Sitges', mercado: 'inmobiliaria de lujo en Sitges', web: '', gbpLocationId: '' },
-  { code: 'CRD', nombre: 'Cerdanya',  query: 'Durán Carasso Puigcerdà Cerdanya', mercado: 'inmobiliaria en Puigcerdà Cerdanya', web: '', gbpLocationId: '' },
+  { code: 'CRD', nombre: 'Cerdanya',  query: "Durán Carasso Carrer d'Espanya 16 Puigcerdà", mercado: 'inmobiliaria en Puigcerdà Cerdanya', web: '', gbpLocationId: '' },
   { code: 'AND', nombre: 'Andorra',   query: "Durán Carasso Avinguda 8 d'Agost 9 Escaldes-Engordany Andorra", mercado: 'inmobiliaria de lujo en Andorra', web: '', gbpLocationId: '' }
 ];
 
@@ -41,7 +41,7 @@ var PERFIL_SEDES = {
   STG: { direccion: 'Av. Camí dels Capellans 73, 08870 Sitges (sede central)', telefono: '935 17 80 67',
          zonas: 'Sitges, Garraf, Vilanova i la Geltrú, Cunit', idiomas: 'es, ca, en',
          competidores: 'Happy Houses, Envy Realty, Premium Houses, Selekta Properties' },
-  CRD: { direccion: 'Puigcerdà centro (oficina boutique abierta en julio de 2024)', telefono: '',
+  CRD: { direccion: "Carrer d'Espanya 16, 17520 Puigcerdà (Girona)", telefono: '972 47 56 77',
          zonas: 'Puigcerdà, Alp, Llívia, Bellver de Cerdanya, Fontanals, Urtx, Isòvol', idiomas: 'ca, es, fr',
          competidores: 'Coldwell Banker Glollar, Ladosada, Alex Ros, Vincle Cerdanya' },
   AND: { direccion: "Av. 8 d'Agost 9, local 1C, Escaldes-Engordany", telefono: '+376 841 800',
@@ -660,7 +660,8 @@ var SYSTEM_PROMPT = [
   'Usa "empresa" y "perfil_sedes": propón solo servicios que la empresa ofrece, usa las zonas reales de cada sede,',
   'escribe posts y descripción en el primer idioma de la sede (y respuestas en el idioma de la reseña), y compara',
   'también con los competidores de referencia si aparecen en los datos. Si la dirección o el teléfono de la ficha no',
-  'coinciden con perfil_sedes, avísalo como acción ALTA.',
+  'coinciden con perfil_sedes, avísalo como acción ALTA. Si el nombre de la ficha añade palabras clave al nombre real',
+  '(p. ej. "Durán Carasso | Inmobiliaria en …"), avisa de que incumple las normas de Google y puede provocar suspensión.',
   'No inventes datos que no estén en el JSON.'
 ].join('\n');
 
