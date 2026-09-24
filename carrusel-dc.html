@@ -511,21 +511,21 @@ function drawSlide(cv,s,idx){
   if(theme!=='none'){
     var g=ctx.createLinearGradient(0,0,0,LH);
     if(theme==='dark'){
-      g.addColorStop(0,'rgba(10,32,48,'+(0.42*scrim).toFixed(3)+')');
-      g.addColorStop(.40,'rgba(10,32,48,'+(0.10*scrim).toFixed(3)+')');
-      g.addColorStop(.66,'rgba(9,28,42,'+(0.55*scrim).toFixed(3)+')');
-      g.addColorStop(1,'rgba(7,24,37,'+(0.96*scrim).toFixed(3)+')');
+      // franja superior leve (logo) · centro limpio (la foto luce) · banda inferior sólida (texto legible)
+      g.addColorStop(0,'rgba(9,28,44,'+(0.36*scrim).toFixed(3)+')');
+      g.addColorStop(.30,'rgba(9,28,44,'+(0.04*scrim).toFixed(3)+')');
+      g.addColorStop(.52,'rgba(8,24,38,'+(0.20*scrim).toFixed(3)+')');
+      g.addColorStop(.72,'rgba(7,21,34,'+(0.60*scrim).toFixed(3)+')');
+      g.addColorStop(.88,'rgba(6,18,30,'+(0.86*scrim).toFixed(3)+')');
+      g.addColorStop(1,'rgba(5,15,26,'+(0.97*scrim).toFixed(3)+')');
     }else{
-      g.addColorStop(0,'rgba(255,255,255,'+(0.28*scrim).toFixed(3)+')');
-      g.addColorStop(.45,'rgba(255,255,255,'+(0.05*scrim).toFixed(3)+')');
-      g.addColorStop(.72,'rgba(13,53,80,'+(0.5*scrim).toFixed(3)+')');
-      g.addColorStop(1,'rgba(11,42,64,'+(0.9*scrim).toFixed(3)+')');
+      g.addColorStop(0,'rgba(255,255,255,'+(0.24*scrim).toFixed(3)+')');
+      g.addColorStop(.40,'rgba(255,255,255,'+(0.03*scrim).toFixed(3)+')');
+      g.addColorStop(.66,'rgba(13,45,68,'+(0.42*scrim).toFixed(3)+')');
+      g.addColorStop(.86,'rgba(11,38,58,'+(0.82*scrim).toFixed(3)+')');
+      g.addColorStop(1,'rgba(9,32,50,'+(0.95*scrim).toFixed(3)+')');
     }
     ctx.fillStyle=g;ctx.fillRect(0,0,LW,LH);
-    // vignette lateral sutil
-    var rg=ctx.createRadialGradient(LW/2,LH*0.42,LW*0.2,LW/2,LH*0.55,LW*0.9);
-    rg.addColorStop(0,'rgba(0,0,0,0)');rg.addColorStop(1,'rgba(0,0,0,'+(0.16*scrim).toFixed(3)+')');
-    ctx.fillStyle=rg;ctx.fillRect(0,0,LW,LH);
   }
 
   var light=theme==='light';
@@ -562,40 +562,42 @@ function drawSlide(cv,s,idx){
   var ruleH=cta?30:0;
   var blockH=kH+tH+bH+ruleH;
 
-  var y;
-  if(hook){ y=LH*0.52 - blockH/2 + tSize; if(y<LH-PADB-blockH) y=LH-PADB-blockH+tSize*0.05; }
-  else y=LH-PADB-blockH+tSize*0.05;
+  // Todo el texto va anclado abajo, sobre la banda oscura → nunca en medio de la foto
+  var y=LH-PADB-blockH+tSize*0.05;
+  function shadowOn(){ctx.shadowColor='rgba(0,0,0,'+(light?0.18:0.45)+')';ctx.shadowBlur=16;ctx.shadowOffsetX=0;ctx.shadowOffsetY=1}
+  function shadowOff(){ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0}
 
   if(s.kicker){
+    shadowOff();
     ctx.fillStyle=light?'#9A7A1E':C.goldSoft;
     ctx.font='600 23px Inter, sans-serif';ctx.letterSpacing='4px';
     ctx.fillText(s.kicker.toUpperCase(),PAD,y);ctx.letterSpacing='0px';
-    // hairline oro tras kicker
     var kw=ctx.measureText(s.kicker.toUpperCase()).width;
-    ctx.strokeStyle=light?'rgba(154,122,30,.5)':'rgba(203,164,60,.55)';ctx.lineWidth=1;
+    ctx.strokeStyle=light?'rgba(154,122,30,.5)':'rgba(203,164,60,.6)';ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(PAD+kw+18,y-7);ctx.lineTo(Math.min(PAD+kw+90,LW-PAD),y-7);ctx.stroke();
     y+=kH;
   }
+  shadowOn();
   ctx.fillStyle=main;ctx.font='600 '+tSize+'px "Playfair Display", serif';
   tLines.forEach(function(l){y+=tLead*0.78;ctx.fillText(l,PAD,y);y+=tLead*0.22});
+  shadowOff();
 
-  if(cta){ // regla superior del bloque de datos
-    y+=16;ctx.strokeStyle=C.gold;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(PAD,y);ctx.lineTo(PAD+56,y);ctx.stroke();y+=14;
-  }
+  if(cta){ y+=16;ctx.strokeStyle=C.gold;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(PAD,y);ctx.lineTo(PAD+56,y);ctx.stroke();y+=14; }
   if(bodyLines.length){
     if(!cta)y+=24;
     ctx.font='300 '+bSize+'px Inter, sans-serif';
     bodyLines.forEach(function(l){
       y+=bLead*0.7;
       ctx.fillStyle=C.gold;ctx.fillRect(PAD,y-bSize*0.36,22,2.4);
-      ctx.fillStyle=light?'rgba(13,53,80,.92)':'rgba(255,255,255,.94)';
+      shadowOn();
+      ctx.fillStyle=light?'rgba(13,45,68,.95)':'rgba(255,255,255,.95)';
       var ls=wrap(ctx,l,maxW-42);
       ctx.fillText(ls[0],PAD+42,y);
       for(var k=1;k<ls.length;k++){y+=bLead*0.78;ctx.fillText(ls[k],PAD+42,y)}
+      shadowOff();
       y+=bLead*0.3;
     });
   }
-  // flecha swipe en portada
   if(hook){
     ctx.fillStyle=soft;ctx.font='500 24px Inter, sans-serif';ctx.textAlign='right';
     ctx.fillText('Desliza  →',LW-PAD,LH-PADB+40);ctx.textAlign='left';
@@ -702,7 +704,7 @@ $('f_name').addEventListener('input',function(){$('chip').textContent=v('f_name'
 /* ══ IA (cerebro en vivo vía capability sample) + MEMORIA (db) ══ */
 var SAMPLE=null, DB=null, AICtx={examples:[],count:0};
 var BRAND_RULES='Eres el copywriter senior de Duran Carasso, inmobiliaria de lujo (Andorra, Sitges, Barcelona). Tono exclusivo, aspiracional y cálido; nunca agresivo ni de venta dura. Nunca menciones precio salvo que el material lo pida. Máximo 3 emojis. Privacidad y exclusividad siempre presentes. CTA suave (consulta privada, visita privada). Reescribe, nunca copies literal. Castellano (si el mercado es Andorra puedes mezclar algo de català). Carrusel de 5 slides: 1 Gancho (frase de ≤10 palabras), 2 Proyecto, 3 Interior, 4 Lifestyle/Valor, 5 Consulta privada con web y cuenta.';
-var OUTPUT_SPEC='Devuelve SOLO un JSON válido, sin texto alrededor, con esta forma exacta:\n{"market":"barcelona|andorra|sitges|general","name":"titular corto de la propiedad","slides":[{"kicker":"etiqueta corta","title":"titular","body":"linea1\\nlinea2","layout":"hook|info|cta","photoHint":0}],"caption":"texto con saltos \\n","hashtags":["#Uno","#Dos"]}\nReglas: exactamente 5 slides en este orden -> [0] gancho (layout "hook", body ""), [1] proyecto, [2] interior, [3] lifestyle (los tres layout "info"), [4] cierre (layout "cta"). body: máximo 4 líneas, una idea por línea, sin viñetas. caption: 3 párrafos + CTA suave + web, máximo 3 emojis. hashtags: 15, mezcla de alcance amplio, medio y nicho del mercado, incluye #DuranCarasso.';
+var OUTPUT_SPEC='Devuelve SOLO un JSON válido, sin texto alrededor, con esta forma exacta:\n{"market":"barcelona|andorra|sitges|general","name":"titular corto de la propiedad","slides":[{"kicker":"etiqueta corta","title":"titular","body":"linea1\\nlinea2","layout":"hook|info|cta","photo":0,"focus":50}],"caption":"texto con saltos \\n","hashtags":["#Uno","#Dos"]}\nReglas: exactamente 5 slides en este orden -> [0] gancho (layout "hook", body ""), [1] proyecto, [2] interior, [3] lifestyle (los tres layout "info"), [4] cierre (layout "cta"). body: máximo 4 líneas, una idea por línea, sin viñetas. caption: 3 párrafos + CTA suave + web, máximo 3 emojis. hashtags: 15, mezcla de alcance amplio, medio y nicho del mercado, incluye #DuranCarasso.\nCURADURÍA DE FOTOS (si te adjunto imágenes): están numeradas 0,1,2… en el orden que las recibes. Para cada slide elige en "photo" el índice de la foto que MEJOR encaje con ese texto (la más impactante y luminosa en el slide 1; usa fotos DISTINTAS en cada slide, evita repetir). En "focus" indica el encuadre vertical ideal de esa foto: 0=parte superior, 50=centro, 100=parte inferior (elige para que se vea lo importante). Adapta el copy a lo que realmente se ve en las fotos.';
 
 function aiBusy(id,t){var b=$(id);if(b){b.textContent=t;b.disabled=true}}
 function aiIdle(id,t){var b=$(id);if(b){b.textContent=t;b.disabled=false}}
@@ -720,7 +722,9 @@ function applyAI(r){
     slides[i].title=(a.title!=null?a.title:slides[i].title)||'';
     slides[i].body=(a.body!=null?a.body:slides[i].body)||'';
     slides[i].layout=(['hook','info','cta'].indexOf(a.layout)>=0)?a.layout:LAYOUTS[i];
-    if(typeof a.photoHint==='number'&&photos.length)slides[i].photo=Math.max(0,Math.min(photos.length-1,a.photoHint|0));
+    var ph=(typeof a.photo==='number')?a.photo:a.photoHint;
+    if(typeof ph==='number'&&photos.length)slides[i].photo=Math.max(0,Math.min(photos.length-1,ph|0));
+    if(typeof a.focus==='number')slides[i].focus=Math.max(0,Math.min(100,a.focus|0));
   }
   if(r.caption)$('caption').value=String(r.caption);
   if(Array.isArray(r.hashtags)&&r.hashtags.length){curTags=r.hashtags.map(function(t){t=String(t).trim();return t[0]==='#'?t:'#'+t}).slice(0,30);off=[]}
@@ -780,7 +784,7 @@ async function generateAI(){
   var prompt=BRAND_RULES+ctx+'\n\nMATERIAL DE ENTRADA:\n'+material.slice(0,6000)+'\n\n'+OUTPUT_SPEC;
   var aopts={signal:ctl.signal};
   try{
-    if($('ai_photos').checked&&photos.length){aopts.imageUrls=photos.slice(0,4).map(function(p){return p.src});prompt+='\n\nAdjunto las fotos reales del inmueble: adapta el copy a lo que se ve y en cada slide pon photoHint (índice 0-based) con la foto que mejor encaje.'}
+    if(photos.length){aopts.imageUrls=photos.slice(0,8).map(function(p){return p.src});prompt+='\n\nTe adjunto '+Math.min(photos.length,8)+' fotos reales del inmueble, numeradas 0'+(photos.length>1?'…'+(Math.min(photos.length,8)-1):'')+' en ese orden. Míralas y aplica la CURADURÍA descrita: elige la mejor foto y encuadre para cada slide y adapta el copy a lo que se ve.'}
     var r=await aiJson(prompt,aopts);
     applyAI(r);$('ai_status').textContent='';
     toast('Carrusel generado con IA ✦'+note);
