@@ -58,11 +58,15 @@ var SYSTEM_PROMPT = [
   '- respuestas: borrador solo para reseñas con respondida=false (usa su id exacto), en el idioma de la reseña,',
   '  personalizada; en negativas: empatía, sin excusas, invitación a hablar por teléfono.',
   'resumen: 3-4 frases para dirección con lo más importante de la semana.',
+  'Usa "empresa" y "perfil_sedes": propón solo servicios que la empresa ofrece, usa las zonas reales de cada sede,',
+  'escribe posts y descripción en el primer idioma de la sede (y respuestas en el idioma de la reseña), y compara',
+  'también con los competidores de referencia si aparecen en los datos. Si la dirección o el teléfono de la ficha no',
+  'coinciden con perfil_sedes, avísalo como acción ALTA.',
   'No inventes datos que no estén en el JSON.'
 ].join('\n');
 
 function pedirPlanClaude_(snaps) {
-  var input = { fecha: fecha_(), sedes: snaps, decisiones_del_equipo: memoria_() };
+  var input = { fecha: fecha_(), empresa: PERFIL_EMPRESA, perfil_sedes: PERFIL_SEDES, sedes: snaps, decisiones_del_equipo: memoria_() };
   return JSON.parse(textoClaude_(claude_({
     model: CLAUDE_MODEL, max_tokens: 20000, system: SYSTEM_PROMPT,
     output_config: { format: { type: 'json_schema', schema: SCHEMA_PLAN } },
