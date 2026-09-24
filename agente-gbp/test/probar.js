@@ -12,7 +12,7 @@ global.UrlFetchApp = { fetch: (url, o = {}) => {
   const R = (obj, code = 200) => ({ getResponseCode: () => code, getContentText: () => typeof obj === 'string' ? obj : JSON.stringify(obj) });
   const body = o.payload ? JSON.parse(o.payload) : {};
   if (url.includes('places:searchText')) {
-    const q = body.textQuery; const code = ['BCN', 'STG', 'CRD', 'AND'].find(c => q.toLowerCase().includes({ BCN: 'barcelona', STG: 'sitges', CRD: 'cerdanya', AND: 'andorra' }[c]));
+    const q = body.textQuery; const code = ['BCN', 'STG', 'CRD', 'AND'].find(c => q.toLowerCase().includes({ BCN: 'barcelona', STG: 'sitges', CRD: 'puigcerd', AND: 'andorra' }[c]));
     if (/Durán Carasso/.test(q)) return R({ places: [{ id: 'id_' + code }] });
     return R({ places: [{ id: 'id_' + code, displayName: { text: 'Durán Carasso' } }].concat([180, 95, 41, 22, 12].map((n, i) => ({ id: 'c' + i, displayName: { text: 'Competidor ' + 'ABCDE'[i] + ' (simulado)' }, rating: [4.8, 4.5, 4.9, 4.3, 4.7][i], userRatingCount: n, photos: Array(10) }))) });
   }
