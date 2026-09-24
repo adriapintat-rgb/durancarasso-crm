@@ -37,7 +37,7 @@ global.ScriptApp = {
   getService: () => ({ getUrl: () => 'https://script.google.com/macros/s/DEMO/exec' }) };
 
 global.sent = [];
-global.GmailApp = { sendEmail: (to, subject, text, o) => sent.push({ to, subject, text, html: o.htmlBody }) };
+global.MailApp = { sendEmail: (to, subject, text, o) => sent.push({ to, subject, text, html: o.htmlBody }) };
 
 // Hoja en memoria
 const sheets = {};

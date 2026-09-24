@@ -37,7 +37,7 @@ function appendRows_(sh, rows) {
 /** Crea propuestas y devuelve los objetos con su ID (para pintar el email). */
 function crearPropuestas_(lista) {
   var hoy = fecha_(), rows = lista.map(function (p) {
-    p.id = Utilities.getUuid().slice(0, 8);
+    p.id = 'p' + Utilities.getUuid().replace(/-/g, '').slice(0, 10);   // prefijo: Sheets no lo convierte en número
     return [p.id, hoy, p.sede, p.tipo, p.prioridad || '', p.titulo || '', p.contexto || '', p.propuesta || '', '',
             'PENDIENTE', '', hoy, p.referencia || '', p.estrellas || ''];
   });
@@ -47,7 +47,7 @@ function crearPropuestas_(lista) {
 
 function buscarPropuesta_(id) {
   var sh = hoja_('GBP_Propuestas'), data = sh.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) if (data[i][C.ID] === id) return { fila: i + 1, row: data[i], sh: sh };
+  for (var i = 1; i < data.length; i++) if (String(data[i][C.ID]) === String(id)) return { fila: i + 1, row: data[i], sh: sh };
   return null;
 }
 
@@ -106,7 +106,7 @@ function publicarEnGoogle_(s, tipo, texto, ref) {
     callToAction: { actionType: 'LEARN_MORE', url: s.web || fichaPlaces_(placeId_(s)).websiteUri }
   });
   if (tipo === 'DESCRIPCION') return gbp_('PATCH', 'https://mybusinessbusinessinformation.googleapis.com/v1/locations/' +
-    s.gbpLocationId + '?updateMask=profile.description', { profile: { description: texto } });
+    locId_(s) + '?updateMask=profile.description', { profile: { description: texto } });
   throw new Error('Tipo no publicable: ' + tipo);
 }
 

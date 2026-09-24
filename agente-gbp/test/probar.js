@@ -56,7 +56,7 @@ function fakeClaude(b) {
 }
 
 eval(M.load());
-Object.assign(global, { diagnostico, activarDesdeMenu, desactivar, enviarAhora_, avanzarSemanal, ejecutarSemanal, vigilarUrgente, doGet, accionWeb, token_, memoria_, estado_ });
+Object.assign(global, { reglas_, tarjetaPropuesta_, locId_, accId_, diagnostico, activarDesdeMenu, desactivar, enviarAhora_, avanzarSemanal, ejecutarSemanal, vigilarUrgente, doGet, accionWeb, token_, memoria_, estado_ });
 const enviarAhora = enviarAhora_;
 const evento = fn => ({ triggerUid: (__triggers.find(t => t.fn === fn) || {}).uid });
 let fallos = 0;
@@ -137,6 +137,28 @@ const guardaKey = __store.ANTHROPIC_API_KEY; __store.ANTHROPIC_API_KEY = '';
 n2 = sent.length; enviarAhora();
 check(sent.length === n2 + 1 && /error/i.test(sent.at(-1).subject) && estado_().error, 'si falla, avisa por email y deja el error en el diagnóstico');
 __store.ANTHROPIC_API_KEY = guardaKey;
+
+console.log('\n8) Casos límite (revisión de código)');
+check(props().every(r => /^p[0-9a-f]{10}$/.test(r[0])), 'IDs con prefijo: Sheets no los convierte en números');
+check(!__triggers.some(t => t.fn === 'avanzarSemanal'), 'al terminar no quedan triggers de continuación colgados');
+check(reglas_({ ficha: { estado: 'OPERATIONAL', tieneHorario: 1, telefono: 1, web: 1, fotos: 10, rating: 4.7, numResenas: 5 }, anterior: { rating: 4.8, numResenas: 4 },
+  resenasRecientes: [], ultimoPostDias: null, web: null, pagespeed: null, posicion: null }).some(p => /nota baja/.test(p.texto)), 'detecta una bajada de 4,8 a 4,7 (sin error de decimales)');
+check(props().filter(r => r[3] === 'POST' && r[9] === 'CADUCADO').length > 0, 'los posts de semanas anteriores sin decidir se marcan CADUCADO');
+FICHAS.STG.n += 2; FICHAS.STG.rating = 4.7;
+revs.STG = [{ name: 'places/STG/reviews/9', rating: 5, text: { text: 'Genial' }, authorAttribution: { displayName: 'Ana' }, publishTime: '2026-09-25T09:00:00Z' }];
+n2 = sent.length; vigilarUrgente(evento('vigilarUrgente'));
+check(sent.slice(n2).some(m => /Sitges: 1 reseña/.test(m.text)), 'reseña positiva visible + negativa oculta → avisa de la oculta');
+const urg = { id: 'pX', sede: 'BCN', tipo: 'RESPUESTA', prioridad: 'ALTA', titulo: 't', contexto: '2★ · A: x', propuesta: 'y'.repeat(400) };
+check(tarjetaPropuesta_(urg, false).includes('y'.repeat(400)), 'alerta urgente muestra el borrador completo');
+__store.GBP_ACCOUNT_ID = 'accounts/123';
+check(locId_({ gbpLocationId: 'locations/456' }) === '456' && accId_() === '123', 'acepta IDs de Google con o sin prefijo');
+delete __store.GBP_ACCOUNT_ID;
+const guarda = global.UrlFetchApp.fetch; revs.CRD = [{ name: 'places/CRD/reviews/1', rating: 1, text: { text: 'Mal' }, authorAttribution: { displayName: 'Pau' }, publishTime: '2026-09-26T09:00:00Z' }];
+vigilarUrgente(evento('vigilarUrgente'));   // fija referencia de CRD
+revs.CRD.push({ name: 'places/CRD/reviews/2', rating: 1, text: { text: 'Fatal' }, authorAttribution: { displayName: 'Jordi' }, publishTime: '2026-09-27T09:00:00Z' });
+global.UrlFetchApp = { fetch: (u, o) => { if (u.endsWith('/v1/messages')) return { getResponseCode: () => 529, getContentText: () => '{"error":"overloaded"}' }; return guarda(u, o); } };
+n2 = sent.length; vigilarUrgente(evento('vigilarUrgente')); global.UrlFetchApp = { fetch: guarda };
+check(sent.slice(n2).some(m => /Cerdanya/.test(m.subject)), 'si la IA falla, la alerta de reseña negativa llega igual');
 
 console.log('\n7) Seguridad (llamadas desde la app web pública)');
 const nTrig = __triggers.length, nLotes = Object.keys(lotes).length;

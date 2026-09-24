@@ -71,7 +71,8 @@ function htmlSemanal_(snaps, plan, props, compacto) {
   var h = '<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:640px;margin:0 auto;background:' + COL.bg + ';padding:0 0 20px;color:#111">' +
     '<div style="background:' + COL.navy + ';color:#fff;padding:20px 18px"><div style="font-size:10px;letter-spacing:3px;opacity:.5;text-transform:uppercase">Agente Google · Durán Carasso</div>' +
     '<div style="font-size:20px;font-weight:600;margin-top:4px">Informe semanal · ' + fecha_() + '</div></div>' +
-    '<div style="padding:16px 18px"><p style="background:#fff;border-radius:10px;padding:14px;margin:0;line-height:1.5;white-space:pre-line;border:1px solid ' + COL.border + '">' + esc_(plan.resumen) + '</p>' +
+    '<div style="padding:16px 18px"><p style="background:#fff;border-radius:10px;padding:14px;margin:0;line-height:1.5;border:1px solid ' + COL.border + '">' +
+      String(plan.resumen).split('\n').map(function (l) { var i = l.indexOf(': '); return i > 0 ? '<b>' + esc_(l.slice(0, i)) + '</b>: ' + esc_(l.slice(i + 2)) : esc_(l); }).join('<br>') + '</p>' +
     '<p style="font-size:13px;color:' + COL.sub + ';margin:10px 0 0">' + props.length + ' propuestas nuevas' + (urg ? ' · <b style="color:' + COL.red + '">' + urg + ' urgentes</b>' : '') +
     (pend ? ' · ' + pend + ' pendientes de semanas anteriores' : '') + '. Pulsa ✅ para aprobar, ✏️ para editar o ❌ para descartar.</p>';
 
@@ -122,7 +123,7 @@ function htmlSemanal_(snaps, plan, props, compacto) {
 function enviarUrgente_(props) {
   var h = '<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:640px;margin:0 auto">' +
     '<div style="background:' + COL.red + ';color:#fff;padding:16px 18px;border-radius:10px 10px 0 0;font-weight:600">🔴 Reseña negativa nueva · respuesta preparada</div>' +
-    '<div style="padding:8px 4px">' + props.map(tarjetaPropuesta_).join('') +
+    '<div style="padding:8px 4px">' + props.map(function (p) { return tarjetaPropuesta_(p, false); }).join('') +
     '<p style="font-size:12px;color:' + COL.sub + '">Consejo: llama al cliente antes de responder en público si es posible.</p></div></div>';
   enviar_('🔴 Reseña negativa en ' + props.map(function (p) { return sede_(p.sede).nombre; }).join(', '),
     props.map(function (p) { return p.contexto + '\n→ ' + p.propuesta; }).join('\n\n'), h);
@@ -130,6 +131,6 @@ function enviarUrgente_(props) {
 
 function enviar_(asunto, texto, html) {
   (prop_('NOTIFY_EMAILS') || DEFAULT_EMAILS).split(',').forEach(function (to) {
-    GmailApp.sendEmail(to.trim(), asunto, texto, { htmlBody: html, name: 'Agente Google DC' });
+    MailApp.sendEmail(to.trim(), asunto, texto, { htmlBody: html, name: 'Agente Google DC' });
   });
 }

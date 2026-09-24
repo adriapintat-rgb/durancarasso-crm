@@ -37,7 +37,7 @@ function reglas_(s) {
   if (!f.telefono) add('ALTA', 'FICHA', 'Sin teléfono');
   if (!f.web) add('ALTA', 'FICHA', 'Sin web enlazada');
   if (f.fotos < UMBRAL.fotosMin) add('MEDIA', 'FOTOS', 'Solo ' + f.fotos + ' fotos visibles');
-  if (s.anterior && s.anterior.rating - f.rating >= UMBRAL.caidaRating) add('ALTA', 'RESEÑAS', 'La nota baja de ' + s.anterior.rating + ' a ' + f.rating);
+  if (s.anterior && Math.round((s.anterior.rating - f.rating) * 10) >= Math.round(UMBRAL.caidaRating * 10)) add('ALTA', 'RESEÑAS', 'La nota baja de ' + s.anterior.rating + ' a ' + f.rating);
   if (s.anterior && s.anterior.numResenas === f.numResenas) add('MEDIA', 'RESEÑAS', 'Ninguna reseña nueva esta semana');
   var sinResp = s.resenasRecientes.filter(function (r) { return r.respondida === false; });
   if (sinResp.length) add('ALTA', 'RESEÑAS', sinResp.length + ' reseña(s) sin responder');
@@ -176,7 +176,7 @@ function mapReviewPlaces_(r) {
 
 // ── FUENTES: BUSINESS PROFILE API (Nivel 2) ──────────────────────────────────
 var STARS = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
-function v4_(s) { return 'https://mybusiness.googleapis.com/v4/accounts/' + prop_('GBP_ACCOUNT_ID') + '/locations/' + s.gbpLocationId; }
+function v4_(s) { return 'https://mybusiness.googleapis.com/v4/accounts/' + accId_() + '/locations/' + locId_(s); }
 
 function resenasGBP_(s) {
   if (!nivel2_(s)) return null;
@@ -195,7 +195,7 @@ function postsGBP_(s) {
 
 function infoGBP_(s) {
   if (!nivel2_(s)) return null;
-  return gbp_('GET', 'https://mybusinessbusinessinformation.googleapis.com/v1/locations/' + s.gbpLocationId +
+  return gbp_('GET', 'https://mybusinessbusinessinformation.googleapis.com/v1/locations/' + locId_(s) +
     '?readMask=title,categories,profile,regularHours,specialHours,serviceItems,websiteUri,phoneNumbers,openInfo');
 }
 
@@ -208,7 +208,7 @@ function metricasGBP_(s) {
     var q = m.map(function (x) { return 'dailyMetrics=' + x; }).join('&') +
       '&dailyRange.start_date.year=' + ini.getFullYear() + '&dailyRange.start_date.month=' + (ini.getMonth() + 1) + '&dailyRange.start_date.day=' + ini.getDate() +
       '&dailyRange.end_date.year=' + hoy.getFullYear() + '&dailyRange.end_date.month=' + (hoy.getMonth() + 1) + '&dailyRange.end_date.day=' + hoy.getDate();
-    var r = gbp_('GET', 'https://businessprofileperformance.googleapis.com/v1/locations/' + s.gbpLocationId + ':fetchMultiDailyMetricsTimeSeries?' + q);
+    var r = gbp_('GET', 'https://businessprofileperformance.googleapis.com/v1/locations/' + locId_(s) + ':fetchMultiDailyMetricsTimeSeries?' + q);
     var out = {};
     (r.multiDailyMetricTimeSeries || []).forEach(function (g) {
       (g.dailyMetricTimeSeries || []).forEach(function (t) {

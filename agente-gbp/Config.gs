@@ -79,5 +79,8 @@ function autopiloto_() {
   return r;
 }
 function nivel2_(s) { return !!(prop_('GBP_ACCOUNT_ID') && s && s.gbpLocationId); }
+/** ID numérico de la ubicación (acepta también "locations/123"). */
+function accId_() { return prop_('GBP_ACCOUNT_ID').replace(/^accounts\//, ''); }
+function locId_(s) { return String(s.gbpLocationId || '').replace(/^.*locations\//, ''); }
 function sede_(code) { return SEDES.filter(function (s) { return s.code === code; })[0]; }
 function idioma_(code) { return String((PERFIL_SEDES[code] || {}).idiomas || 'es').split(',')[0].trim(); }

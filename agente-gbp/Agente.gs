@@ -23,13 +23,15 @@ function ejecutarSemanal(e) { if (esTrigger_(e)) iniciarSemanal_(false); }
 function enviarAhora_() { iniciarSemanal_(true); }
 
 function iniciarSemanal_(inmediato) {
-  var e = estado_();
-  if (e && e.fase !== 'FIN' && Date.now() - e.inicio < 12 * 36e5) {
-    if (!inmediato) return;               // ya hay un informe en marcha
-  }
-  guardarEstado_({ fase: 'DATOS', idx: 0, inmediato: inmediato, inicio: Date.now(), esperas: 0 });
-  var sh = hoja_('GBP_Estado');
-  if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 3).clearContent();
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) throw new Error('Hay un informe en marcha ahora mismo. Prueba de nuevo en unos minutos.');
+  try {
+    var e = estado_();
+    if (!inmediato && e && e.fase !== 'FIN' && Date.now() - e.inicio < 12 * 36e5) return;   // ya hay uno en marcha
+    guardarEstado_({ fase: 'DATOS', idx: 0, inmediato: inmediato, inicio: Date.now(), esperas: 0 });
+    var sh = hoja_('GBP_Estado');
+    if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 3).clearContent();
+  } finally { lock.releaseLock(); }
   avanzar_();
 }
 
@@ -41,6 +43,8 @@ function avanzar_() {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) return;
   var t0 = Date.now(), e = estado_();
+  if (!e || e.fase === 'FIN') { lock.releaseLock(); return; }
+  programar_(8 * 60 * 1000);   // vigilante: si Apps Script corta esta ejecución, el flujo se retoma solo
   try {
     while (e && e.fase !== 'FIN') {
       if (Date.now() - t0 > MAX_EJECUCION_MS) { programar_(60 * 1000); return; }
@@ -96,11 +100,12 @@ function avanzar_() {
         var lunes = proximoEnvio_(e.inicio);
         if (!e.inmediato && Date.now() < lunes.getTime()) { programar_(lunes); return; }
         enviarInforme_(e);
-        e.fase = 'FIN'; guardarEstado_(e); return;
+        e.fase = 'FIN'; guardarEstado_(e); desprogramar_(); return;
       }
     }
   } catch (err) {
     if (e) { e.fase = 'FIN'; e.error = String(err); guardarEstado_(e); }
+    desprogramar_();
     avisarError_('el informe semanal', err);
   } finally { lock.releaseLock(); }
 }
@@ -140,9 +145,13 @@ function proximoEnvio_(inicio) {
 
 /** Deja un único trigger de continuación (evita acumular triggers de un solo uso). */
 function programar_(cuando) {
-  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'avanzarSemanal') ScriptApp.deleteTrigger(t); });
+  desprogramar_();
   var b = ScriptApp.newTrigger('avanzarSemanal').timeBased();
   (cuando instanceof Date ? b.at(cuando) : b.after(Math.max(60 * 1000, cuando))).create();
+}
+
+function desprogramar_() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'avanzarSemanal') ScriptApp.deleteTrigger(t); });
 }
 
 // ── ESTADO (hoja oculta GBP_Estado + propiedades) ────────────────────────────
@@ -181,14 +190,18 @@ function vigilar_() {
       var nuevas = resenasNuevas_(s, gbp || (f.reviews || []).map(mapReviewPlaces_));
       nuevas.forEach(function (r) {
         if (r.estrellas > 3) return;
+        var borrador;   // si la IA falla, la alerta sale igual (la reseña ya no se volverá a detectar)
+        try { borrador = respuestaUrgente_(s, r); }
+        catch (err) { borrador = ''; Logger.log('IA: ' + err); }
         urgentes.push(crearPropuestas_([{
           sede: s.code, tipo: 'RESPUESTA', prioridad: 'ALTA', titulo: 'Reseña de ' + r.estrellas + '★ de ' + r.autor,
-          contexto: r.estrellas + '★ · ' + r.autor + ': ' + r.texto, propuesta: respuestaUrgente_(s, r),
+          contexto: r.estrellas + '★ · ' + r.autor + ': ' + r.texto,
+          propuesta: borrador || 'Hola ' + r.autor + ', lamentamos tu experiencia. Nos gustaría hablar contigo para entender qué ha pasado y ponerle solución. — Equipo Durán Carasso',
           referencia: r.id, estrellas: r.estrellas
         }])[0]);
       });
-      // Nivel 1: Google solo enseña 5 reseñas "relevantes"; si sube el total y baja la nota sin verla, avisamos igual.
-      var aviso = cambioOculto_(s, f, nuevas.length > 0 || !!gbp);
+      // Nivel 1: Google solo enseña 5 reseñas "relevantes"; si hay reseñas nuevas que no vemos y baja la nota, avisamos igual.
+      var aviso = cambioOculto_(s, f, gbp ? Infinity : nuevas.length);
       if (aviso) avisos.push(aviso);
     } catch (e) { Logger.log(s.code + ': ' + e); }
   });
@@ -200,20 +213,22 @@ function vigilar_() {
     auto.join('\n'), '<div style="font-family:Arial,sans-serif">' + auto.map(esc_).join('<br>') + '</div>');
 }
 
-function cambioOculto_(s, f, yaCubierto) {
+function cambioOculto_(s, f, nVisibles) {
   var k = 'CUENTA_' + s.code, prev = JSON.parse(P.getProperty(k) || 'null');
   var ahora = { n: f.userRatingCount || 0, r: f.rating || 0 };
   P.setProperty(k, JSON.stringify(ahora));
-  if (!prev || yaCubierto || ahora.n <= prev.n || ahora.r >= prev.r) return '';
-  return s.nombre + ': ' + (ahora.n - prev.n) + ' reseña(s) nueva(s) y la nota baja de ' + prev.r + ' a ' + ahora.r +
+  var ocultas = prev ? ahora.n - prev.n - nVisibles : 0;
+  if (ocultas <= 0 || ahora.r >= prev.r) return '';
+  return s.nombre + ': ' + ocultas + ' reseña(s) nueva(s) que Google aún no muestra y la nota baja de ' + prev.r + ' a ' + ahora.r +
     '. Google no la muestra aún por API: ábrela y respóndela → ' + (f.googleMapsUri || '');
 }
 
+/** Reseñas posteriores a la última vista. La primera vez solo fija la referencia (sin avisar de las antiguas). */
 function resenasNuevas_(s, lista) {
-  var k = 'LASTREV_' + s.code, last = P.getProperty(k) || '';
+  var k = 'LASTREV_' + s.code, previo = P.getProperty(k), last = previo || '0';
   var nuevas = lista.filter(function (r) { return r.fecha && r.fecha > last; });
-  P.setProperty(k, lista.reduce(function (m, r) { return r.fecha > m ? r.fecha : m; }, last));
-  return last ? nuevas : [];
+  P.setProperty(k, lista.reduce(function (m, r) { return r.fecha && r.fecha > m ? r.fecha : m; }, last));
+  return previo === null ? [] : nuevas;
 }
 
 // ── INSTALACIÓN Y AYUDAS ─────────────────────────────────────────────────────
@@ -228,16 +243,17 @@ function instalar_() {
     var f = fichaPlaces_(placeId_(s));
     Logger.log(s.code + ' → ' + (f.displayName || {}).text + ' · ' + f.formattedAddress);
     resenasNuevas_(s, resenasGBP_(s) || (f.reviews || []).map(mapReviewPlaces_));
-    cambioOculto_(s, f, true);
+    cambioOculto_(s, f, Infinity);   // fija la referencia
   });
 }
 
 /** Nivel 2 (menú o editor): lista las ubicaciones de la cuenta para rellenar gbpLocationId. */
 function listarUbicacionesGBP() {
   SpreadsheetApp.getUi();
-  var r = gbp_('GET', 'https://mybusinessbusinessinformation.googleapis.com/v1/accounts/' + prop_('GBP_ACCOUNT_ID', true) +
+  prop_('GBP_ACCOUNT_ID', true);
+  var r = gbp_('GET', 'https://mybusinessbusinessinformation.googleapis.com/v1/accounts/' + accId_() +
     '/locations?readMask=name,title,storefrontAddress&pageSize=100');
-  var txt = (r.locations || []).map(function (l) { return l.name + ' · ' + l.title + ' · ' + ((l.storefrontAddress || {}).locality || ''); }).join('\n');
+  var txt = (r.locations || []).map(function (l) { return String(l.name).replace(/^locations\//, '') + ' · ' + l.title + ' · ' + ((l.storefrontAddress || {}).locality || ''); }).join('\n');
   mostrar_('Ubicaciones de tu cuenta', txt || 'No hay ubicaciones');
 }
 
@@ -250,6 +266,7 @@ function avisarError_(que, err) {
 
 // ── LÓGICA DE PROPUESTAS ─────────────────────────────────────────────────────
 function propuestasDesdePlan_(snaps, plan) {
+  caducar_(plan.sedes.map(function (ps) { return ps.sede; }));
   var lista = [];
   plan.sedes.forEach(function (ps) {
     var snap = snaps.filter(function (s) { return s.sede === ps.sede; })[0] || { resenasRecientes: [], ficha: {} };
@@ -272,6 +289,16 @@ function propuestasDesdePlan_(snaps, plan) {
   return crearPropuestas_(lista);
 }
 
+/** Los posts y descripciones de semanas anteriores sin decidir se sustituyen por los nuevos. */
+function caducar_(sedes) {
+  var sh = hoja_('GBP_Propuestas'), data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    var r = data[i];
+    if (r[C.ESTADO] === 'PENDIENTE' && sedes.indexOf(r[C.SEDE]) !== -1 && (r[C.TIPO] === 'POST' || r[C.TIPO] === 'DESCRIPCION'))
+      sh.getRange(i + 1, C.ESTADO + 1).setValue('CADUCADO');
+  }
+}
+
 /** Google rechaza posts con teléfonos o URLs: red de seguridad por si la IA los cuela. */
 function limpiarPost_(t) {
   var prohibido = /https?:\/\/|www\.|@\w+\.\w|\+?\d[\d\s.-]{7,}\d/i;   // URLs, emails y teléfonos
@@ -284,8 +311,8 @@ function aplicarAutopiloto_() {
   hoja_('GBP_Propuestas').getDataRange().getValues().slice(1).forEach(function (r) {
     if (r[C.ESTADO] !== 'PENDIENTE' || !nivel2_(sede_(r[C.SEDE]))) return;
     var edadH = (Date.now() - new Date(r[C.FECHA]).getTime()) / 36e5;
-    var toca = (ap.responder5estrellas && r[C.TIPO] === 'RESPUESTA' && Number(r[C.EST]) === 5) ||
-               (ap.postSiNoRespondes48h && r[C.TIPO] === 'POST' && edadH >= 48);
+    var toca = (ap.responder5estrellas && r[C.TIPO] === 'RESPUESTA' && Number(r[C.EST]) === 5 && edadH <= 14 * 24) ||
+               (ap.postSiNoRespondes48h && r[C.TIPO] === 'POST' && edadH >= 48 && edadH <= 6 * 24);
     if (!toca) return;
     var res = decidir_(r[C.ID], 'publicar', '', 'Autopiloto');
     hechos.push((res.ok ? '✅ ' : '⚠️ ') + r[C.SEDE] + ' · ' + r[C.TITULO] + ' → ' + res.mensaje);
