@@ -28,14 +28,14 @@ function fakeClaude(b) {
   if (b.tools) return msg('• La web oficial sale 1ª para "Durán Carasso".\n• (simulado) Un directorio muestra un teléfono antiguo.\n• Los competidores publican cada semana y tienen >90 reseñas.');
   if (!b.output_config || !b.output_config.format) return msg('Hola Marc, lamentamos mucho tu experiencia. Nos gustaría entender qué pasó y ponerle solución: ¿podemos llamarte? Escríbenos a info@durancarasso.com. — Equipo Durán Carasso');
   const inp = JSON.parse(b.messages[0].content);
-  return msg(JSON.stringify({ resumen: '(SIMULADO) Barcelona lidera en nota pero está 3ª en reseñas frente a la competencia. Sitges, Cerdanya y Andorra tienen fichas pobres en fotos y reseñas: es la palanca más rápida. La web necesita schema y un solo H1.',
+  return msg(JSON.stringify({ resumen: 'Barcelona lidera en nota pero está 3ª en reseñas frente a la competencia. Sitges, Cerdanya y Andorra tienen fichas pobres en fotos y reseñas: es la palanca más rápida. La web necesita schema y un solo H1.',
     sedes: inp.sedes.map(s => ({ sede: s.sede, estado: 'Ficha al ' + s.completitud.porcentaje + '%. ' + s.ficha.numResenas + ' reseñas, ' + s.ficha.rating + '★.',
       vsCompetencia: 'El líder tiene ' + s.posicion.lider.resenas + ' reseñas frente a tus ' + s.ficha.numResenas + '.',
       acciones: [
         { prioridad: 'ALTA', accion: 'Pedir reseña a los últimos 10 clientes', motivo: 'Puesto ' + s.posicion.porResenas + ' de ' + s.posicion.total + ' en reseñas', opciones: ['WhatsApp personal del agente', 'Email automático tras firma', 'Tarjeta QR en la entrega de llaves'], recomendada: 'WhatsApp personal del agente: la tasa de respuesta es mucho mayor', cuando: 'Esta semana, martes o miércoles 18:00-20:00', contenido: 'Hola {nombre}, soy {agente} de Durán Carasso. ¿Nos dejarías tu opinión en Google? Nos ayuda muchísimo: {enlace}' },
         { prioridad: 'MEDIA', accion: 'Subir 10 fotos (fachada, oficina, equipo)', motivo: 'Solo ' + s.ficha.fotos + ' fotos', opciones: ['Sesión profesional', 'Fotos del equipo con móvil'], recomendada: 'Sesión profesional de 1 h para las 4 sedes', cuando: 'Antes del 15 de octubre', contenido: '' }],
-      post: 'Otoño en ' + ({ BCN: 'Barcelona', STG: 'Sitges', CRD: 'la Cerdanya', AND: 'Andorra' })[s.sede] + ': buen momento para vender con discreción. Te ayudamos con una valoración gratuita. (SIMULADO)',
-      descripcion: s.sede === 'CRD' ? 'Durán Carasso Cerdanya: inmobiliaria especializada en casas y chalets de montaña en Puigcerdà, Alp y La Molina… (SIMULADO)' : '',
+      post: ({ BCN: 'El otoño es uno de los mejores momentos para vender en Sant Gervasi y Sarrià: la demanda internacional se reactiva tras el verano. Si estás pensando en vender tu vivienda, te preparamos una valoración gratuita y confidencial en 48 h. Pásate por nuestra oficina de Muntaner 259 o llámanos al 931 59 51 25.', STG: 'Sitges después del verano: menos ruido y compradores más decididos. Si tienes una villa o un piso cerca del mar, es buen momento para valorarlo. Valoración gratuita y discreta con nuestro equipo local.', CRD: 'Se acerca la temporada de esquí y la Cerdanya vuelve a estar en el radar. Casas y chalets en Puigcerdà y alrededores: te asesoramos en compra y venta con total discreción.', AND: 'Invertir en Andorra: residencia, fiscalidad y calidad de vida. Te acompañamos en todo el proceso de compra con asesoramiento local.' })[s.sede],
+      descripcion: s.sede === 'CRD' ? 'Durán Carasso Cerdanya: inmobiliaria especializada en casas y chalets de montaña en Puigcerdà, Alp y La Molina. Más de 10 años acompañando a familias que buscan su segunda residencia en el Pirineo, con un servicio discreto y personalizado de compra, venta y valoración.' : '',
       respuestas: [] })) }));
 }
 eval(M.load());
@@ -48,7 +48,7 @@ check(__triggers.join() === 'ejecutarSemanal,vigilarUrgente', 'triggers: lunes +
 check(['GBP_Propuestas', 'GBP_Historico', 'GBP_Competencia'].every(n => __sheets[n]), 'hojas creadas');
 
 console.log('\n2) ejecutarSemanal()'); ejecutarSemanal();
-const e1 = sent.at(-1); fs.writeFileSync(OUT + 'email-semanal.html', e1.html);
+const e1 = sent.at(-1); fs.writeFileSync(OUT + 'email-semanal.html', '<div style="background:#FFF4D6;color:#7A5A00;font:13px Arial;padding:8px;text-align:center">EJEMPLO · datos de Barcelona reales, resto simulados</div>' + e1.html);
 const props = __sheets.GBP_Propuestas.rows.slice(1);
 check(e1.to === 'adriap@durancarasso.com', 'email a ' + e1.to + ' · asunto: ' + e1.subject);
 check(props.length === 4 * 3 + 1, props.length + ' propuestas guardadas (2 tareas + 1 post por sede + 1 descripción)');
@@ -62,7 +62,7 @@ console.log('\n3) Botones del email → página');
 const post = props.find(r => r[3] === 'POST'), tarea = props.find(r => r[3] === 'TAREA'), desc = props.find(r => r[3] === 'DESCRIPCION');
 const page = doGet({ parameter: { id: post[0], t: token_(post[0]), a: 'editar' } }).getContent();
 fs.writeFileSync(OUT + 'pagina-editar.html', page);
-check(page.includes(post[0]) && page.includes('Otoño'), 'página de edición carga la propuesta');
+check(page.includes(post[0]) && page.includes('otoño'), 'página de edición carga la propuesta');
 check(doGet({ parameter: { id: post[0], t: 'falso', a: 'publicar' } }).getContent().includes('Enlace no válido'), 'token falso rechazado');
 check(__sheets.GBP_Propuestas.rows.find(r => r[0] === post[0])[9] === 'PENDIENTE', 'abrir el enlace NO publica nada (seguro ante antivirus)');
 
@@ -87,6 +87,6 @@ check(plan2.decisiones_del_equipo.length === 2, 'la 2ª semana Claude recibe tus
 console.log('\n6) Reseña negativa nueva (vigilancia cada 3 h)');
 revs.BCN = revs.BCN.concat([{ name: 'places/BCN/reviews/2', rating: 2, text: { text: 'No me devolvieron las llamadas.' }, authorAttribution: { displayName: 'Marc P.' }, publishTime: '2026-09-23T09:00:00Z' }]);
 const n = sent.length; vigilarUrgente();
-const e2 = sent.at(-1); fs.writeFileSync(OUT + 'email-urgente.html', e2.html);
+const e2 = sent.at(-1); fs.writeFileSync(OUT + 'email-urgente.html', '<div style="background:#FFF4D6;color:#7A5A00;font:13px Arial;padding:8px;text-align:center">EJEMPLO · reseña simulada</div>' + e2.html);
 check(sent.length === n + 1 && e2.subject.includes('Barcelona'), 'alerta enviada: ' + e2.subject);
 vigilarUrgente(); check(sent.length === n + 1, 'no repite la alerta');
