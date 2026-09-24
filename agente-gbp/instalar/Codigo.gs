@@ -13,7 +13,7 @@
  *   WEBAPP_URL          opcional: URL /exec de la app web (se detecta sola al implementarla)
  *   NOTIFY_EMAILS       opcional (por defecto DEFAULT_EMAILS)
  *   GBP_ACCOUNT_ID      opcional → Nivel 2: publicar, reseñas sin responder, métricas
- *   SHEET_ID            opcional (por defecto la hoja del CRM)
+ *   SHEET_ID            se guarda sola al instalar (hoja donde vive el agente)
  *   AUTOPILOTO          opcional, JSON (ver AUTOPILOTO_DEFECTO)
  */
 
@@ -68,7 +68,6 @@ var AUTOPILOTO_DEFECTO = {
 
 var CLAUDE_MODEL = 'claude-opus-5';
 var DEFAULT_EMAILS = 'adriap@durancarasso.com';
-var DEFAULT_SHEET_ID = '1QtAQ_RbGwsJ18jZeTinkKJfAHl7oYodusJ7xjHKXTa0';
 var GBP_PANEL_URL = 'https://business.google.com/locations';
 
 var P = PropertiesService.getScriptProperties();
@@ -84,17 +83,18 @@ function autopiloto_() {
 }
 function nivel2_(s) { return !!(prop_('GBP_ACCOUNT_ID') && s && s.gbpLocationId); }
 function sede_(code) { return SEDES.filter(function (s) { return s.code === code; })[0]; }
+function idioma_(code) { return String((PERFIL_SEDES[code] || {}).idiomas || 'es').split(',')[0].trim(); }
 
 // ═══ Menu.gs ═══
-// ── MENÚ EN LA HOJA DEL CRM ──────────────────────────────────────────────────
-// Si el script está dentro de la hoja (Extensiones → Apps Script), aparece el menú
+// ── MENÚ EN LA HOJA DEL AGENTE ───────────────────────────────────────────────
+// Si el script está dentro de una hoja (Extensiones → Apps Script), aparece el menú
 // "🤖 Agente Google" y todo se configura con clics, sin tocar código.
 
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('🤖 Agente Google')
     .addItem('1 · Configurar claves', 'configurarClaves')
     .addItem('2 · Comprobar que todo funciona', 'diagnostico')
-    .addItem('3 · Activar agente (lunes 8:30 + alertas)', 'activarDesdeMenu')
+    .addItem('3 · Activar agente (email los lunes + alertas)', 'activarDesdeMenu')
     .addItem('4 · Enviar informe ahora', 'enviarAhoraDesdeMenu')
     .addSeparator()
     .addItem('Desactivar agente', 'desactivar')
@@ -102,7 +102,8 @@ function onOpen() {
 }
 
 function configurarClaves() {
-  var ui = SpreadsheetApp.getUi();
+  var ui = SpreadsheetApp.getUi();   // solo desde la hoja
+  libro_();   // fija esta hoja como la del agente
   var campos = [
     ['ANTHROPIC_API_KEY', 'Clave de Anthropic (empieza por sk-ant-)', true],
     ['GOOGLE_API_KEY', 'Clave de Google Cloud (empieza por AIza)', true],
@@ -114,6 +115,8 @@ function configurarClaves() {
       c[1] + (actual ? '\n\n(Ya configurada. Déjalo vacío para mantenerla.)' : ''), ui.ButtonSet.OK_CANCEL);
     if (r.getSelectedButton() !== ui.Button.OK) return;
     var v = r.getResponseText().trim();
+    var formato = { ANTHROPIC_API_KEY: /^sk-ant-/, GOOGLE_API_KEY: /^AIza/ }[c[0]];
+    if (v && formato && !formato.test(v) && ui.alert('Esta clave no tiene el formato esperado. ¿Guardarla igualmente?', ui.ButtonSet.YES_NO) !== ui.Button.YES) { i--; continue; }
     if (v) P.setProperty(c[0], v);
     else if (c[2] && !actual) { ui.alert('Esta clave es obligatoria. Vuelve a empezar cuando la tengas.'); return; }
   }
@@ -122,6 +125,7 @@ function configurarClaves() {
 
 /** Revisa cada pieza y dice exactamente qué falta y cómo arreglarlo. */
 function diagnostico() {
+  SpreadsheetApp.getUi();            // solo desde la hoja
   var r = comprobaciones_();
   var txt = r.map(function (x) { return (x.ok ? '✅ ' : x.opcional ? '⚪ ' : '❌ ') + x.nombre + (x.detalle ? '\n     ' + x.detalle : ''); }).join('\n\n');
   var listo = r.every(function (x) { return x.ok || x.opcional; });
@@ -131,6 +135,7 @@ function diagnostico() {
 
 function comprobaciones_() {
   var out = [];
+  try { libro_(); } catch (e) { out.push({ nombre: 'Hoja del agente', ok: false, detalle: String(e), opcional: false }); }
   function add(nombre, ok, detalle, opcional) { out.push({ nombre: nombre, ok: ok, detalle: detalle || '', opcional: !!opcional }); }
 
   var ak = prop_('ANTHROPIC_API_KEY');
@@ -166,28 +171,38 @@ function comprobaciones_() {
   var triggers = ScriptApp.getProjectTriggers().map(function (t) { return t.getHandlerFunction(); });
   add('Agente activado', triggers.indexOf('ejecutarSemanal') !== -1, 'Menú → 3 · Activar agente');
 
+  var e = estado_();
+  if (e) add('Último informe', !e.error, (e.fase === 'FIN' ? (e.error ? 'Falló: ' + e.error : 'Enviado') : 'En curso: fase ' + e.fase) +
+    ' · iniciado ' + Utilities.formatDate(new Date(e.inicio), 'Europe/Madrid', 'dd/MM HH:mm'), !e.error);
+
   add('Nivel 2: publicar solo en Google', !!prop_('GBP_ACCOUNT_ID') && SEDES.some(function (s) { return s.gbpLocationId; }),
     'Opcional. Sin esto, al aprobar te da el texto para pegarlo en Google (ver README)', true);
   return out;
 }
 
 function activarDesdeMenu() {
+  SpreadsheetApp.getUi();
   var faltan = comprobaciones_().filter(function (x) { return !x.ok && !x.opcional && x.nombre !== 'Agente activado'; });
   if (faltan.length) return mostrar_('Antes de activar', 'Falta:\n\n' + faltan.map(function (x) { return '❌ ' + x.nombre + '\n     ' + x.detalle; }).join('\n\n'));
-  instalar();
-  mostrar_('Agente activado ✅', 'Cada lunes a las 8:30 recibirás el informe en ' + (prop_('NOTIFY_EMAILS') || DEFAULT_EMAILS) +
-    '.\nCada 3 h vigila reseñas negativas.\n\nSi quieres el primer informe ya: menú → 4 · Enviar informe ahora (tarda 2-4 min).');
+  instalar_();
+  mostrar_('Agente activado ✅', 'El domingo por la noche analiza las 4 sedes y el lunes a las 8:30 recibirás el informe en ' +
+    (prop_('NOTIFY_EMAILS') || DEFAULT_EMAILS) + '.\nCada 3 h vigila reseñas negativas.\n\nSi quieres el primer informe ya: menú → 4 · Enviar informe ahora.');
 }
 
 function enviarAhoraDesdeMenu() {
-  SpreadsheetApp.getActive().toast('Analizando las 4 sedes… tarda 2-4 minutos.', 'Agente Google', 240);
+  SpreadsheetApp.getUi();
+  SpreadsheetApp.getActive().toast('Analizando las 4 sedes… (2-4 min)', 'Agente Google', 240);
   try {
-    ejecutarSemanal();
-    mostrar_('Informe enviado ✅', 'Revisa ' + (prop_('NOTIFY_EMAILS') || DEFAULT_EMAILS) + '. Las propuestas también están en la pestaña GBP_Propuestas.');
+    enviarAhora_();
+    var e = estado_();
+    if (e && e.error) throw new Error(e.error);
+    mostrar_('Informe en marcha ✅', 'Datos de las 4 sedes recogidos. La IA está preparando el análisis y te llegará a ' +
+      (prop_('NOTIFY_EMAILS') || DEFAULT_EMAILS) + ' en unos 15-60 minutos.\nNo hace falta dejar la hoja abierta.');
   } catch (e) { mostrar_('Error', String(e) + '\n\nEjecuta "2 · Comprobar que todo funciona" para ver qué falta.'); }
 }
 
 function desactivar() {
+  SpreadsheetApp.getUi();
   ScriptApp.getProjectTriggers().forEach(function (t) { ScriptApp.deleteTrigger(t); });
   mostrar_('Agente desactivado', 'No se enviarán más informes ni alertas hasta que lo vuelvas a activar.');
 }
@@ -203,31 +218,124 @@ function webappUrl_() {
 }
 
 // ═══ Agente.gs ═══
-// ── ENTRADAS (ejecutar desde el editor o por trigger) ────────────────────────
+// ── FLUJO SEMANAL POR FASES ──────────────────────────────────────────────────
+// Apps Script corta cada ejecución a los 6 min, así que el informe avanza por fases y se reprograma solo:
+//   DATOS    (domingo 20:00) analiza cada sede → lote de búsquedas de marca
+//   BUSQUEDA espera el lote → lote de planes (uno por sede)
+//   PLAN     espera el lote
+//   ENVIO    lunes 8:30 (o en cuanto esté listo si se pidió "ahora") → propuestas + email
+var MAX_EJECUCION_MS = 4.5 * 60 * 1000;
+var ESPERA_LOTE_MIN = 10;
+var MAX_ESPERAS = 30;           // 30 × 10 min = 5 h esperando un lote antes de avisar
 
-/** 1ª vez: crea los triggers (lunes 8:30 + vigilancia cada 3 h), las hojas y resuelve las fichas. */
-function instalar() {
-  ScriptApp.getProjectTriggers().forEach(function (t) { ScriptApp.deleteTrigger(t); });
-  ScriptApp.newTrigger('ejecutarSemanal').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(8).nearMinute(30).inTimezone('Europe/Madrid').create();
-  ScriptApp.newTrigger('vigilarUrgente').timeBased().everyHours(3).create();
-  Object.keys(CABECERAS).forEach(hoja_);
-  secreto_();
-  SEDES.forEach(function (s) {
-    var f = fichaPlaces_(placeId_(s));
-    Logger.log(s.code + ' → ' + (f.displayName || {}).text + ' · ' + f.formattedAddress);
-    resenasNuevas_(s, lista_(s, f)); // fija la referencia para no avisar de reseñas antiguas
-  });
-  Logger.log('Instalado. Comprueba que cada sede apunta a la ficha correcta.');
+// SEGURIDAD: la app web (botones del email) es pública y Apps Script deja llamar desde ella a cualquier
+// función sin "_" final. Por eso todo lo interno termina en "_", los triggers comprueban que los lanza un
+// trigger real del proyecto y las funciones del menú exigen estar dentro de la hoja (getUi).
+function esTrigger_(e) {
+  var uid = e && e.triggerUid;
+  return !!uid && ScriptApp.getProjectTriggers().some(function (t) { return t.getUniqueId() === uid; });
 }
 
-/** Informe semanal: analiza, compara, propone y envía el email con botones. */
-function ejecutarSemanal() {
-  var snaps = SEDES.map(function (s) {
-    try { return analizarSede_(s); }
-    catch (e) { return { sede: s.code, nombre: s.nombre, error: String(e) }; }
-  });
-  var ok = snaps.filter(function (s) { return !s.error; });
-  var plan = pedirPlanClaude_(ok);
+/** Trigger del domingo: prepara el informe del lunes. */
+function ejecutarSemanal(e) { if (esTrigger_(e)) iniciarSemanal_(false); }
+
+/** Menú "Enviar informe ahora": mismo flujo, se envía en cuanto está listo (15-60 min). */
+function enviarAhora_() { iniciarSemanal_(true); }
+
+function iniciarSemanal_(inmediato) {
+  var e = estado_();
+  if (e && e.fase !== 'FIN' && Date.now() - e.inicio < 12 * 36e5) {
+    if (!inmediato) return;               // ya hay un informe en marcha
+  }
+  guardarEstado_({ fase: 'DATOS', idx: 0, inmediato: inmediato, inicio: Date.now(), esperas: 0 });
+  var sh = hoja_('GBP_Estado');
+  if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 3).clearContent();
+  avanzar_();
+}
+
+/** Trigger de continuación (de un solo uso, se reprograma solo). */
+function avanzarSemanal(e) { if (esTrigger_(e)) avanzar_(); }
+
+/** Motor de fases. */
+function avanzar_() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return;
+  var t0 = Date.now(), e = estado_();
+  try {
+    while (e && e.fase !== 'FIN') {
+      if (Date.now() - t0 > MAX_EJECUCION_MS) { programar_(60 * 1000); return; }
+
+      if (e.fase === 'DATOS') {
+        if (e.idx < SEDES.length) {
+          var s = SEDES[e.idx], snap;
+          try { snap = analizarSede_(s); } catch (err) { snap = { sede: s.code, nombre: s.nombre, error: String(err) }; }
+          if (e.idx === 0 && snap.ficha) e.dominio = auditarDominio_(snap.ficha.web);
+          guardarSnap_(snap); e.idx++; guardarEstado_(e); continue;
+        }
+        var ok = snaps_().filter(function (x) { return !x.error; });
+        if (!ok.length) throw new Error('No se pudo analizar ninguna sede: ' + snaps_().map(function (x) { return x.sede + ': ' + x.error; }).join(' | '));
+        e.lote = crearLote_(ok.map(peticionBusqueda_));
+        e.fase = 'BUSQUEDA'; e.esperas = 0; guardarEstado_(e);
+        programar_(ESPERA_LOTE_MIN * 60 * 1000); return;
+      }
+
+      if (e.fase === 'BUSQUEDA') {
+        var rb = resultadosLote_(e.lote);
+        if (!rb && ++e.esperas < MAX_ESPERAS / 2) { guardarEstado_(e); programar_(ESPERA_LOTE_MIN * 60 * 1000); return; }
+        var todos = snaps_(), primera = todos.filter(function (x) { return !x.error; })[0];
+        todos.forEach(function (x) {
+          if (x.error) return;
+          var r = rb && rb['busq-' + x.sede];
+          x.busquedaMarca = r && r.ok ? textoClaude_(r.mensaje).trim() : '';
+          guardarSnap_(x);
+        });
+        e.lote = crearLote_(todos.filter(function (x) { return !x.error; }).map(function (x) {
+          return peticionPlan_(x, x === primera && e.dominio ? { web_global: e.dominio } : null);
+        }));
+        e.fase = 'PLAN'; e.esperas = 0; guardarEstado_(e);
+        programar_(ESPERA_LOTE_MIN * 60 * 1000); return;
+      }
+
+      if (e.fase === 'PLAN') {
+        var rp = resultadosLote_(e.lote);
+        if (!rp) {
+          if (++e.esperas >= MAX_ESPERAS) throw new Error('El lote de Claude no ha terminado tras ' + (MAX_ESPERAS * ESPERA_LOTE_MIN / 60) + ' h');
+          guardarEstado_(e); programar_(ESPERA_LOTE_MIN * 60 * 1000); return;
+        }
+        snaps_().forEach(function (x) {
+          if (x.error) return;
+          var r = rp['plan-' + x.sede], plan;
+          try { plan = r && r.ok ? JSON.parse(textoClaude_(r.mensaje)) : { error: r ? r.error : 'sin respuesta' }; }
+          catch (err) { plan = { error: 'JSON no válido: ' + err }; }
+          guardarPlan_(x.sede, plan);
+        });
+        e.fase = 'ENVIO'; guardarEstado_(e); continue;
+      }
+
+      if (e.fase === 'ENVIO') {
+        var lunes = proximoEnvio_(e.inicio);
+        if (!e.inmediato && Date.now() < lunes.getTime()) { programar_(lunes); return; }
+        enviarInforme_(e);
+        e.fase = 'FIN'; guardarEstado_(e); return;
+      }
+    }
+  } catch (err) {
+    if (e) { e.fase = 'FIN'; e.error = String(err); guardarEstado_(e); }
+    avisarError_('el informe semanal', err);
+  } finally { lock.releaseLock(); }
+}
+
+function enviarInforme_(e) {
+  var snaps = snaps_(), planes = planes_(), ok = snaps.filter(function (x) { return !x.error; });
+  var plan = {
+    resumen: SEDES.map(function (s) {
+      var p = planes[s.code];
+      return s.nombre + ': ' + (p && p.titular ? p.titular : p && p.error ? 'plan no disponible (' + p.error + ')' : 'sin datos');
+    }).join('\n'),
+    sedes: ok.filter(function (x) { return planes[x.sede] && !planes[x.sede].error; })
+             .map(function (x) { var p = planes[x.sede]; p.sede = x.sede; return p; }),
+    dominio: e.dominio
+  };
   guardarHistorico_(ok);
   var props = propuestasDesdePlan_(ok, plan);
   enviarSemanal_(snaps, plan, props);
@@ -236,12 +344,62 @@ function ejecutarSemanal() {
   });
 }
 
-/** Cada 3 h: reseñas negativas nuevas → borrador inmediato + aviso. Aplica el piloto automático. */
-function vigilarUrgente() {
-  var urgentes = [];
+/** Lunes 8:30 siguiente al inicio (hora de Madrid). */
+function proximoEnvio_(inicio) {
+  var d = new Date(inicio);
+  for (var i = 0; i < 8; i++) {
+    var c = new Date(d.getTime() + i * 864e5);
+    if (Utilities.formatDate(c, 'Europe/Madrid', 'u') === '1') {
+      var f = Utilities.formatDate(c, 'Europe/Madrid', "yyyy-MM-dd'T'08:30:00XXX");
+      var t = new Date(f.replace(/([+-]\d\d):?(\d\d)$/, '$1:$2'));
+      if (t.getTime() > inicio) return t;
+    }
+  }
+  return new Date(inicio);
+}
+
+/** Deja un único trigger de continuación (evita acumular triggers de un solo uso). */
+function programar_(cuando) {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'avanzarSemanal') ScriptApp.deleteTrigger(t); });
+  var b = ScriptApp.newTrigger('avanzarSemanal').timeBased();
+  (cuando instanceof Date ? b.at(cuando) : b.after(Math.max(60 * 1000, cuando))).create();
+}
+
+// ── ESTADO (hoja oculta GBP_Estado + propiedades) ────────────────────────────
+function estado_() { return JSON.parse(P.getProperty('ESTADO_SEMANAL') || 'null'); }
+function guardarEstado_(e) { P.setProperty('ESTADO_SEMANAL', JSON.stringify(e)); }
+
+function filaSede_(code) {
+  var sh = hoja_('GBP_Estado'), data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) if (data[i][0] === code) return { sh: sh, fila: i + 1 };
+  var n = sh.getLastRow() + 1; sh.getRange(n, 1).setValue(code); return { sh: sh, fila: n };
+}
+function guardarSnap_(snap) { var f = filaSede_(snap.sede); f.sh.getRange(f.fila, 2).setValue(JSON.stringify(snap)); }
+function guardarPlan_(code, plan) { var f = filaSede_(code); f.sh.getRange(f.fila, 3).setValue(JSON.stringify(plan)); }
+function snaps_() {
+  var data = hoja_('GBP_Estado').getDataRange().getValues().slice(1);
+  return SEDES.map(function (s) {
+    var r = data.filter(function (x) { return x[0] === s.code; })[0];
+    return r && r[1] ? JSON.parse(r[1]) : null;
+  }).filter(Boolean);
+}
+function planes_() {
+  var out = {};
+  hoja_('GBP_Estado').getDataRange().getValues().slice(1).forEach(function (r) { if (r[2]) out[r[0]] = JSON.parse(r[2]); });
+  return out;
+}
+
+// ── VIGILANCIA CADA 3 H ──────────────────────────────────────────────────────
+/** Reseñas negativas nuevas → borrador inmediato + aviso. Aplica el piloto automático. */
+function vigilarUrgente(e) { if (esTrigger_(e)) vigilar_(); }
+
+function vigilar_() {
+  var urgentes = [], avisos = [];
   SEDES.forEach(function (s) {
     try {
-      resenasNuevas_(s, lista_(s)).forEach(function (r) {
+      var f = fichaPlaces_(placeId_(s)), gbp = resenasGBP_(s);
+      var nuevas = resenasNuevas_(s, gbp || (f.reviews || []).map(mapReviewPlaces_));
+      nuevas.forEach(function (r) {
         if (r.estrellas > 3) return;
         urgentes.push(crearPropuestas_([{
           sede: s.code, tipo: 'RESPUESTA', prioridad: 'ALTA', titulo: 'Reseña de ' + r.estrellas + '★ de ' + r.autor,
@@ -249,27 +407,26 @@ function vigilarUrgente() {
           referencia: r.id, estrellas: r.estrellas
         }])[0]);
       });
+      // Nivel 1: Google solo enseña 5 reseñas "relevantes"; si sube el total y baja la nota sin verla, avisamos igual.
+      var aviso = cambioOculto_(s, f, nuevas.length > 0 || !!gbp);
+      if (aviso) avisos.push(aviso);
     } catch (e) { Logger.log(s.code + ': ' + e); }
   });
   if (urgentes.length) enviarUrgente_(urgentes);
+  if (avisos.length) enviar_('🟠 Posible reseña negativa: revisa Google', avisos.join('\n'),
+    '<div style="font-family:Arial,sans-serif;font-size:14px">' + avisos.map(esc_).join('<br><br>') + '</div>');
   var auto = aplicarAutopiloto_();
   if (auto.length) enviar_('Agente Google · publicado automáticamente (' + auto.length + ')',
     auto.join('\n'), '<div style="font-family:Arial,sans-serif">' + auto.map(esc_).join('<br>') + '</div>');
 }
 
-/** Ayuda Nivel 2: lista las ubicaciones de la cuenta para rellenar gbpLocationId. */
-function listarUbicacionesGBP() {
-  var r = gbp_('GET', 'https://mybusinessbusinessinformation.googleapis.com/v1/accounts/' + prop_('GBP_ACCOUNT_ID', true) +
-    '/locations?readMask=name,title,storefrontAddress&pageSize=100');
-  (r.locations || []).forEach(function (l) { Logger.log(l.name + ' · ' + l.title + ' · ' + ((l.storefrontAddress || {}).locality || '')); });
-}
-
-/** Prueba rápida del email sin esperar al lunes. */
-function probarAhora() { ejecutarSemanal(); }
-
-// ── LÓGICA ───────────────────────────────────────────────────────────────────
-function lista_(s, f) {
-  return resenasGBP_(s) || ((f || fichaPlaces_(placeId_(s))).reviews || []).map(mapReviewPlaces_);
+function cambioOculto_(s, f, yaCubierto) {
+  var k = 'CUENTA_' + s.code, prev = JSON.parse(P.getProperty(k) || 'null');
+  var ahora = { n: f.userRatingCount || 0, r: f.rating || 0 };
+  P.setProperty(k, JSON.stringify(ahora));
+  if (!prev || yaCubierto || ahora.n <= prev.n || ahora.r >= prev.r) return '';
+  return s.nombre + ': ' + (ahora.n - prev.n) + ' reseña(s) nueva(s) y la nota baja de ' + prev.r + ' a ' + ahora.r +
+    '. Google no la muestra aún por API: ábrela y respóndela → ' + (f.googleMapsUri || '');
 }
 
 function resenasNuevas_(s, lista) {
@@ -279,6 +436,39 @@ function resenasNuevas_(s, lista) {
   return last ? nuevas : [];
 }
 
+// ── INSTALACIÓN Y AYUDAS ─────────────────────────────────────────────────────
+/** Crea los triggers (domingo 20:00 → email lunes 8:30, y vigilancia cada 3 h), las hojas y fija la referencia de reseñas. */
+function instalar_() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('ejecutarSemanal').timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(20).inTimezone('Europe/Madrid').create();
+  ScriptApp.newTrigger('vigilarUrgente').timeBased().everyHours(3).create();
+  Object.keys(CABECERAS).forEach(hoja_);
+  secreto_();
+  SEDES.forEach(function (s) {
+    var f = fichaPlaces_(placeId_(s));
+    Logger.log(s.code + ' → ' + (f.displayName || {}).text + ' · ' + f.formattedAddress);
+    resenasNuevas_(s, resenasGBP_(s) || (f.reviews || []).map(mapReviewPlaces_));
+    cambioOculto_(s, f, true);
+  });
+}
+
+/** Nivel 2 (menú o editor): lista las ubicaciones de la cuenta para rellenar gbpLocationId. */
+function listarUbicacionesGBP() {
+  SpreadsheetApp.getUi();
+  var r = gbp_('GET', 'https://mybusinessbusinessinformation.googleapis.com/v1/accounts/' + prop_('GBP_ACCOUNT_ID', true) +
+    '/locations?readMask=name,title,storefrontAddress&pageSize=100');
+  var txt = (r.locations || []).map(function (l) { return l.name + ' · ' + l.title + ' · ' + ((l.storefrontAddress || {}).locality || ''); }).join('\n');
+  mostrar_('Ubicaciones de tu cuenta', txt || 'No hay ubicaciones');
+}
+
+function avisarError_(que, err) {
+  Logger.log(err && err.stack || err);
+  try { enviar_('⚠️ Agente Google: error en ' + que, String(err),
+    '<div style="font-family:Arial,sans-serif;font-size:14px"><b>Error en ' + esc_(que) + ':</b><br>' + esc_(String(err)) +
+    '<br><br>Abre la hoja → menú 🤖 Agente Google → 2 · Comprobar que todo funciona.</div>'); } catch (e) { Logger.log(e); }
+}
+
+// ── LÓGICA DE PROPUESTAS ─────────────────────────────────────────────────────
 function propuestasDesdePlan_(snaps, plan) {
   var lista = [];
   plan.sedes.forEach(function (ps) {
@@ -289,9 +479,9 @@ function propuestasDesdePlan_(snaps, plan) {
           (a.opciones.length ? '\n\nOpciones: ' + a.opciones.join(' · ') : ''),
         propuesta: a.contenido || a.recomendada, _accion: a });
     });
-    if (ps.post) lista.push({ sede: ps.sede, tipo: 'POST', prioridad: 'MEDIA', titulo: 'Publicación semanal', propuesta: ps.post });
+    if (ps.post) lista.push({ sede: ps.sede, tipo: 'POST', prioridad: 'MEDIA', titulo: 'Publicación semanal', propuesta: limpiarPost_(ps.post) });
     if (ps.descripcion) lista.push({ sede: ps.sede, tipo: 'DESCRIPCION', prioridad: 'MEDIA', titulo: 'Nueva descripción de la ficha',
-      contexto: 'Actual: ' + (snap.ficha.descripcionActual || '(vacía)'), propuesta: ps.descripcion });
+      contexto: 'Actual: ' + (snap.ficha.descripcionActual || '(vacía)'), propuesta: ps.descripcion.slice(0, 750) });
     ps.respuestas.forEach(function (r) {
       var o = snap.resenasRecientes.filter(function (x) { return x.id === r.id; })[0];
       if (o) lista.push({ sede: ps.sede, tipo: 'RESPUESTA', prioridad: o.estrellas <= 3 ? 'ALTA' : 'MEDIA',
@@ -302,11 +492,16 @@ function propuestasDesdePlan_(snaps, plan) {
   return crearPropuestas_(lista);
 }
 
+/** Google rechaza posts con teléfonos o URLs: red de seguridad por si la IA los cuela. */
+function limpiarPost_(t) {
+  var prohibido = /https?:\/\/|www\.|@\w+\.\w|\+?\d[\d\s.-]{7,}\d/i;   // URLs, emails y teléfonos
+  return String(t).split(/(?<=[.!?…])\s+/).filter(function (f) { return !prohibido.test(f); }).join(' ').trim().slice(0, 1500);
+}
+
 function aplicarAutopiloto_() {
   var ap = autopiloto_(), hechos = [];
   if (!ap.responder5estrellas && !ap.postSiNoRespondes48h) return hechos;
-  var data = hoja_('GBP_Propuestas').getDataRange().getValues().slice(1);
-  data.forEach(function (r) {
+  hoja_('GBP_Propuestas').getDataRange().getValues().slice(1).forEach(function (r) {
     if (r[C.ESTADO] !== 'PENDIENTE' || !nivel2_(sede_(r[C.SEDE]))) return;
     var edadH = (Date.now() - new Date(r[C.FECHA]).getTime()) / 36e5;
     var toca = (ap.responder5estrellas && r[C.TIPO] === 'RESPUESTA' && Number(r[C.EST]) === 5) ||
@@ -350,7 +545,7 @@ function resultadosMes_() {
 function pendientesAnteriores_() {
   var hoy = fecha_();
   return hoja_('GBP_Propuestas').getDataRange().getValues().slice(1).filter(function (r) {
-    return r[C.ESTADO] === 'PENDIENTE' && r[C.FECHA] !== hoy && Utilities.formatDate(new Date(r[C.FECHA]), 'Europe/Madrid', 'yyyy-MM-dd') !== hoy;
+    return r[C.ESTADO] === 'PENDIENTE' && Utilities.formatDate(new Date(r[C.FECHA]), 'Europe/Madrid', 'yyyy-MM-dd') !== hoy;
   }).length;
 }
 
@@ -383,7 +578,7 @@ function analizarSede_(s) {
     competencia: competencia_(s, id),
     metricas: metricasGBP_(s),
     anterior: JSON.parse(P.getProperty('SNAP_' + s.code) || 'null'),
-    busquedaMarca: auditarBusqueda_(s, f)
+    busquedaMarca: ''   // se rellena con el lote de búsquedas
   };
   snap.completitud = completitud_(snap, gbpInfo);
   snap.posicion = posicion_(snap);
@@ -451,6 +646,38 @@ function completitud_(s, g) {
     falta: items.filter(function (i) { return !i.ok; }).map(function (i) { return i.texto; }),
     parcial: !g
   };
+}
+
+// ── WEB GLOBAL (SEO técnico + buscadores con IA), una vez por semana ─────────
+function auditarDominio_(url) {
+  var m = String(url || '').match(/^https?:\/\/[^\/]+/);
+  if (!m) return null;
+  var base = m[0], out = { dominio: base, problemas: [] };
+  function get(path) {
+    try { var r = UrlFetchApp.fetch(base + path, { muteHttpExceptions: true, followRedirects: true });
+          return r.getResponseCode() === 200 ? r.getContentText() : null; } catch (e) { return null; }
+  }
+  var robots = get('/robots.txt');
+  if (robots === null) out.problemas.push('Sin robots.txt');
+  else {
+    ['GPTBot', 'ClaudeBot', 'PerplexityBot', 'Google-Extended'].forEach(function (bot) {
+      var bloque = robots.split(/user-agent:/i).filter(function (b) { return b.trim().toLowerCase().indexOf(bot.toLowerCase()) === 0; })[0];
+      if (bloque && /disallow:\s*\/\s*$/im.test(bloque)) out.problemas.push('robots.txt bloquea ' + bot + ' (no apareceréis en respuestas de IA)');
+    });
+    if (!/sitemap:/i.test(robots)) out.problemas.push('robots.txt no declara el sitemap');
+  }
+  if (get('/sitemap.xml') === null && !(robots && /sitemap:/i.test(robots))) out.problemas.push('Sin sitemap.xml');
+  if (get('/llms.txt') === null) out.problemas.push('Sin llms.txt (ayuda a ChatGPT/Claude/Perplexity a entender la marca)');
+  var home = get('/');
+  if (home) {
+    var langs = (home.match(/hreflang=["']([a-z-]+)["']/gi) || []).map(function (x) { return x.split(/["']/)[1].toLowerCase(); });
+    out.hreflang = langs.filter(function (x, i) { return langs.indexOf(x) === i; });
+    if (!out.hreflang.length) out.problemas.push('Sin etiquetas hreflang (la web tiene es/ca/en)');
+    else if (out.hreflang.indexOf('fr') === -1) out.problemas.push('Sin versión en francés (clave para Andorra y Cerdanya)');
+    if (!/"@type"\s*:\s*"(Organization|RealEstateAgent)"/i.test(home)) out.problemas.push('Portada sin schema Organization/RealEstateAgent');
+    if (!/FAQPage/i.test(home)) out.problemas.push('Sin FAQ con schema FAQPage (respuestas directas para Google e IA)');
+  } else out.problemas.push('La portada no responde');
+  return out;
 }
 
 // ── COMPETENCIA ──────────────────────────────────────────────────────────────
@@ -561,7 +788,8 @@ function auditarWeb_(url, telefono) {
     if (res.getResponseCode() >= 400) return { url: url, error: 'HTTP ' + res.getResponseCode() };
     var h = res.getContentText();
     var m = function (re) { var x = h.match(re); return x ? x[1].trim() : ''; };
-    var tel = String(telefono || '').replace(/\D/g, '');
+    var tel = String(telefono || '').replace(/\D/g, '').replace(/^(34|376)(?=\d{6,9}$)/, '');
+    var telRe = tel ? new RegExp(tel.split('').join('[\\s.\\-()]*')) : null;
     return {
       url: url,
       title: m(/<title[^>]*>([^<]*)<\/title>/i),
@@ -570,7 +798,7 @@ function auditarWeb_(url, telefono) {
       canonical: /<link[^>]+rel=["']canonical["']/i.test(h),
       schemaLocal: /application\/ld\+json[\s\S]{0,5000}?(LocalBusiness|RealEstateAgent)/i.test(h),
       hreflang: (h.match(/hreflang=/gi) || []).length,
-      telefonoEnWeb: tel ? h.replace(/\D/g, '').indexOf(tel) !== -1 : null
+      telefonoEnWeb: telRe ? telRe.test(h) : null
     };
   } catch (e) { return { url: url, error: String(e) }; }
 }
@@ -597,141 +825,174 @@ function gbp_(method, url, body) {
 }
 
 // ═══ IA.gs ═══
-// ── CLAUDE: PLAN SEMANAL ─────────────────────────────────────────────────────
-var SCHEMA_PLAN = {
-  type: 'object', additionalProperties: false, required: ['resumen', 'sedes'],
+// ── CLAUDE ───────────────────────────────────────────────────────────────────
+// El informe semanal usa la Batches API: sin límite de tiempo de Apps Script y un 50 % más barata.
+// Solo la respuesta urgente a una reseña negativa usa una llamada directa (corta y rápida).
+
+var ANTHROPIC = 'https://api.anthropic.com/v1/messages';
+
+var SCHEMA_SEDE = {
+  type: 'object', additionalProperties: false,
+  required: ['titular', 'estado', 'vsCompetencia', 'acciones', 'post', 'descripcion', 'respuestas'],
   properties: {
-    resumen: { type: 'string' },
-    sedes: { type: 'array', items: {
+    titular: { type: 'string' },
+    estado: { type: 'string' },
+    vsCompetencia: { type: 'string' },
+    acciones: { type: 'array', items: {
       type: 'object', additionalProperties: false,
-      required: ['sede', 'estado', 'vsCompetencia', 'acciones', 'post', 'descripcion', 'respuestas'],
+      required: ['prioridad', 'accion', 'motivo', 'opciones', 'recomendada', 'cuando', 'contenido'],
       properties: {
-        sede: { type: 'string', enum: SEDES.map(function (s) { return s.code; }) },
-        estado: { type: 'string' },
-        vsCompetencia: { type: 'string' },
-        acciones: { type: 'array', items: {
-          type: 'object', additionalProperties: false,
-          required: ['prioridad', 'accion', 'motivo', 'opciones', 'recomendada', 'cuando', 'contenido'],
-          properties: {
-            prioridad: { type: 'string', enum: ['ALTA', 'MEDIA', 'BAJA'] },
-            accion: { type: 'string' }, motivo: { type: 'string' },
-            opciones: { type: 'array', items: { type: 'string' } },
-            recomendada: { type: 'string' }, cuando: { type: 'string' },
-            contenido: { type: 'string' }
-          }
-        } },
-        post: { type: 'string' },
-        descripcion: { type: 'string' },
-        respuestas: { type: 'array', items: {
-          type: 'object', additionalProperties: false, required: ['id', 'texto'],
-          properties: { id: { type: 'string' }, texto: { type: 'string' } }
-        } }
+        prioridad: { type: 'string', enum: ['ALTA', 'MEDIA', 'BAJA'] },
+        accion: { type: 'string' }, motivo: { type: 'string' },
+        opciones: { type: 'array', items: { type: 'string' } },
+        recomendada: { type: 'string' }, cuando: { type: 'string' },
+        contenido: { type: 'string' }
       }
+    } },
+    post: { type: 'string' },
+    descripcion: { type: 'string' },
+    respuestas: { type: 'array', items: {
+      type: 'object', additionalProperties: false, required: ['id', 'texto'],
+      properties: { id: { type: 'string' }, texto: { type: 'string' } }
     } }
   }
 };
 
 var SYSTEM_PROMPT = [
-  'Eres el gestor de SEO local y de las fichas de Google (Perfil de Empresa) de Durán Carasso, inmobiliaria de lujo',
-  'con sedes en Barcelona (BCN), Sitges (STG), Cerdanya (CRD) y Andorra (AND). Trabajas para el equipo de marketing.',
-  'Objetivo: que quien busque "Durán Carasso" o "inmobiliaria de lujo + ciudad" encuentre una ficha completa, activa,',
-  'coherente con la web y mejor que la de la competencia, y que eso se traduzca en más llamadas, visitas y clics.',
+  'Eres el gestor de SEO local y de las fichas de Google (Perfil de Empresa) de Durán Carasso, inmobiliaria premium.',
+  'Trabajas para el equipo de marketing. Cada semana analizas UNA sede y propones qué hacer.',
+  'Objetivo: que quien busque "Durán Carasso" o "inmobiliaria + zona" encuentre una ficha completa, activa, coherente',
+  'con la web y mejor que la de la competencia, y que eso se traduzca en más llamadas, visitas y clics.',
   '',
-  'Recibes el estado semanal de cada sede: ficha, web, PageSpeed, completitud, competencia (top 5 en Google Maps),',
-  'posición, métricas (si hay), búsqueda de marca y problemas detectados. También recibes "decisiones_del_equipo":',
-  'propuestas tuyas anteriores que el equipo editó o descartó. Aprende de ellas: imita sus correcciones de tono,',
-  'longitud y contenido y no repitas lo que descartaron salvo que haya cambiado algo importante.',
+  'Recibes: empresa, perfil_sede (dirección y teléfono oficiales, zonas, idiomas, competidores de referencia),',
+  'datos de la ficha, web, PageSpeed, completitud, competencia (top 5 en Google Maps), posición, métricas si hay,',
+  'búsqueda de marca, problemas detectados, a veces "web_global" (auditoría del dominio común a todas las sedes) y',
+  '"decisiones_del_equipo": propuestas anteriores que el equipo editó o descartó. Aprende de ellas: imita sus',
+  'correcciones de tono, longitud y contenido y no repitas lo descartado salvo que haya cambiado algo importante.',
   '',
-  'Devuelve para cada sede:',
-  '- estado: 1-2 frases sobre cómo está la ficha y qué ha cambiado desde la semana pasada.',
-  '- vsCompetencia: 1-3 frases comparando con la competencia con cifras (nota, reseñas, fotos) y qué hacen mejor.',
-  '- acciones: máximo 4, por impacto, concretas (qué tocar y dónde exactamente). Por acción: 2-3 opciones cortas,',
+  'Devuelve:',
+  '- titular: una frase para dirección con lo más importante de la sede esta semana.',
+  '- estado: 1-2 frases sobre cómo está la ficha y qué ha cambiado respecto a "anterior".',
+  '- vsCompetencia: 1-3 frases con cifras (nota, reseñas) frente a la competencia y qué hacen mejor.',
+  '- acciones: máximo 4, por impacto, concretas (qué tocar y dónde exactamente). Para cada una: 2-3 opciones cortas,',
   '  la recomendada y por qué, cuándo (fecha o franja concreta según urgencia, temporada de la zona — Cerdanya/Andorra:',
-  '  esquí dic-mar y verano; Sitges: primavera-verano; Barcelona: todo el año — y festivos próximos de Cataluña/Andorra),',
-  '  y contenido: el texto o código listo para copiar y pegar si aplica (JSON-LD, meta description, mensaje de WhatsApp',
-  '  para pedir reseñas…) o cadena vacía. No incluyas aquí el post, la descripción ni las respuestas a reseñas.',
-  '- post: publicación semanal para la ficha (máx. 1.200 caracteres, tono premium y cercano, palabras clave locales,',
-  '  sin inventar inmuebles ni precios). Cadena vacía si publicaron hace menos de 4 días.',
-  '- descripcion: nueva descripción de negocio (650-750 caracteres, sin URLs ni teléfonos, keywords locales) solo si la',
-  '  actual falta, es corta o claramente mejorable; si no, cadena vacía.',
+  '  esquí dic-mar y verano; Sitges: primavera-verano; Barcelona: todo el año — y festivos próximos de Cataluña/Andorra;',
+  '  recuerda el horario especial una semana antes), y contenido: texto o código listo para copiar (JSON-LD, meta',
+  '  description, mensaje de WhatsApp para pedir reseñas…) o cadena vacía. No metas aquí el post, la descripción ni',
+  '  las respuestas a reseñas.',
+  '- post: publicación semanal para la ficha, en el primer idioma de la sede, máx. 1.200 caracteres, tono premium y',
+  '  cercano, palabras clave locales. PROHIBIDO incluir teléfonos, emails o URLs (Google rechaza esos posts) y',
+  '  inventar inmuebles, precios o cifras. Cadena vacía si publicaron hace menos de 4 días.',
+  '- descripcion: nueva descripción de negocio (650-750 caracteres, en el primer idioma de la sede, sin URLs ni',
+  '  teléfonos, con zonas y servicios reales) solo si la actual falta, es corta o claramente mejorable; si no, "".',
   '- respuestas: borrador solo para reseñas con respondida=false (usa su id exacto), en el idioma de la reseña,',
-  '  personalizada; en negativas: empatía, sin excusas, invitación a hablar por teléfono.',
-  'resumen: 3-4 frases para dirección con lo más importante de la semana.',
-  'Usa "empresa" y "perfil_sedes": propón solo servicios que la empresa ofrece, usa las zonas reales de cada sede,',
-  'escribe posts y descripción en el primer idioma de la sede (y respuestas en el idioma de la reseña), y compara',
-  'también con los competidores de referencia si aparecen en los datos. Si la dirección o el teléfono de la ficha no',
-  'coinciden con perfil_sedes, avísalo como acción ALTA. Si el nombre de la ficha añade palabras clave al nombre real',
-  '(p. ej. "Durán Carasso | Inmobiliaria en …"), avisa de que incumple las normas de Google y puede provocar suspensión.',
-  'No inventes datos que no estén en el JSON.'
+  '  personalizada; en negativas: empatía, sin excusas ni datos personales, invitación a hablar por teléfono.',
+  '',
+  'Reglas: propón solo servicios que la empresa ofrece y usa las zonas reales de la sede. Si la dirección o el',
+  'teléfono de la ficha no coinciden con perfil_sede, crea una acción ALTA. Si el nombre de la ficha añade palabras',
+  'clave al nombre real (p. ej. "Durán Carasso | Inmobiliaria en …"), avisa de que incumple las normas de Google y',
+  'puede provocar una suspensión (decisión de dirección). Si hay web_global con problemas, inclúyelos como acciones.',
+  'No inventes datos que no estén en el JSON. Nada de promesas de rentabilidad.'
 ].join('\n');
 
-function pedirPlanClaude_(snaps) {
-  var input = { fecha: fecha_(), empresa: PERFIL_EMPRESA, perfil_sedes: PERFIL_SEDES, sedes: snaps, decisiones_del_equipo: memoria_() };
-  return JSON.parse(textoClaude_(claude_({
-    model: CLAUDE_MODEL, max_tokens: 20000, system: SYSTEM_PROMPT,
-    output_config: { format: { type: 'json_schema', schema: SCHEMA_PLAN } },
-    messages: [{ role: 'user', content: JSON.stringify(input) }]
-  })));
+/** Petición de plan para una sede (se envía en lote). */
+function peticionPlan_(snap, extra) {
+  var input = { fecha: fecha_(), empresa: PERFIL_EMPRESA, perfil_sede: PERFIL_SEDES[snap.sede] || {}, sede: snap,
+                decisiones_del_equipo: memoria_().filter(function (m) { return m.sede === snap.sede || m.tipo === 'TAREA'; }) };
+  for (var k in extra || {}) input[k] = extra[k];
+  return {
+    custom_id: 'plan-' + snap.sede,
+    params: {
+      model: CLAUDE_MODEL, max_tokens: 16000, system: SYSTEM_PROMPT,
+      output_config: { format: { type: 'json_schema', schema: SCHEMA_SEDE } },
+      messages: [{ role: 'user', content: JSON.stringify(input) }]
+    }
+  };
 }
 
-/** Borrador inmediato para una reseña negativa (fuera del ciclo semanal). */
+/** Petición de búsqueda de marca para una sede (web search, se envía en lote). */
+function peticionBusqueda_(snap) {
+  var f = snap.ficha || {}, ps = PERFIL_SEDES[snap.sede] || {}, s = sede_(snap.sede);
+  return {
+    custom_id: 'busq-' + snap.sede,
+    params: {
+      model: CLAUDE_MODEL, max_tokens: 8000,
+      tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 6,
+                user_location: { type: 'approximate', country: snap.sede === 'AND' ? 'AD' : 'ES' } }],
+      messages: [{ role: 'user', content:
+        'Busca como lo haría un cliente: "Durán Carasso ' + snap.nombre + '", "' + s.mercado + '" y "mejor inmobiliaria ' + snap.nombre + '".\n' +
+        'Datos oficiales: ' + JSON.stringify({ direccion: ps.direccion || f.direccion || '', telefono: ps.telefono || f.telefono || '', web: f.web || '' }) + '\n' +
+        'Responde en español, máx. 1.000 caracteres, en viñetas: 1) qué aparece de la marca y si la web oficial sale primero;' +
+        ' 2) datos incoherentes en otros sitios (dirección, teléfono, horario; con URL); 3) qué tienen los competidores (' +
+        (ps.competidores || 'los que salgan') + ') que a nosotros nos falta; 4) si Durán Carasso aparece recomendada en las' +
+        ' respuestas o rankings de "mejor inmobiliaria ' + snap.nombre + '". Solo hechos encontrados.' }]
+    }
+  };
+}
+
+/** Borrador inmediato para una reseña negativa (fuera del ciclo semanal, llamada directa). */
 function respuestaUrgente_(s, r) {
   return textoClaude_(claude_({
     model: CLAUDE_MODEL, max_tokens: 4000, system: SYSTEM_PROMPT,
     output_config: { effort: 'low' },
     messages: [{ role: 'user', content:
-      'Redacta solo la respuesta pública (sin comillas ni explicaciones) a esta reseña de la sede ' + s.nombre + '.\n' +
-      JSON.stringify({ estrellas: r.estrellas, autor: r.autor, texto: r.texto, decisiones_del_equipo: memoria_() }) }]
+      'Redacta solo la respuesta pública (sin comillas ni explicaciones) a esta reseña de la sede ' + s.nombre +
+      ', en el idioma de la reseña.\n' +
+      JSON.stringify({ estrellas: r.estrellas, autor: r.autor, texto: r.texto, perfil_sede: PERFIL_SEDES[s.code] || {},
+                       decisiones_del_equipo: memoria_().filter(function (m) { return m.tipo === 'RESPUESTA'; }) }) }]
   })).trim();
 }
 
-/** Qué ve un cliente al buscar la marca (web search). Se recalcula cada semana. */
-function auditarBusqueda_(s, f) {
-  var k = 'BUSQ_' + s.code, prev = JSON.parse(P.getProperty(k) || 'null');
-  if (prev && Date.now() - prev.ts < 6 * 864e5) return prev.texto;
-  try {
-    var texto = textoClaude_(claude_({
-      model: CLAUDE_MODEL, max_tokens: 8000,
-      tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 6,
-                user_location: { type: 'approximate', country: s.code === 'AND' ? 'AD' : 'ES' } }],
-      messages: [{ role: 'user', content:
-        'Busca como lo haría un cliente: "Durán Carasso ' + s.nombre + '" y "' + s.mercado + '".\n' +
-        'Datos oficiales: ' + JSON.stringify({ direccion: f.formattedAddress || '', telefono: f.nationalPhoneNumber || '', web: f.websiteUri || '' }) + '\n' +
-        'Responde en español, máx. 1.000 caracteres, en viñetas: 1) qué aparece de la marca y si la web oficial sale primero;' +
-        ' 2) datos incoherentes en otros sitios (con URL); 3) qué tienen los competidores (' + ((PERFIL_SEDES[s.code] || {}).competidores || 'los que salgan') + ') que a nosotros nos falta.' +
-        ' Solo hechos encontrados.' }]
-    }));
-    P.setProperty(k, JSON.stringify({ ts: Date.now(), texto: texto }));
-    return texto;
-  } catch (e) { return prev ? prev.texto : ''; }
+// ── API: LLAMADA DIRECTA ─────────────────────────────────────────────────────
+function cabeceras_(beta) {
+  var h = { 'x-api-key': prop_('ANTHROPIC_API_KEY', true), 'anthropic-version': '2023-06-01' };
+  if (beta) h['anthropic-beta'] = beta;
+  return h;
 }
 
-// ── LLAMADA A LA API ─────────────────────────────────────────────────────────
-/** POST /v1/messages con fallback de servidor; continúa si la búsqueda web devuelve pause_turn. */
+/** POST /v1/messages con fallback de servidor ante rechazos. */
 function claude_(body) {
   body.fallbacks = 'default';
-  for (var i = 0; i < 4; i++) {
-    var res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
-      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-      headers: {
-        'x-api-key': prop_('ANTHROPIC_API_KEY', true),
-        'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'server-side-fallback-2026-07-01'
-      },
-      payload: JSON.stringify(body)
-    });
-    var code = res.getResponseCode(), j = JSON.parse(res.getContentText());
-    if (code !== 200) throw new Error('Claude API ' + code + ': ' + res.getContentText().slice(0, 500));
-    if (j.stop_reason === 'refusal') throw new Error('Claude rechazó la petición: ' + JSON.stringify(j.stop_details));
-    if (j.stop_reason === 'max_tokens') throw new Error('Respuesta de Claude truncada (max_tokens)');
-    if (j.stop_reason !== 'pause_turn') return j;
-    body.messages = body.messages.concat([{ role: 'assistant', content: j.content }]);
-  }
-  throw new Error('Claude no terminó tras varios pause_turn');
+  var res = UrlFetchApp.fetch(ANTHROPIC, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    headers: cabeceras_('server-side-fallback-2026-07-01'), payload: JSON.stringify(body) });
+  var code = res.getResponseCode(), j = JSON.parse(res.getContentText());
+  if (code !== 200) throw new Error('Claude API ' + code + ': ' + res.getContentText().slice(0, 500));
+  validarMensaje_(j);
+  return j;
+}
+
+function validarMensaje_(j) {
+  if (j.stop_reason === 'refusal') throw new Error('Claude rechazó la petición: ' + JSON.stringify(j.stop_details));
+  if (j.stop_reason === 'max_tokens') throw new Error('Respuesta de Claude truncada (max_tokens)');
 }
 
 function textoClaude_(j) {
-  return j.content.filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('');
+  return (j.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('');
+}
+
+// ── API: LOTES (Batches) ─────────────────────────────────────────────────────
+function crearLote_(peticiones) {
+  var res = UrlFetchApp.fetch(ANTHROPIC + '/batches', { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    headers: cabeceras_(), payload: JSON.stringify({ requests: peticiones }) });
+  if (res.getResponseCode() !== 200) throw new Error('Claude Batches ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 500));
+  return JSON.parse(res.getContentText()).id;
+}
+
+/** Devuelve null si el lote no ha terminado; si terminó, { custom_id: {ok, mensaje|error} }. */
+function resultadosLote_(id) {
+  var res = UrlFetchApp.fetch(ANTHROPIC + '/batches/' + id, { muteHttpExceptions: true, headers: cabeceras_() });
+  if (res.getResponseCode() !== 200) throw new Error('Claude Batches ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 300));
+  var lote = JSON.parse(res.getContentText());
+  if (lote.processing_status !== 'ended') return null;
+  var out = {}, r = UrlFetchApp.fetch(lote.results_url, { muteHttpExceptions: true, headers: cabeceras_() });
+  r.getContentText().split('\n').forEach(function (linea) {
+    if (!linea.trim()) return;
+    var x = JSON.parse(linea), rr = x.result || {};
+    if (rr.type !== 'succeeded') { out[x.custom_id] = { ok: false, error: rr.type + ' ' + JSON.stringify(rr.error || '') }; return; }
+    try { validarMensaje_(rr.message); out[x.custom_id] = { ok: true, mensaje: rr.message }; }
+    catch (e) { out[x.custom_id] = { ok: false, error: String(e) }; }
+  });
+  return out;
 }
 
 // ═══ Propuestas.gs ═══
@@ -741,16 +1002,28 @@ var CABECERAS = {
                    'Estado', 'Feedback', 'Actualizado', 'Referencia', 'Estrellas'],
   GBP_Historico: ['Fecha', 'Sede', 'Nota', 'Nº reseñas', 'Fotos', 'Ficha %', 'SEO', 'Rendimiento', 'Puesto reseñas',
                   'Puesto nota', 'Llamadas 28d', 'Rutas 28d', 'Clics web 28d', 'Falta'],
-  GBP_Competencia: ['Fecha', 'Sede', 'Nombre', 'Nota', 'Reseñas', 'Fotos', 'Web']
+  GBP_Competencia: ['Fecha', 'Sede', 'Nombre', 'Nota', 'Reseñas', 'Fotos', 'Web'],
+  GBP_Estado: ['Sede', 'Datos de la semana (JSON)', 'Plan (JSON)']   // interna, oculta
 };
 var C = { ID: 0, FECHA: 1, SEDE: 2, TIPO: 3, PRIO: 4, TITULO: 5, CTX: 6, PROP: 7, FINAL: 8, ESTADO: 9, FEED: 10, ACT: 11, REF: 12, EST: 13 };
 // Tipos: POST, RESPUESTA, DESCRIPCION (publicables en Google) · TAREA (la hace el equipo)
 // Estados: PENDIENTE → PUBLICADO | HECHO | DESCARTADO | APROBADO_MANUAL | ERROR
 
+/** La hoja donde vive el agente. Se fija al instalar para que triggers y app web usen siempre la misma. */
+function libro_() {
+  if (prop_('SHEET_ID')) return SpreadsheetApp.openById(prop_('SHEET_ID'));
+  var ss = SpreadsheetApp.getActive();
+  if (!ss) throw new Error('Instala el agente desde el menú de una hoja de Google (Extensiones → Apps Script)');
+  P.setProperty('SHEET_ID', ss.getId());
+  return ss;
+}
+
 function hoja_(nombre) {
-  var ss = prop_('SHEET_ID') ? SpreadsheetApp.openById(prop_('SHEET_ID')) : (SpreadsheetApp.getActive() || SpreadsheetApp.openById(DEFAULT_SHEET_ID));
-  var sh = ss.getSheetByName(nombre);
-  if (!sh) { sh = ss.insertSheet(nombre); sh.appendRow(CABECERAS[nombre]); sh.setFrozenRows(1); }
+  var ss = libro_(), sh = ss.getSheetByName(nombre);
+  if (!sh) {
+    sh = ss.insertSheet(nombre); sh.appendRow(CABECERAS[nombre]); sh.setFrozenRows(1);
+    if (nombre === 'GBP_Estado') sh.hideSheet();
+  }
   return sh;
 }
 
@@ -788,6 +1061,12 @@ function publicable_(tipo) { return tipo === 'POST' || tipo === 'RESPUESTA' || t
  * accion: 'publicar' | 'hecho' | 'descartar'. Devuelve { ok, estado, mensaje }.
  */
 function decidir_(id, accion, texto, feedback) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) return { ok: false, mensaje: 'El agente está ocupado, prueba en unos segundos.' };
+  try { return decidirSinLock_(id, accion, texto, feedback); } finally { lock.releaseLock(); }
+}
+
+function decidirSinLock_(id, accion, texto, feedback) {
   var p = buscarPropuesta_(id);
   if (!p) return { ok: false, mensaje: 'Propuesta no encontrada' };
   var estado = p.row[C.ESTADO];
@@ -803,7 +1082,7 @@ function decidir_(id, accion, texto, feedback) {
     actualizarPropuesta_(p, { ESTADO: 'HECHO', FINAL: final, FEED: feedback || '' });
     return { ok: true, estado: 'HECHO', mensaje: 'Marcada como hecha.' };
   }
-  if (!nivel2_(s)) {
+  if (!nivel2_(s) || (tipo === 'RESPUESTA' && String(p.row[C.REF]).indexOf('accounts/') !== 0)) {
     actualizarPropuesta_(p, { ESTADO: 'APROBADO_MANUAL', FINAL: final, FEED: feedback || '' });
     return { ok: true, estado: 'APROBADO_MANUAL', manual: true, texto: final,
              mensaje: 'Aprobada. Cópiala y pégala en tu panel de Google (publicación automática disponible en Nivel 2).' };
@@ -821,7 +1100,7 @@ function decidir_(id, accion, texto, feedback) {
 function publicarEnGoogle_(s, tipo, texto, ref) {
   if (tipo === 'RESPUESTA') return gbp_('PUT', 'https://mybusiness.googleapis.com/v4/' + ref + '/reply', { comment: texto });
   if (tipo === 'POST') return gbp_('POST', v4_(s) + '/localPosts', {
-    languageCode: 'es', summary: texto, topicType: 'STANDARD',
+    languageCode: idioma_(s.code), summary: texto, topicType: 'STANDARD',
     callToAction: { actionType: 'LEARN_MORE', url: s.web || fichaPlaces_(placeId_(s)).websiteUri }
   });
   if (tipo === 'DESCRIPCION') return gbp_('PATCH', 'https://mybusinessbusinessinformation.googleapis.com/v1/locations/' +
@@ -872,7 +1151,7 @@ function flecha_(a, b, invertir) {
   return ' <span style="color:' + (mejor ? COL.green : COL.red) + '">' + (b > a ? '▲' : '▼') + '</span>';
 }
 
-function tarjetaPropuesta_(p) {
+function tarjetaPropuesta_(p, compacto) {
   var publicable = publicable_(p.tipo), s = sede_(p.sede);
   var html = '<div style="border:1px solid ' + COL.border + ';border-left:4px solid ' + color_(p.prioridad) + ';border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff">' +
     '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:' + color_(p.prioridad) + '">' + esc_(p.prioridad) + ' · ' + NOMBRE_TIPO[p.tipo].toUpperCase() + '</div>' +
@@ -887,7 +1166,7 @@ function tarjetaPropuesta_(p) {
   }
   if (publicable || (p._accion && p._accion.contenido)) {
     html += '<div style="font-size:13px;white-space:pre-wrap;background:' + COL.bg + ';border-radius:8px;padding:10px;margin-top:8px">' +
-      esc_(recorta_(p.propuesta, 420)) + '</div>';
+      esc_(recorta_(p.propuesta, compacto ? 160 : 420)) + '</div>';
   }
   html += '<div style="margin-top:6px">';
   if (publicable) {
@@ -916,16 +1195,28 @@ function tablaCompetencia_(s) {
 }
 
 function enviarSemanal_(snaps, plan, props) {
+  var html = htmlSemanal_(snaps, plan, props, false);
+  if (html.length > 95000) html = htmlSemanal_(snaps, plan, props, true);   // Gmail recorta los emails de más de 102 KB
+  var urg = props.filter(function (p) { return p.prioridad === 'ALTA'; }).length;
+  var txt = plan.resumen + '\n\n' + props.map(function (p) { return '[' + p.sede + '][' + p.prioridad + '] ' + NOMBRE_TIPO[p.tipo] + ': ' + p.titulo; }).join('\n');
+  enviar_('Agente Google · ' + (urg ? urg + ' urgentes · ' : '') + props.length + ' propuestas · ' + fecha_(), txt, html);
+}
+
+function htmlSemanal_(snaps, plan, props, compacto) {
   var mes = new Date().getDate() <= 7 ? resultadosMes_() : null;
   var urg = props.filter(function (p) { return p.prioridad === 'ALTA'; }).length;
   var pend = pendientesAnteriores_();
   var h = '<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:640px;margin:0 auto;background:' + COL.bg + ';padding:0 0 20px;color:#111">' +
     '<div style="background:' + COL.navy + ';color:#fff;padding:20px 18px"><div style="font-size:10px;letter-spacing:3px;opacity:.5;text-transform:uppercase">Agente Google · Durán Carasso</div>' +
     '<div style="font-size:20px;font-weight:600;margin-top:4px">Informe semanal · ' + fecha_() + '</div></div>' +
-    '<div style="padding:16px 18px"><p style="background:#fff;border-radius:10px;padding:14px;margin:0;border:1px solid ' + COL.border + '">' + esc_(plan.resumen) + '</p>' +
+    '<div style="padding:16px 18px"><p style="background:#fff;border-radius:10px;padding:14px;margin:0;line-height:1.5;white-space:pre-line;border:1px solid ' + COL.border + '">' + esc_(plan.resumen) + '</p>' +
     '<p style="font-size:13px;color:' + COL.sub + ';margin:10px 0 0">' + props.length + ' propuestas nuevas' + (urg ? ' · <b style="color:' + COL.red + '">' + urg + ' urgentes</b>' : '') +
     (pend ? ' · ' + pend + ' pendientes de semanas anteriores' : '') + '. Pulsa ✅ para aprobar, ✏️ para editar o ❌ para descartar.</p>';
 
+  if (plan.dominio && plan.dominio.problemas && plan.dominio.problemas.length) {
+    h += '<div style="background:#fff;border:1px solid ' + COL.border + ';border-radius:10px;padding:12px 14px;margin-top:14px;font-size:13px">' +
+      '<b style="color:' + COL.navy + '">🌐 Web (común a las 4 sedes)</b><br>' + plan.dominio.problemas.map(function (x) { return '· ' + esc_(x); }).join('<br>') + '</div>';
+  }
   if (mes && Object.keys(mes).length) {
     h += '<h3 style="color:' + COL.navy + ';margin:22px 0 6px">📈 Resultados del último mes</h3><table style="width:100%;border-collapse:collapse;background:#fff;font-size:12px">' +
       '<tr style="color:' + COL.sub + '"><td style="padding:6px">Sede</td><td>Nota</td><td>Reseñas</td><td>Ficha</td><td>Puesto</td><td>Llamadas</td><td>Rutas</td><td>Clics web</td></tr>';
@@ -954,17 +1245,16 @@ function enviarSemanal_(snaps, plan, props) {
     if (s.completitud.falta.length) h += '<p style="font-size:12px;color:' + COL.sub + ';margin:6px 0">Falta: ' + esc_(s.completitud.falta.join(' · ')) + '</p>';
     if (ps.estado) h += '<p style="margin:10px 0">' + esc_(ps.estado) + '</p>';
     if (ps.vsCompetencia) h += '<p style="margin:10px 0"><b>Vs. competencia:</b> ' + esc_(ps.vsCompetencia) + '</p>';
-    h += tablaCompetencia_(s);
+    if (!compacto) h += tablaCompetencia_(s);
     props.filter(function (p) { return p.sede === s.sede; })
       .sort(function (a, b) { return ['ALTA', 'MEDIA', 'BAJA'].indexOf(a.prioridad) - ['ALTA', 'MEDIA', 'BAJA'].indexOf(b.prioridad); })
-      .forEach(function (p) { h += tarjetaPropuesta_(p); });
-    if (s.busquedaMarca) h += '<details style="margin-top:10px"><summary style="cursor:pointer;color:' + COL.navy + ';font-size:13px">🔎 Qué ve un cliente al buscar la marca</summary>' +
-      '<p style="white-space:pre-wrap;font-size:12px;color:#333">' + esc_(s.busquedaMarca) + '</p></details>';
+      .forEach(function (p) { h += tarjetaPropuesta_(p, compacto); });
+    if (s.busquedaMarca && !compacto) h += '<div style="margin-top:12px;background:#fff;border:1px dashed ' + COL.border + ';border-radius:10px;padding:10px 12px">' +
+      '<div style="font-size:12px;font-weight:700;color:' + COL.navy + '">🔎 Qué ve un cliente al buscar la marca</div>' +
+      '<div style="white-space:pre-wrap;font-size:12px;color:#333;margin-top:4px">' + esc_(recorta_(s.busquedaMarca, 1200)) + '</div></div>';
   });
   h += '<p style="font-size:11px;color:' + COL.sub + ';margin-top:28px">Todas las propuestas quedan en la hoja GBP_Propuestas. Lo que editas o descartas, el agente lo aprende para la semana siguiente.</p></div></div>';
-
-  var txt = plan.resumen + '\n\n' + props.map(function (p) { return '[' + p.sede + '][' + p.prioridad + '] ' + NOMBRE_TIPO[p.tipo] + ': ' + p.titulo; }).join('\n');
-  enviar_('Agente Google · ' + (urg ? urg + ' urgentes · ' : '') + props.length + ' propuestas · ' + fecha_(), txt, h);
+  return h;
 }
 
 function enviarUrgente_(props) {

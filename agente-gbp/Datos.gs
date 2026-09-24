@@ -21,7 +21,7 @@ function analizarSede_(s) {
     competencia: competencia_(s, id),
     metricas: metricasGBP_(s),
     anterior: JSON.parse(P.getProperty('SNAP_' + s.code) || 'null'),
-    busquedaMarca: auditarBusqueda_(s, f)
+    busquedaMarca: ''   // se rellena con el lote de búsquedas
   };
   snap.completitud = completitud_(snap, gbpInfo);
   snap.posicion = posicion_(snap);
@@ -89,6 +89,38 @@ function completitud_(s, g) {
     falta: items.filter(function (i) { return !i.ok; }).map(function (i) { return i.texto; }),
     parcial: !g
   };
+}
+
+// ── WEB GLOBAL (SEO técnico + buscadores con IA), una vez por semana ─────────
+function auditarDominio_(url) {
+  var m = String(url || '').match(/^https?:\/\/[^\/]+/);
+  if (!m) return null;
+  var base = m[0], out = { dominio: base, problemas: [] };
+  function get(path) {
+    try { var r = UrlFetchApp.fetch(base + path, { muteHttpExceptions: true, followRedirects: true });
+          return r.getResponseCode() === 200 ? r.getContentText() : null; } catch (e) { return null; }
+  }
+  var robots = get('/robots.txt');
+  if (robots === null) out.problemas.push('Sin robots.txt');
+  else {
+    ['GPTBot', 'ClaudeBot', 'PerplexityBot', 'Google-Extended'].forEach(function (bot) {
+      var bloque = robots.split(/user-agent:/i).filter(function (b) { return b.trim().toLowerCase().indexOf(bot.toLowerCase()) === 0; })[0];
+      if (bloque && /disallow:\s*\/\s*$/im.test(bloque)) out.problemas.push('robots.txt bloquea ' + bot + ' (no apareceréis en respuestas de IA)');
+    });
+    if (!/sitemap:/i.test(robots)) out.problemas.push('robots.txt no declara el sitemap');
+  }
+  if (get('/sitemap.xml') === null && !(robots && /sitemap:/i.test(robots))) out.problemas.push('Sin sitemap.xml');
+  if (get('/llms.txt') === null) out.problemas.push('Sin llms.txt (ayuda a ChatGPT/Claude/Perplexity a entender la marca)');
+  var home = get('/');
+  if (home) {
+    var langs = (home.match(/hreflang=["']([a-z-]+)["']/gi) || []).map(function (x) { return x.split(/["']/)[1].toLowerCase(); });
+    out.hreflang = langs.filter(function (x, i) { return langs.indexOf(x) === i; });
+    if (!out.hreflang.length) out.problemas.push('Sin etiquetas hreflang (la web tiene es/ca/en)');
+    else if (out.hreflang.indexOf('fr') === -1) out.problemas.push('Sin versión en francés (clave para Andorra y Cerdanya)');
+    if (!/"@type"\s*:\s*"(Organization|RealEstateAgent)"/i.test(home)) out.problemas.push('Portada sin schema Organization/RealEstateAgent');
+    if (!/FAQPage/i.test(home)) out.problemas.push('Sin FAQ con schema FAQPage (respuestas directas para Google e IA)');
+  } else out.problemas.push('La portada no responde');
+  return out;
 }
 
 // ── COMPETENCIA ──────────────────────────────────────────────────────────────
@@ -199,7 +231,8 @@ function auditarWeb_(url, telefono) {
     if (res.getResponseCode() >= 400) return { url: url, error: 'HTTP ' + res.getResponseCode() };
     var h = res.getContentText();
     var m = function (re) { var x = h.match(re); return x ? x[1].trim() : ''; };
-    var tel = String(telefono || '').replace(/\D/g, '');
+    var tel = String(telefono || '').replace(/\D/g, '').replace(/^(34|376)(?=\d{6,9}$)/, '');
+    var telRe = tel ? new RegExp(tel.split('').join('[\\s.\\-()]*')) : null;
     return {
       url: url,
       title: m(/<title[^>]*>([^<]*)<\/title>/i),
@@ -208,7 +241,7 @@ function auditarWeb_(url, telefono) {
       canonical: /<link[^>]+rel=["']canonical["']/i.test(h),
       schemaLocal: /application\/ld\+json[\s\S]{0,5000}?(LocalBusiness|RealEstateAgent)/i.test(h),
       hreflang: (h.match(/hreflang=/gi) || []).length,
-      telefonoEnWeb: tel ? h.replace(/\D/g, '').indexOf(tel) !== -1 : null
+      telefonoEnWeb: telRe ? telRe.test(h) : null
     };
   } catch (e) { return { url: url, error: String(e) }; }
 }

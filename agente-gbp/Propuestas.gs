@@ -4,16 +4,28 @@ var CABECERAS = {
                    'Estado', 'Feedback', 'Actualizado', 'Referencia', 'Estrellas'],
   GBP_Historico: ['Fecha', 'Sede', 'Nota', 'Nº reseñas', 'Fotos', 'Ficha %', 'SEO', 'Rendimiento', 'Puesto reseñas',
                   'Puesto nota', 'Llamadas 28d', 'Rutas 28d', 'Clics web 28d', 'Falta'],
-  GBP_Competencia: ['Fecha', 'Sede', 'Nombre', 'Nota', 'Reseñas', 'Fotos', 'Web']
+  GBP_Competencia: ['Fecha', 'Sede', 'Nombre', 'Nota', 'Reseñas', 'Fotos', 'Web'],
+  GBP_Estado: ['Sede', 'Datos de la semana (JSON)', 'Plan (JSON)']   // interna, oculta
 };
 var C = { ID: 0, FECHA: 1, SEDE: 2, TIPO: 3, PRIO: 4, TITULO: 5, CTX: 6, PROP: 7, FINAL: 8, ESTADO: 9, FEED: 10, ACT: 11, REF: 12, EST: 13 };
 // Tipos: POST, RESPUESTA, DESCRIPCION (publicables en Google) · TAREA (la hace el equipo)
 // Estados: PENDIENTE → PUBLICADO | HECHO | DESCARTADO | APROBADO_MANUAL | ERROR
 
+/** La hoja donde vive el agente. Se fija al instalar para que triggers y app web usen siempre la misma. */
+function libro_() {
+  if (prop_('SHEET_ID')) return SpreadsheetApp.openById(prop_('SHEET_ID'));
+  var ss = SpreadsheetApp.getActive();
+  if (!ss) throw new Error('Instala el agente desde el menú de una hoja de Google (Extensiones → Apps Script)');
+  P.setProperty('SHEET_ID', ss.getId());
+  return ss;
+}
+
 function hoja_(nombre) {
-  var ss = prop_('SHEET_ID') ? SpreadsheetApp.openById(prop_('SHEET_ID')) : (SpreadsheetApp.getActive() || SpreadsheetApp.openById(DEFAULT_SHEET_ID));
-  var sh = ss.getSheetByName(nombre);
-  if (!sh) { sh = ss.insertSheet(nombre); sh.appendRow(CABECERAS[nombre]); sh.setFrozenRows(1); }
+  var ss = libro_(), sh = ss.getSheetByName(nombre);
+  if (!sh) {
+    sh = ss.insertSheet(nombre); sh.appendRow(CABECERAS[nombre]); sh.setFrozenRows(1);
+    if (nombre === 'GBP_Estado') sh.hideSheet();
+  }
   return sh;
 }
 
@@ -51,6 +63,12 @@ function publicable_(tipo) { return tipo === 'POST' || tipo === 'RESPUESTA' || t
  * accion: 'publicar' | 'hecho' | 'descartar'. Devuelve { ok, estado, mensaje }.
  */
 function decidir_(id, accion, texto, feedback) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) return { ok: false, mensaje: 'El agente está ocupado, prueba en unos segundos.' };
+  try { return decidirSinLock_(id, accion, texto, feedback); } finally { lock.releaseLock(); }
+}
+
+function decidirSinLock_(id, accion, texto, feedback) {
   var p = buscarPropuesta_(id);
   if (!p) return { ok: false, mensaje: 'Propuesta no encontrada' };
   var estado = p.row[C.ESTADO];
@@ -66,7 +84,7 @@ function decidir_(id, accion, texto, feedback) {
     actualizarPropuesta_(p, { ESTADO: 'HECHO', FINAL: final, FEED: feedback || '' });
     return { ok: true, estado: 'HECHO', mensaje: 'Marcada como hecha.' };
   }
-  if (!nivel2_(s)) {
+  if (!nivel2_(s) || (tipo === 'RESPUESTA' && String(p.row[C.REF]).indexOf('accounts/') !== 0)) {
     actualizarPropuesta_(p, { ESTADO: 'APROBADO_MANUAL', FINAL: final, FEED: feedback || '' });
     return { ok: true, estado: 'APROBADO_MANUAL', manual: true, texto: final,
              mensaje: 'Aprobada. Cópiala y pégala en tu panel de Google (publicación automática disponible en Nivel 2).' };
@@ -84,7 +102,7 @@ function decidir_(id, accion, texto, feedback) {
 function publicarEnGoogle_(s, tipo, texto, ref) {
   if (tipo === 'RESPUESTA') return gbp_('PUT', 'https://mybusiness.googleapis.com/v4/' + ref + '/reply', { comment: texto });
   if (tipo === 'POST') return gbp_('POST', v4_(s) + '/localPosts', {
-    languageCode: 'es', summary: texto, topicType: 'STANDARD',
+    languageCode: idioma_(s.code), summary: texto, topicType: 'STANDARD',
     callToAction: { actionType: 'LEARN_MORE', url: s.web || fichaPlaces_(placeId_(s)).websiteUri }
   });
   if (tipo === 'DESCRIPCION') return gbp_('PATCH', 'https://mybusinessbusinessinformation.googleapis.com/v1/locations/' +

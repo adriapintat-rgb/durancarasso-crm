@@ -13,7 +13,7 @@ function flecha_(a, b, invertir) {
   return ' <span style="color:' + (mejor ? COL.green : COL.red) + '">' + (b > a ? '▲' : '▼') + '</span>';
 }
 
-function tarjetaPropuesta_(p) {
+function tarjetaPropuesta_(p, compacto) {
   var publicable = publicable_(p.tipo), s = sede_(p.sede);
   var html = '<div style="border:1px solid ' + COL.border + ';border-left:4px solid ' + color_(p.prioridad) + ';border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff">' +
     '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;color:' + color_(p.prioridad) + '">' + esc_(p.prioridad) + ' · ' + NOMBRE_TIPO[p.tipo].toUpperCase() + '</div>' +
@@ -28,7 +28,7 @@ function tarjetaPropuesta_(p) {
   }
   if (publicable || (p._accion && p._accion.contenido)) {
     html += '<div style="font-size:13px;white-space:pre-wrap;background:' + COL.bg + ';border-radius:8px;padding:10px;margin-top:8px">' +
-      esc_(recorta_(p.propuesta, 420)) + '</div>';
+      esc_(recorta_(p.propuesta, compacto ? 160 : 420)) + '</div>';
   }
   html += '<div style="margin-top:6px">';
   if (publicable) {
@@ -57,16 +57,28 @@ function tablaCompetencia_(s) {
 }
 
 function enviarSemanal_(snaps, plan, props) {
+  var html = htmlSemanal_(snaps, plan, props, false);
+  if (html.length > 95000) html = htmlSemanal_(snaps, plan, props, true);   // Gmail recorta los emails de más de 102 KB
+  var urg = props.filter(function (p) { return p.prioridad === 'ALTA'; }).length;
+  var txt = plan.resumen + '\n\n' + props.map(function (p) { return '[' + p.sede + '][' + p.prioridad + '] ' + NOMBRE_TIPO[p.tipo] + ': ' + p.titulo; }).join('\n');
+  enviar_('Agente Google · ' + (urg ? urg + ' urgentes · ' : '') + props.length + ' propuestas · ' + fecha_(), txt, html);
+}
+
+function htmlSemanal_(snaps, plan, props, compacto) {
   var mes = new Date().getDate() <= 7 ? resultadosMes_() : null;
   var urg = props.filter(function (p) { return p.prioridad === 'ALTA'; }).length;
   var pend = pendientesAnteriores_();
   var h = '<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:640px;margin:0 auto;background:' + COL.bg + ';padding:0 0 20px;color:#111">' +
     '<div style="background:' + COL.navy + ';color:#fff;padding:20px 18px"><div style="font-size:10px;letter-spacing:3px;opacity:.5;text-transform:uppercase">Agente Google · Durán Carasso</div>' +
     '<div style="font-size:20px;font-weight:600;margin-top:4px">Informe semanal · ' + fecha_() + '</div></div>' +
-    '<div style="padding:16px 18px"><p style="background:#fff;border-radius:10px;padding:14px;margin:0;border:1px solid ' + COL.border + '">' + esc_(plan.resumen) + '</p>' +
+    '<div style="padding:16px 18px"><p style="background:#fff;border-radius:10px;padding:14px;margin:0;line-height:1.5;white-space:pre-line;border:1px solid ' + COL.border + '">' + esc_(plan.resumen) + '</p>' +
     '<p style="font-size:13px;color:' + COL.sub + ';margin:10px 0 0">' + props.length + ' propuestas nuevas' + (urg ? ' · <b style="color:' + COL.red + '">' + urg + ' urgentes</b>' : '') +
     (pend ? ' · ' + pend + ' pendientes de semanas anteriores' : '') + '. Pulsa ✅ para aprobar, ✏️ para editar o ❌ para descartar.</p>';
 
+  if (plan.dominio && plan.dominio.problemas && plan.dominio.problemas.length) {
+    h += '<div style="background:#fff;border:1px solid ' + COL.border + ';border-radius:10px;padding:12px 14px;margin-top:14px;font-size:13px">' +
+      '<b style="color:' + COL.navy + '">🌐 Web (común a las 4 sedes)</b><br>' + plan.dominio.problemas.map(function (x) { return '· ' + esc_(x); }).join('<br>') + '</div>';
+  }
   if (mes && Object.keys(mes).length) {
     h += '<h3 style="color:' + COL.navy + ';margin:22px 0 6px">📈 Resultados del último mes</h3><table style="width:100%;border-collapse:collapse;background:#fff;font-size:12px">' +
       '<tr style="color:' + COL.sub + '"><td style="padding:6px">Sede</td><td>Nota</td><td>Reseñas</td><td>Ficha</td><td>Puesto</td><td>Llamadas</td><td>Rutas</td><td>Clics web</td></tr>';
@@ -95,17 +107,16 @@ function enviarSemanal_(snaps, plan, props) {
     if (s.completitud.falta.length) h += '<p style="font-size:12px;color:' + COL.sub + ';margin:6px 0">Falta: ' + esc_(s.completitud.falta.join(' · ')) + '</p>';
     if (ps.estado) h += '<p style="margin:10px 0">' + esc_(ps.estado) + '</p>';
     if (ps.vsCompetencia) h += '<p style="margin:10px 0"><b>Vs. competencia:</b> ' + esc_(ps.vsCompetencia) + '</p>';
-    h += tablaCompetencia_(s);
+    if (!compacto) h += tablaCompetencia_(s);
     props.filter(function (p) { return p.sede === s.sede; })
       .sort(function (a, b) { return ['ALTA', 'MEDIA', 'BAJA'].indexOf(a.prioridad) - ['ALTA', 'MEDIA', 'BAJA'].indexOf(b.prioridad); })
-      .forEach(function (p) { h += tarjetaPropuesta_(p); });
-    if (s.busquedaMarca) h += '<details style="margin-top:10px"><summary style="cursor:pointer;color:' + COL.navy + ';font-size:13px">🔎 Qué ve un cliente al buscar la marca</summary>' +
-      '<p style="white-space:pre-wrap;font-size:12px;color:#333">' + esc_(s.busquedaMarca) + '</p></details>';
+      .forEach(function (p) { h += tarjetaPropuesta_(p, compacto); });
+    if (s.busquedaMarca && !compacto) h += '<div style="margin-top:12px;background:#fff;border:1px dashed ' + COL.border + ';border-radius:10px;padding:10px 12px">' +
+      '<div style="font-size:12px;font-weight:700;color:' + COL.navy + '">🔎 Qué ve un cliente al buscar la marca</div>' +
+      '<div style="white-space:pre-wrap;font-size:12px;color:#333;margin-top:4px">' + esc_(recorta_(s.busquedaMarca, 1200)) + '</div></div>';
   });
   h += '<p style="font-size:11px;color:' + COL.sub + ';margin-top:28px">Todas las propuestas quedan en la hoja GBP_Propuestas. Lo que editas o descartas, el agente lo aprende para la semana siguiente.</p></div></div>';
-
-  var txt = plan.resumen + '\n\n' + props.map(function (p) { return '[' + p.sede + '][' + p.prioridad + '] ' + NOMBRE_TIPO[p.tipo] + ': ' + p.titulo; }).join('\n');
-  enviar_('Agente Google · ' + (urg ? urg + ' urgentes · ' : '') + props.length + ' propuestas · ' + fecha_(), txt, h);
+  return h;
 }
 
 function enviarUrgente_(props) {

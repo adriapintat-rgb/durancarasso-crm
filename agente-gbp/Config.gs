@@ -10,7 +10,7 @@
  *   WEBAPP_URL          opcional: URL /exec de la app web (se detecta sola al implementarla)
  *   NOTIFY_EMAILS       opcional (por defecto DEFAULT_EMAILS)
  *   GBP_ACCOUNT_ID      opcional → Nivel 2: publicar, reseñas sin responder, métricas
- *   SHEET_ID            opcional (por defecto la hoja del CRM)
+ *   SHEET_ID            se guarda sola al instalar (hoja donde vive el agente)
  *   AUTOPILOTO          opcional, JSON (ver AUTOPILOTO_DEFECTO)
  */
 
@@ -65,7 +65,6 @@ var AUTOPILOTO_DEFECTO = {
 
 var CLAUDE_MODEL = 'claude-opus-5';
 var DEFAULT_EMAILS = 'adriap@durancarasso.com';
-var DEFAULT_SHEET_ID = '1QtAQ_RbGwsJ18jZeTinkKJfAHl7oYodusJ7xjHKXTa0';
 var GBP_PANEL_URL = 'https://business.google.com/locations';
 
 var P = PropertiesService.getScriptProperties();
@@ -81,3 +80,4 @@ function autopiloto_() {
 }
 function nivel2_(s) { return !!(prop_('GBP_ACCOUNT_ID') && s && s.gbpLocationId); }
 function sede_(code) { return SEDES.filter(function (s) { return s.code === code; })[0]; }
+function idioma_(code) { return String((PERFIL_SEDES[code] || {}).idiomas || 'es').split(',')[0].trim(); }

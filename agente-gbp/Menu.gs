@@ -1,12 +1,12 @@
-// ── MENÚ EN LA HOJA DEL CRM ──────────────────────────────────────────────────
-// Si el script está dentro de la hoja (Extensiones → Apps Script), aparece el menú
+// ── MENÚ EN LA HOJA DEL AGENTE ───────────────────────────────────────────────
+// Si el script está dentro de una hoja (Extensiones → Apps Script), aparece el menú
 // "🤖 Agente Google" y todo se configura con clics, sin tocar código.
 
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('🤖 Agente Google')
     .addItem('1 · Configurar claves', 'configurarClaves')
     .addItem('2 · Comprobar que todo funciona', 'diagnostico')
-    .addItem('3 · Activar agente (lunes 8:30 + alertas)', 'activarDesdeMenu')
+    .addItem('3 · Activar agente (email los lunes + alertas)', 'activarDesdeMenu')
     .addItem('4 · Enviar informe ahora', 'enviarAhoraDesdeMenu')
     .addSeparator()
     .addItem('Desactivar agente', 'desactivar')
@@ -14,7 +14,8 @@ function onOpen() {
 }
 
 function configurarClaves() {
-  var ui = SpreadsheetApp.getUi();
+  var ui = SpreadsheetApp.getUi();   // solo desde la hoja
+  libro_();   // fija esta hoja como la del agente
   var campos = [
     ['ANTHROPIC_API_KEY', 'Clave de Anthropic (empieza por sk-ant-)', true],
     ['GOOGLE_API_KEY', 'Clave de Google Cloud (empieza por AIza)', true],
@@ -26,6 +27,8 @@ function configurarClaves() {
       c[1] + (actual ? '\n\n(Ya configurada. Déjalo vacío para mantenerla.)' : ''), ui.ButtonSet.OK_CANCEL);
     if (r.getSelectedButton() !== ui.Button.OK) return;
     var v = r.getResponseText().trim();
+    var formato = { ANTHROPIC_API_KEY: /^sk-ant-/, GOOGLE_API_KEY: /^AIza/ }[c[0]];
+    if (v && formato && !formato.test(v) && ui.alert('Esta clave no tiene el formato esperado. ¿Guardarla igualmente?', ui.ButtonSet.YES_NO) !== ui.Button.YES) { i--; continue; }
     if (v) P.setProperty(c[0], v);
     else if (c[2] && !actual) { ui.alert('Esta clave es obligatoria. Vuelve a empezar cuando la tengas.'); return; }
   }
@@ -34,6 +37,7 @@ function configurarClaves() {
 
 /** Revisa cada pieza y dice exactamente qué falta y cómo arreglarlo. */
 function diagnostico() {
+  SpreadsheetApp.getUi();            // solo desde la hoja
   var r = comprobaciones_();
   var txt = r.map(function (x) { return (x.ok ? '✅ ' : x.opcional ? '⚪ ' : '❌ ') + x.nombre + (x.detalle ? '\n     ' + x.detalle : ''); }).join('\n\n');
   var listo = r.every(function (x) { return x.ok || x.opcional; });
@@ -43,6 +47,7 @@ function diagnostico() {
 
 function comprobaciones_() {
   var out = [];
+  try { libro_(); } catch (e) { out.push({ nombre: 'Hoja del agente', ok: false, detalle: String(e), opcional: false }); }
   function add(nombre, ok, detalle, opcional) { out.push({ nombre: nombre, ok: ok, detalle: detalle || '', opcional: !!opcional }); }
 
   var ak = prop_('ANTHROPIC_API_KEY');
@@ -78,28 +83,38 @@ function comprobaciones_() {
   var triggers = ScriptApp.getProjectTriggers().map(function (t) { return t.getHandlerFunction(); });
   add('Agente activado', triggers.indexOf('ejecutarSemanal') !== -1, 'Menú → 3 · Activar agente');
 
+  var e = estado_();
+  if (e) add('Último informe', !e.error, (e.fase === 'FIN' ? (e.error ? 'Falló: ' + e.error : 'Enviado') : 'En curso: fase ' + e.fase) +
+    ' · iniciado ' + Utilities.formatDate(new Date(e.inicio), 'Europe/Madrid', 'dd/MM HH:mm'), !e.error);
+
   add('Nivel 2: publicar solo en Google', !!prop_('GBP_ACCOUNT_ID') && SEDES.some(function (s) { return s.gbpLocationId; }),
     'Opcional. Sin esto, al aprobar te da el texto para pegarlo en Google (ver README)', true);
   return out;
 }
 
 function activarDesdeMenu() {
+  SpreadsheetApp.getUi();
   var faltan = comprobaciones_().filter(function (x) { return !x.ok && !x.opcional && x.nombre !== 'Agente activado'; });
   if (faltan.length) return mostrar_('Antes de activar', 'Falta:\n\n' + faltan.map(function (x) { return '❌ ' + x.nombre + '\n     ' + x.detalle; }).join('\n\n'));
-  instalar();
-  mostrar_('Agente activado ✅', 'Cada lunes a las 8:30 recibirás el informe en ' + (prop_('NOTIFY_EMAILS') || DEFAULT_EMAILS) +
-    '.\nCada 3 h vigila reseñas negativas.\n\nSi quieres el primer informe ya: menú → 4 · Enviar informe ahora (tarda 2-4 min).');
+  instalar_();
+  mostrar_('Agente activado ✅', 'El domingo por la noche analiza las 4 sedes y el lunes a las 8:30 recibirás el informe en ' +
+    (prop_('NOTIFY_EMAILS') || DEFAULT_EMAILS) + '.\nCada 3 h vigila reseñas negativas.\n\nSi quieres el primer informe ya: menú → 4 · Enviar informe ahora.');
 }
 
 function enviarAhoraDesdeMenu() {
-  SpreadsheetApp.getActive().toast('Analizando las 4 sedes… tarda 2-4 minutos.', 'Agente Google', 240);
+  SpreadsheetApp.getUi();
+  SpreadsheetApp.getActive().toast('Analizando las 4 sedes… (2-4 min)', 'Agente Google', 240);
   try {
-    ejecutarSemanal();
-    mostrar_('Informe enviado ✅', 'Revisa ' + (prop_('NOTIFY_EMAILS') || DEFAULT_EMAILS) + '. Las propuestas también están en la pestaña GBP_Propuestas.');
+    enviarAhora_();
+    var e = estado_();
+    if (e && e.error) throw new Error(e.error);
+    mostrar_('Informe en marcha ✅', 'Datos de las 4 sedes recogidos. La IA está preparando el análisis y te llegará a ' +
+      (prop_('NOTIFY_EMAILS') || DEFAULT_EMAILS) + ' en unos 15-60 minutos.\nNo hace falta dejar la hoja abierta.');
   } catch (e) { mostrar_('Error', String(e) + '\n\nEjecuta "2 · Comprobar que todo funciona" para ver qué falta.'); }
 }
 
 function desactivar() {
+  SpreadsheetApp.getUi();
   ScriptApp.getProjectTriggers().forEach(function (t) { ScriptApp.deleteTrigger(t); });
   mostrar_('Agente desactivado', 'No se enviarán más informes ni alertas hasta que lo vuelvas a activar.');
 }
