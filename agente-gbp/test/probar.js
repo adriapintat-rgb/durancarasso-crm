@@ -20,6 +20,7 @@ global.UrlFetchApp = { fetch: (url, o = {}) => {
   if (m) { const f = FICHAS[m[1]]; return R({ displayName: { text: 'Durán Carasso' }, formattedAddress: f.dir, nationalPhoneNumber: f.tel, websiteUri: 'https://www.durancarasso.com/', businessStatus: 'OPERATIONAL', rating: f.rating, userRatingCount: f.n, photos: Array(f.fotos), regularOpeningHours: { weekdayDescriptions: ['lunes: 9:30–14:00, 16:00–19:00'] }, reviews: revs[m[1]] || [] }); }
   if (url.includes('pagespeedonline')) return R({ lighthouseResult: { categories: { seo: { score: 0.85 }, performance: { score: 0.42 } }, audits: { 'largest-contentful-paint': { displayValue: '5,1 s' } } } });
   if (url.startsWith('https://www.durancarasso.com')) return R('<html><title>Durán Carasso</title><h1>A</h1><h1>B</h1><p>931 59 51 25</p></html>');
+  if (url.includes('/v1/models')) return R({ data: [] });
   if (url.includes('api.anthropic.com')) { claudeCalls.push(body); return R(fakeClaude(body)); }
   throw new Error('URL no simulada: ' + url);
 } };
@@ -39,10 +40,16 @@ function fakeClaude(b) {
       respuestas: [] })) }));
 }
 eval(M.load());
-Object.assign(global, { ejecutarSemanal, vigilarUrgente, instalar, doGet, accionWeb, token_, memoria_, decidir_, enlace_ });
+Object.assign(global, { diagnostico, activarDesdeMenu, ejecutarSemanal, vigilarUrgente, instalar, doGet, accionWeb, token_, memoria_, decidir_, enlace_ });
 const OUT = require('os').tmpdir() + '/';
 function check(cond, txt) { console.log((cond ? '✅ ' : '❌ ') + txt); if (!cond) process.exitCode = 1; }
 
+console.log('\n0) Menú de la hoja');
+const diag = diagnostico(); console.log('  ' + __alerts.at(-1).split('\n').slice(0, 4).join('\n  '));
+check(diag.filter(x => !x.ok && !x.opcional).map(x => x.nombre).join() === 'Agente activado', 'diagnóstico: solo falta activar (claves, 4 fichas, PageSpeed y app web OK)');
+__store.GOOGLE_API_KEY_BAK = __store.GOOGLE_API_KEY; delete __store.GOOGLE_API_KEY;
+activarDesdeMenu(); check(/Falta/.test(__alerts.at(-1)) && __triggers.length === 0, 'no deja activar si falta una clave');
+__store.GOOGLE_API_KEY = __store.GOOGLE_API_KEY_BAK;
 console.log('\n1) instalar()'); instalar();
 check(__triggers.join() === 'ejecutarSemanal,vigilarUrgente', 'triggers: lunes + cada 3h');
 check(['GBP_Propuestas', 'GBP_Historico', 'GBP_Competencia'].every(n => __sheets[n]), 'hojas creadas');

@@ -7,7 +7,7 @@
  * Script Properties (Configuración del proyecto → Propiedades del script):
  *   ANTHROPIC_API_KEY   obligatorio
  *   GOOGLE_API_KEY      obligatorio (Places API (New) + PageSpeed Insights API)
- *   WEBAPP_URL          obligatorio para los botones del email (URL /exec de la app web)
+ *   WEBAPP_URL          opcional: URL /exec de la app web (se detecta sola al implementarla)
  *   NOTIFY_EMAILS       opcional (por defecto DEFAULT_EMAILS)
  *   GBP_ACCOUNT_ID      opcional → Nivel 2: publicar, reseñas sin responder, métricas
  *   SHEET_ID            opcional (por defecto la hoja del CRM)

@@ -19,18 +19,13 @@ Analiza, se compara con la competencia, te propone cambios que apruebas o editas
 **Tipos de propuesta:** publicación semanal, respuesta a reseña, nueva descripción de la ficha (el agente puede hacerlas), y tareas con la mejor opción, cuándo hacerla y el contenido listo para pegar (las hace el equipo).
 
 ## Archivos
-`Config.gs` (sedes, umbrales, piloto automático) · `Agente.gs` (flujo) · `Datos.gs` (Google, web, competencia) · `IA.gs` (Claude) · `Propuestas.gs` (hoja, publicar, memoria) · `Email.gs` · `WebApp.gs` + `Pagina.html` (página de los botones) · `test/` (prueba local, no se sube a Apps Script).
+`Config.gs` (sedes, umbrales, piloto automático) · `Agente.gs` (flujo) · `Datos.gs` (Google, web, competencia) · `IA.gs` (Claude) · `Propuestas.gs` (hoja, publicar, memoria) · `Email.gs` · `Menu.gs` (menú de la hoja) · `WebApp.gs` + `Pagina.html` (página de los botones) · `instalar/` (paquete de 1 archivo) · `test/` (prueba local, no se sube a Apps Script).
 
-## Instalación (20 min)
-1. **Google Cloud:** activa **Places API (New)** y **PageSpeed Insights API** y crea una API key.
-2. **Anthropic:** crea una API key en console.anthropic.com.
-3. En script.google.com crea un nuevo proyecto y un archivo por cada `.gs` y `Pagina.html` (mismo nombre).
-   - En Configuración, marca "Mostrar appsscript.json" y pega `appsscript.json`.
-4. En Propiedades del script añade `ANTHROPIC_API_KEY` y `GOOGLE_API_KEY`.
-5. Pulsa **Implementar → Nueva implementación → Aplicación web**, con "Ejecutar como: yo" y "Acceso: cualquier usuario".
-   - Copia la URL `/exec` en la propiedad `WEBAPP_URL`.
-6. Ejecuta `instalar()` y acepta los permisos. Comprueba en el registro que las 4 sedes son las fichas correctas.
-7. Ejecuta `probarAhora()` y te llegará el primer informe.
+## Instalación
+Guía paso a paso sin programar en **[INSTALAR.md](INSTALAR.md)**. Resumen: se pega `instalar/Codigo.gs` en la hoja del CRM y se configura desde el menú **🤖 Agente Google**.
+
+- **Menú de la hoja:** configurar claves, comprobar que todo funciona (dice exactamente qué falta), activar y enviar el informe ahora.
+- **Si cambias algún `.gs`:** regenera el paquete con `node agente-gbp/test/empaquetar.js`. Para probarlo con Google y Claude simulados, usa `node agente-gbp/test/probar.js`.
 
 Los emails van a `adriap@durancarasso.com`. Para cambiarlo, usa la propiedad `NOTIFY_EMAILS`.
 

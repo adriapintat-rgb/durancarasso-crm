@@ -11,7 +11,7 @@ var C = { ID: 0, FECHA: 1, SEDE: 2, TIPO: 3, PRIO: 4, TITULO: 5, CTX: 6, PROP: 7
 // Estados: PENDIENTE → PUBLICADO | HECHO | DESCARTADO | APROBADO_MANUAL | ERROR
 
 function hoja_(nombre) {
-  var ss = SpreadsheetApp.openById(prop_('SHEET_ID') || DEFAULT_SHEET_ID);
+  var ss = prop_('SHEET_ID') ? SpreadsheetApp.openById(prop_('SHEET_ID')) : (SpreadsheetApp.getActive() || SpreadsheetApp.openById(DEFAULT_SHEET_ID));
   var sh = ss.getSheetByName(nombre);
   if (!sh) { sh = ss.insertSheet(nombre); sh.appendRow(CABECERAS[nombre]); sh.setFrozenRows(1); }
   return sh;
@@ -114,5 +114,7 @@ function token_(id) {
   return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(id, secreto_())).slice(0, 22);
 }
 function enlace_(id, accion) {
-  return prop_('WEBAPP_URL', true) + '?id=' + encodeURIComponent(id) + '&a=' + accion + '&t=' + token_(id);
+  var u = webappUrl_();
+  if (!u) throw new Error('Falta implementar la app web (menú → 2 · Comprobar)');
+  return u + '?id=' + encodeURIComponent(id) + '&a=' + accion + '&t=' + token_(id);
 }
