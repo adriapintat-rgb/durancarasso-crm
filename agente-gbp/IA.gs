@@ -98,7 +98,7 @@ function auditarBusqueda_(s, f) {
         'Busca como lo haría un cliente: "Durán Carasso ' + s.nombre + '" y "' + s.mercado + '".\n' +
         'Datos oficiales: ' + JSON.stringify({ direccion: f.formattedAddress || '', telefono: f.nationalPhoneNumber || '', web: f.websiteUri || '' }) + '\n' +
         'Responde en español, máx. 1.000 caracteres, en viñetas: 1) qué aparece de la marca y si la web oficial sale primero;' +
-        ' 2) datos incoherentes en otros sitios (con URL); 3) qué tienen los competidores que a nosotros nos falta.' +
+        ' 2) datos incoherentes en otros sitios (con URL); 3) qué tienen los competidores (' + ((PERFIL_SEDES[s.code] || {}).competidores || 'los que salgan') + ') que a nosotros nos falta.' +
         ' Solo hechos encontrados.' }]
     }));
     P.setProperty(k, JSON.stringify({ ts: Date.now(), texto: texto }));
