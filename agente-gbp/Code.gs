@@ -250,7 +250,7 @@ function gemini_(prompt, o) {
   const body = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: o.temp || 0.6 } };
   if (o.json) body.generationConfig.responseMimeType = 'application/json';
   if (o.buscar) body.tools = [{ google_search: {} }];
-  const modelos = [CONFIG.GEMINI_MODEL].concat(CONFIG.GEMINI_RESERVA || []);
+  const modelos = [CONFIG.GEMINI_MODEL, CONFIG.GEMINI_MODEL].concat(CONFIG.GEMINI_RESERVA || []);  // 2 intentos con el principal
   for (let intento = 0; intento < modelos.length; intento++) {
     const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelos[intento] + ':generateContent';
     const res = UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
@@ -262,7 +262,10 @@ function gemini_(prompt, o) {
     const parts = ((((JSON.parse(res.getContentText()).candidates || [])[0] || {}).content || {}).parts) || [];
     const txt = parts.map(function (p) { return p.text || ''; }).join('').trim();
     if (!txt) throw new Error('Gemini no devolvió texto');
-    return o.json ? JSON.parse(txt.replace(/^```(json)?|```$/g, '').trim()) : txt;
+    if (!o.json) return txt;
+    // a veces Gemini devuelve un JSON roto (p. ej. con código dentro): se reintenta con otro modelo
+    try { return JSON.parse(txt.replace(/^```(json)?|```$/g, '').trim()); }
+    catch (e) { if (intento < modelos.length - 1) continue; throw new Error('Gemini devolvió un JSON no válido (' + e.message + ')'); }
   }
 }
 
@@ -297,7 +300,7 @@ function planIA_(s, d, dominio) {
     '"vsCompetencia":"1-2 frases con cifras frente a la competencia",' +
     '"acciones":[{"prioridad":"ALTA|MEDIA|BAJA","accion":"qué hacer y dónde exactamente","motivo":"por qué",' +
     '"recomendada":"la mejor opción y por qué","cuando":"fecha o franja concreta (temporada: Cerdanya/Andorra esquí dic-mar y verano; Sitges primavera-verano; festivos próximos)",' +
-    '"contenido":"texto o código listo para copiar (mensaje de WhatsApp para pedir reseñas, meta description, JSON-LD…) o vacío"}],' +
+    '"contenido":"texto listo para copiar (mensaje de WhatsApp para pedir reseñas, meta description…), en texto plano, sin código ni comillas dobles, o vacío"}],' +
     '"post":"publicación para la ficha de Google en ' + s.idioma + ', máx. 1.000 caracteres, SIN teléfonos, emails ni enlaces (Google los rechaza)",' +
     '"descripcion":"nueva descripción de la ficha en ' + s.idioma + ' (650-750 caracteres, sin teléfonos ni enlaces) o vacío si no hace falta"}\n' +
     'titular, estado, vsCompetencia y acciones SIEMPRE en castellano (solo post y descripcion van en ' + s.idioma + '). ' +
@@ -361,7 +364,7 @@ function enviarInforme_(res, dominio) {
     cuerpo += tablaCompetencia_(d);
 
     const items = p.acciones.map(function (x) {
-      return { tipo: 'TAREA', prioridad: x.prioridad, titulo: x.accion, texto: x.contenido || x.recomendada || '',
+      return { tipo: 'TAREA', prioridad: x.prioridad, titulo: x.accion, texto: x.contenido || '',
                detalle: x.motivo + (x.recomendada ? '\n✅ Mejor opción: ' + x.recomendada : '') + (x.cuando ? '\n🗓️ Cuándo: ' + x.cuando : '') };
     });
     if (p.post) items.push({ tipo: 'POST', prioridad: 'MEDIA', titulo: 'Publicación semanal para la ficha', texto: p.post, detalle: '' });
@@ -382,7 +385,8 @@ function enviarInforme_(res, dominio) {
 
   const sinIA = SEDES.map(function (s) { return res[s.code] && res[s.code].plan && res[s.code].plan.errorIA; }).filter(Boolean)[0];
   const avisoIA = sinIA ? '<div style="background:#fdecea;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:12px"><b>⚠️ La IA (Gemini) no respondió:</b> ' + esc_(sinIA) +
-    '<br>El informe se ha hecho solo con las reglas. Revisa que la clave permita "Generative Language API".</div>' : '';
+    '<br>Esas sedes se han hecho solo con las reglas. Suele ser puntual: la semana que viene se reintenta sola.' +
+    (/API key|403|PERMISSION/i.test(sinIA) ? ' Revisa la clave de Gemini en CONFIG.' : '') + '</div>' : '';
   const web = dominio && dominio.length ? '<div style="background:#fff8e1;border-radius:8px;padding:12px 16px;margin-top:14px;font-size:13px"><b>🌐 Web (común a las 4 sedes)</b><br>· ' +
     dominio.map(esc_).join('<br>· ') + '</div>' : '';
   const html = marco_('Informe semanal · ' + hoy,

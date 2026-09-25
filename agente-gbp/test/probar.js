@@ -31,7 +31,7 @@ global.SpreadsheetApp = { create: () => (creado = true, libro), open: () => libr
 
 // ── Google y Gemini simulados (fichas reales, competencia simulada)
 const FICHAS = { BCN: [4.7, 62], STG: [4.8, 193], CRD: [5.0, 15], AND: [4.6, 5] };
-let geminiCaido = false, geminiLlamadas = [];
+let geminiCaido = false, geminiLlamadas = [], jsonRoto = 0;
 global.UrlFetchApp = { fetch: (url, o = {}) => {
   const R = (x, c = 200) => ({ getResponseCode: () => c, getContentText: () => typeof x === 'string' ? x : JSON.stringify(x) });
   const body = o.payload ? JSON.parse(o.payload) : {};
@@ -51,6 +51,7 @@ global.UrlFetchApp = { fetch: (url, o = {}) => {
     geminiLlamadas.push(body);
     if (geminiCaido) return R('{"error":"quota"}', 429);
     const txt = body.contents[0].parts[0].text;
+    if (jsonRoto && body.generationConfig.responseMimeType) { jsonRoto--; return R({ candidates: [{ content: { parts: [{ text: '{"titular":"a" "b"}' }] } }] }); }
     const out = body.tools ? '• La web oficial sale primera.' : body.generationConfig.responseMimeType
       ? JSON.stringify({ titular: 'Titular ok', estado: 'Estado', vsCompetencia: 'Vs', post: 'Otoño en la zona. Llámanos al 931 59 51 25.',
           descripcion: '', acciones: [{ prioridad: 'ALTA', accion: 'Quitar palabras clave del nombre', motivo: 'Riesgo', recomendada: 'Durán Carasso', cuando: 'Esta semana', contenido: '' }] })
@@ -96,6 +97,10 @@ check(/▲|▼/.test(mails.at(-1).htmlBody) || /Ficha completa/.test(mails.at(-1
 geminiCaido = true; const n2 = mails.length; enviarInformeAhora();
 check(mails.length === n2 + 1 && /La IA \(Gemini\) no respondió/.test(mails.at(-1).htmlBody), 'si Gemini falla, el informe llega igual (con las reglas)');
 geminiCaido = false;
+
+jsonRoto = 1; const n4 = mails.length; enviarInformeAhora();
+check(mails.length === n4 + 1 && !/no respondió/.test(mails.at(-1).htmlBody), 'si Gemini devuelve un JSON roto, reintenta y sale bien');
+jsonRoto = 0;
 
 const lento = Date.now; let t = 0; Date.now = () => (t += 100000);
 libro.sheets.Trabajo.rows.length = 0; const n3 = mails.length; enviarInformeAhora();
