@@ -18,7 +18,8 @@ function mkSheet() {
   const rows = [], sh = { rows, setName() { return sh; }, appendRow: r => rows.push(r.slice()), getLastRow: () => rows.length,
     clearContents: () => { rows.length = 0; },
     getDataRange: () => ({ getValues: () => rows.map(r => r.slice()) }),
-    getRange: (r, c) => ({ getValue: () => (rows[r - 1] || [])[c - 1] || '', setValue: v => { rows[r - 1][c - 1] = v; } }) };
+    getRange: (r, c) => ({ getValue: () => (rows[r - 1] || [])[c - 1] || '', setValue: v => { rows[r - 1][c - 1] = v; },
+      setValues: m => m[0].forEach((v, i) => { rows[r - 1][c - 1 + i] = v; }) }) };
   return sh;
 }
 const libro = { sheets: { Hoja1: mkSheet() } };
@@ -52,9 +53,12 @@ global.UrlFetchApp = { fetch: (url, o = {}) => {
     if (geminiCaido) return R('{"error":"quota"}', 429);
     const txt = body.contents[0].parts[0].text;
     if (jsonRoto && body.generationConfig.responseMimeType) { jsonRoto--; return R({ candidates: [{ content: { parts: [{ text: '{"titular":"a" "b"}' }] } }] }); }
-    const out = body.tools ? '• La web oficial sale primera.' : body.generationConfig.responseMimeType
-      ? JSON.stringify({ titular: 'Titular ok', estado: 'Estado', vsCompetencia: 'Vs', post: 'Otoño en la zona. Llámanos al 931 59 51 25.',
-          descripcion: '', acciones: [{ prioridad: 'ALTA', accion: 'Quitar palabras clave del nombre', motivo: 'Riesgo', recomendada: 'Durán Carasso', cuando: 'Esta semana', contenido: '' }] })
+    const out = /Esta tarea no convenció/.test(txt)
+      ? JSON.stringify({ que: 'Pedir reseñas por email', porque: 'Otro canal', pasos: ['Abre Gmail', 'Envía la plantilla'], cuando: 'Lunes', texto: 'Hola' })
+      : body.generationConfig.responseMimeType
+      ? JSON.stringify({ resumen: 'Resumen ok', tareas: [{ prioridad: 'ALTA', sedes: ['BCN', 'STG', 'CRD', 'AND', 'XXX'], que: 'Quitar palabras clave del nombre',
+          porque: 'Riesgo', pasos: ['business.google.com → Editar perfil → Nombre'], cuando: 'Esta semana', texto: '' }],
+          posts: { BCN: 'Otoño en la zona. Llámanos al 931 59 51 25.', STG: 'Post Sitges.', CRD: 'Post Cerdanya.', AND: 'Post Andorra.' }, descripciones: { CRD: 'Descripció nova.' } })
       : /Responde solo: OK/.test(txt) ? 'OK' : 'Alternativa distinta del texto.';
     return R({ candidates: [{ content: { parts: [{ text: out }] } }] });
   }
@@ -64,7 +68,7 @@ global.UrlFetchApp = { fetch: (url, o = {}) => {
 // ── Carga el código con claves de prueba
 eval(fs.readFileSync(path.join(__dirname, '..', 'Code.gs'), 'utf8').replace(/const (\w+) = /g, 'var $1 = '));
 CONFIG.GEMINI_API_KEY = 'k'; CONFIG.GOOGLE_API_KEY = 'g';
-let fallos = 0;
+let fallos = 0; const gemCount = () => geminiLlamadas.length;
 const check = (c, t) => { console.log((c ? '✅ ' : '❌ ') + t); if (!c) fallos++; };
 const propuestas = () => libro.sheets.Hoja1.rows.slice(1);
 
@@ -76,8 +80,10 @@ enviarInformeAhora();
 const m = mails.at(-1);
 fs.writeFileSync(os.tmpdir() + '/agente-google.html', m.htmlBody);
 check(m && /urgentes/.test(m.subject), 'email enviado: ' + (m && m.subject));
-check(propuestas().length === 8, propuestas().length + ' propuestas guardadas (1 tarea + 1 post por sede)');
-check((m.htmlBody.match(/a=hecho/g) || []).length === 8 && /a=otra/.test(m.htmlBody) && /a=no/.test(m.htmlBody), 'cada propuesta con ✅ 🔄 ❌');
+check(propuestas().length === 6, propuestas().length + ' propuestas guardadas (1 tarea para las 4 sedes + 4 posts + 1 descripción)');
+check(propuestas()[0][3] === 'BCN,STG,CRD,AND' && /Las 4 sedes/.test(m.htmlBody) && /1\. business\.google\.com/.test(m.htmlBody), 'la tarea común sale una sola vez, con pasos');
+check(gemCount() === 3, '2 llamadas a la IA para las 4 sedes: tareas y textos (+ testFichas)');
+check((m.htmlBody.match(/a=hecho/g) || []).length === 6 && /a=otra/.test(m.htmlBody) && /a=no/.test(m.htmlBody), 'cada propuesta con ✅ 🔄 ❌');
 check(/GPTBot/.test(m.htmlBody) && /llms\.txt/.test(m.htmlBody), 'incluye los problemas de la web');
 check(!/931 59 51 25/.test(propuestas().find(r => r[4] === 'POST')[8]), 'post sin teléfono (Google lo rechazaría)');
 check(!triggers.some(t => t.fn === 'continuarInforme') && libro.sheets.Trabajo.rows.length === 0, 'limpia el trabajo al terminar');
@@ -88,11 +94,12 @@ check(/no autorizado/.test(get(p1, 'hecho', 'malo')), 'token falso rechazado');
 check(/hecho/.test(get(p1, 'hecho')) && propuestas()[0][9] === 'HECHO', '✅ Hecho');
 check(/Descartado/.test(get(p2, 'no')) && propuestas()[1][9] === 'DESCARTADO', '❌ No me sirve');
 const n = mails.length;
-check(/Nueva propuesta/.test(get(p3, 'otra')) && mails.length === n + 1 && propuestas()[2][8] === 'Alternativa distinta del texto.', '🔄 Dame otra → nueva versión por email');
-check(memoria_('BCN').length === 2 || memoria_(p1[3]).length >= 1, 'memoria: recuerda lo hecho y descartado');
+check(/Alternativa distinta del texto/.test(get(p3, 'otra')) && mails.length === n && propuestas()[2][8] === 'Alternativa distinta del texto.', '🔄 Dame otra → nueva versión en la misma página, sin email');
+check(/Pedir reseñas por email/.test(get(propuestas()[0], 'otra')) && propuestas()[0][6] === 'Pedir reseñas por email' && /1\. Abre Gmail/.test(propuestas()[0][7]), '🔄 en una tarea → tarea nueva con pasos');
+check(memoria_().length === 2, 'memoria: recuerda lo hecho y descartado');
 enviarInformeAhora();
-check(geminiLlamadas.some(b => /YA DESCARTÓ O HIZO/.test(b.contents[0].parts[0].text)), 'la semana siguiente la IA recibe lo descartado/hecho');
-check(/▲|▼/.test(mails.at(-1).htmlBody) || /Ficha completa/.test(mails.at(-1).htmlBody), 'compara con la semana anterior');
+check(geminiLlamadas.some(b => /YA HIZO O DESCARTÓ/.test(b.contents[0].parts[0].text)), 'la semana siguiente la IA recibe lo descartado/hecho');
+check(/Ficha completa/.test(mails.at(-1).htmlBody) && propuestas().filter(r => r[4] === 'DESCRIPCION').length === 1, 'tabla de sedes y no repite la descripción en 4 semanas');
 
 geminiCaido = true; const n2 = mails.length; enviarInformeAhora();
 check(mails.length === n2 + 1 && /La IA \(Gemini\) no respondió/.test(mails.at(-1).htmlBody), 'si Gemini falla, el informe llega igual (con las reglas)');

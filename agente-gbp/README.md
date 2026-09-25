@@ -6,9 +6,9 @@ Mismo sistema que el **Reputation Agent**: un solo `Code.gs` en Apps Script, IA 
 1. **Revisa la ficha de Google:** nota, reseñas, fotos, horario, teléfono, web y nombre. Calcula el **% de ficha completa**.
 2. **Se compara** con las 5 inmobiliarias de la zona en Google Maps.
 3. **Revisa la web:** SEO, velocidad, schema, teléfono coherente, robots.txt para IA, llms.txt y francés.
-4. **Busca la marca** en Google con Gemini: qué ve un cliente y qué datos no cuadran.
-5. **Gemini propone** hasta 4 acciones por sede (con la mejor opción y cuándo), un post y, si hace falta, una nueva descripción.
-6. **Email con botones:** ✅ Hecho · 🔄 Dame otra propuesta · ❌ No me sirve. Lo hecho o descartado no se vuelve a proponer.
+4. **Gemini decide para las 4 sedes a la vez:** como máximo 5 tareas de la semana, sin repetir la misma por sede, cada una con por qué, pasos exactos y cuándo.
+5. **Textos listos para pegar:** un post por sede (en castellano o catalán) y una descripción nueva cada 4 semanas como mucho.
+6. **Email con botones:** ✅ Hecho · 🔄 Dame otra (la nueva versión sale en la misma página, sin email) · ❌ No me sirve. Lo hecho o descartado no se vuelve a proponer.
 
 **Las reseñas** las gestiona el Reputation Agent (aquí no se duplican).
 

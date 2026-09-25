@@ -21,20 +21,22 @@ Las claves están **solo en Apps Script**, partidas en trozos (`'…' + '…'`) 
 
 ## 2. Cómo funciona
 1. El trigger de los lunes a las 8:00 (Europe/Madrid) ejecuta `informeSemanal()`.
-2. Por cada sede se ejecuta `analizarSede_()`, que hace lo siguiente:
+2. `analizarSede_()` recoge los datos de cada sede, una por vez, y los guarda en la pestaña Trabajo:
    - `ficha_()`: nota, reseñas, fotos, horario, teléfono, web y nombre.
    - `checklist_()`: calcula el % de ficha completa.
    - `competencia_()`: las 5 inmobiliarias de la zona en Google Maps.
    - `auditarWeb_()` y `pageSpeed_()`: SEO y velocidad de la web.
    - `auditarDominio_()`: robots.txt para las IA, sitemap, llms.txt y versión en francés.
-3. `planIA_()` pide a Gemini un JSON con: titular, estado, comparación con la competencia, hasta 4 acciones, un post y la descripción.
-   - Recibe lo que el equipo ya hizo o descartó (`memoria_()`), para no repetirlo.
-   - Si Gemini falla, `planFallback_()` genera el plan solo con reglas y el email llega igual.
-4. Si el proceso se acerca al límite de 6 minutos de Apps Script, guarda el progreso en la pestaña Trabajo y `continuarInforme` sigue al minuto.
-5. `enviarInforme_()` manda el email con KPIs, la tabla de competencia y las tarjetas con botones.
-6. Los botones llaman a `doGet()`, que valida un token por propuesta:
+3. `planIA_()` hace **2 llamadas a Gemini para las 4 sedes**, las dos con `responseSchema` para que el JSON siempre sea válido:
+   - **Tareas:** como máximo 5, agrupadas entre sedes, con por qué, pasos y cuándo. Recibe `memoria_()` (lo que el equipo ya hizo o descartó) para no repetirlo.
+   - **Textos:** un post por sede y una descripción solo si no se propuso en las últimas 4 semanas (`necesitaDescripcion_()`).
+   - Cada llamada tarda menos de 60 segundos, que es el límite de UrlFetch en Apps Script.
+4. Si Gemini falla, `planFallback_()` agrupa lo que detectan las reglas y el email llega igual.
+5. Si el proceso se acerca al límite de 6 minutos, `continuarInforme` sigue al minuto.
+6. `enviarInforme_()` manda el email en este orden: tabla de sedes → 🎯 tareas → ✍️ textos → 📊 competencia.
+7. Los botones llaman a `doGet()`, que valida un token por propuesta:
    - `hecho` / `no` marcan la propuesta en la hoja.
-   - `otra` pide a Gemini una versión nueva y la reenvía por email.
+   - `otra` genera la alternativa y **la muestra en la misma página**, con el botón Copiar y los mismos botones, sin enviar email.
 
 ## 3. Estado actual (25/09/2026)
 - ✅ `testFichas` funciona con las claves reales: 4 fichas + "Gemini responde: OK".
@@ -57,7 +59,7 @@ Las claves están **solo en Apps Script**, partidas en trozos (`'…' + '…'`) 
   - La clave de Google Cloud da 403 `API_KEY_SERVICE_BLOCKED` con Gemini. Usa la de AI Studio.
   - `gemini-2.5-flash` y `1.5-flash` ya no están disponibles.
   - Si un modelo está saturado (503), el código pasa al siguiente de la reserva.
-- **Búsqueda de marca con Google Search (grounding):** en el plan gratis da 429, así que se omite sin romper nada.
+- **Claves:** el código las guarda en Propiedades del script. Al pegar una versión nueva con `PEGA_AQUI…` se siguen usando las guardadas.
 - **Si una ficha detectada no es la vuestra:** cambia `buscar` en `SEDES` y borra la propiedad `PLACE_XXX` en Configuración → Propiedades del script.
 - **Límite de Places:** devuelve como máximo 10 fotos y 5 reseñas. Por eso "10 fotos" significa "10 o más".
 - **Reseñas:** no se tocan aquí. Las gestiona el Reputation Agent.
