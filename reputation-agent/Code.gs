@@ -16,7 +16,7 @@ const CONFIG = {
   GEMINI_API_KEY: 'PEGA_AQUI_TU_API_KEY',  // en Apps Script pega tu clave real; NO subir la clave al repositorio
   MARCA: 'Durán Carasso',
   TONO: 'Cercano, profesional, elegante. Trato de usted. Firma como "El equipo de Durán Carasso".',
-  GEMINI_MODEL: 'gemini-1.5-flash',
+  GEMINI_MODEL: 'gemini-2.5-flash',
   NOMBRE_HOJA: 'DuranCarasso_Reseñas_Log',
 };
 
