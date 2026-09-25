@@ -18,6 +18,9 @@ const CONFIG = {
   TONO: 'Cercano, profesional, elegante. Trato de usted. Firma como "El equipo de Durán Carasso".',
   GEMINI_MODEL: 'gemini-2.5-flash',
   NOMBRE_HOJA: 'DuranCarasso_Reseñas_Log',
+  // Solo enviar email para reseñas de esta puntuación o menos (1-3★ = malas/regulares).
+  // Pon 5 si quieres recibir aviso de TODAS (incluidas las buenas).
+  AVISAR_HASTA_ESTRELLAS: 3,
 };
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -36,6 +39,14 @@ function revisarReseñas() {
       const estrellas = starRatingToNum_(r.starRating);
       const texto = (r.comment || '').trim();
       const autor = (r.reviewer && r.reviewer.displayName) || 'Cliente';
+
+      // Solo avisamos de reseñas malas/regulares (según CONFIG). Las buenas se
+      // registran en la hoja pero no generan email ni gasto de IA.
+      if (estrellas > CONFIG.AVISAR_HASTA_ESTRELLAS) {
+        registrar_(sheet, id, loc.title, autor, estrellas, { sentimiento: 'positiva', tema: '—', urgencia: 'baja' });
+        vistos[id] = true; return;
+      }
+
       const a = analizarConIA_({ ubicacion: loc.title, estrellas: estrellas, texto: texto, autor: autor });
       const token = guardarPendiente_(id, r.name, a.borrador, {
         ubicacion: loc.title, autor: autor, estrellas: estrellas, texto: texto, analisis: a
