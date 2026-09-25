@@ -149,6 +149,11 @@ input[type=range]:focus{box-shadow:none}
 .an-reco h4{margin:0 0 9px;font-family:'Playfair Display',serif;font-size:18px;color:var(--navy)}
 .an-reco li{color:var(--text);font-size:13px;line-height:1.7;margin-left:2px}
 .an-empty{text-align:center;padding:34px 18px;color:var(--sub)}
+.hv-card{border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-top:8px;cursor:pointer;background:var(--card);transition:.12s}
+.hv-card:hover{border-color:var(--gold);background:#FCFAF3}
+.hv-card .t{font-family:'Playfair Display',serif;font-size:16px;color:var(--navy);line-height:1.25}
+.hv-card .f{color:var(--text);font-size:12px;margin-top:4px;line-height:1.4}
+.hv-card .a{color:var(--sub);font-size:10px;letter-spacing:.5px;text-transform:uppercase;margin-top:5px}
 
 /* ── TARJETA IA (caja fina destacada) ── */
 .ai-card{border:1px solid var(--line);border-radius:12px;background:#fff;padding:20px 20px 8px;margin-bottom:26px}
@@ -296,6 +301,8 @@ input[type=range]:focus{box-shadow:none}
           <textarea id="caption" rows="9" placeholder="Párrafo 1 — gancho emocional…"></textarea>
         </div>
         <button class="btn btn-s btn-full btn-mini ai-only" id="btn_hookia" style="margin-top:10px;display:none">✦ Mejorar gancho (viral) con IA</button>
+        <button class="btn btn-s btn-full btn-mini ai-only" id="btn_variants" style="margin-top:8px;display:none">✦ Dame 3 ganchos alternativos</button>
+        <div id="hook_variants"></div>
       </div>
     </div>
 
@@ -1006,6 +1013,37 @@ async function optimizeHashtags(){
   aiIdle('btn_htia','✦ Optimizar hashtags con IA');
 }
 
+// 3 ganchos alternativos usando tu modelo real — eliges el que más pega
+var HOOKS=[];
+async function generateVariants(){
+  if(!aiReady()){toast('Conecta el publicador (⚙) o abre dentro de Claude');return}
+  aiBusy('btn_variants','Buscando ganchos…');
+  var type=classifyType($('caption').value+' '+v('f_type')+' '+v('f_name'));
+  var ex=brandExamples(type,3);
+  var base=[v('f_name'),v('f_loc'),v('f_type'),v('f_m2')].filter(Boolean).join(' · ')||$('caption').value.slice(0,300)||$('ai_in').value.slice(0,300);
+  var p=BRAND_RULES+(ex.length?'\n\nGANCHOS REALES QUE FUNCIONAN (tu feed, imita su registro):\n'+ex.map(function(e){return '• '+String(e.caption).split('\n').filter(Boolean)[0]}).join('\n'):'')+'\n\nGenera 3 GANCHOS distintos entre sí para el slide 1 de un carrusel de Instagram: máximo scroll-stop, elegantes, sin clickbait. Cada uno con un ángulo diferente (p. ej. emoción/estilo de vida, exclusividad/privacidad, dato irresistible). Devuelve SOLO JSON {"variants":[{"title":"titular ≤9 palabras","firstLine":"primera línea de la caption","angle":"1-2 palabras del ángulo"}]}.\n\nPropiedad: '+base;
+  try{LASTAI=null;var r=await aiJson(p);
+    var vs=(r&&Array.isArray(r.variants))?r.variants:(Array.isArray(r)?r:[]);
+    HOOKS=vs.slice(0,3);
+    if(!HOOKS.length){toast('No salieron variantes, reintenta')}else{renderVariants()}
+  }catch(e){toast(aiErr(e&&e.code)||'Error')}
+  aiIdle('btn_variants','✦ Dame 3 ganchos alternativos');
+}
+function renderVariants(){
+  var el=$('hook_variants');if(!el)return;
+  var h='';
+  HOOKS.forEach(function(x,i){h+='<div class="hv-card" data-i="'+i+'"><div class="t">'+esc(x.title||'')+'</div>'+(x.firstLine?'<div class="f">'+esc(x.firstLine)+'</div>':'')+(x.angle?'<div class="a">'+esc(x.angle)+'</div>':'')+'</div>'});
+  if(LASTAI)h+='<div class="mini" style="margin-top:7px;color:var(--gold)">Coste: '+fmtCost(LASTAI.cost)+'</div>';
+  el.innerHTML=h;
+  var cards=el.querySelectorAll('.hv-card');
+  for(var i=0;i<cards.length;i++)cards[i].addEventListener('click',function(){applyVariant(HOOKS[this.getAttribute('data-i')|0]);var c=el.querySelectorAll('.hv-card');for(var j=0;j<c.length;j++)c[j].style.borderColor='';this.style.borderColor='var(--gold)'});
+}
+function applyVariant(x){
+  if(!x)return;
+  if(x.title){slides[0].title=String(x.title);renderSlides();scheduleRender()}
+  if(x.firstLine){var c=$('caption').value.split('\n');c[0]=String(x.firstLine);$('caption').value=c.join('\n');if(typeof sync==='function')sync()}
+  save();toast('Gancho aplicado ✦');
+}
 async function viralHook(){
   if(!aiReady())return; aiBusy('btn_hookia','Afinando…');
   var p=BRAND_RULES+'\n\nMejora el GANCHO para máximo scroll-stop en Instagram sin perder elegancia ni caer en clickbait. Devuelve SOLO un JSON {"title":"titular slide 1 de ≤9 palabras","firstLine":"primera línea de la caption"}.\n\nTitular actual: '+(slides[0].title||'—')+'\nPropiedad: '+[v('f_name'),v('f_loc'),v('f_type'),v('f_m2')].filter(Boolean).join(' · ');
@@ -1080,6 +1118,7 @@ $('ai_learn').addEventListener('click',learnFromIG);
 brandBadge();
 $('btn_htia').addEventListener('click',optimizeHashtags);
 $('btn_hookia').addEventListener('click',viralHook);
+$('btn_variants').addEventListener('click',generateVariants);
 $('btn_up').addEventListener('click',function(){saveApproved('up')});
 $('btn_down').addEventListener('click',function(){saveApproved('down')});
 
