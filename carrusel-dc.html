@@ -188,7 +188,9 @@ input[type=range]:focus{box-shadow:none}
         <label style="display:flex;align-items:center;gap:8px;margin:11px 0 0;font-size:12px;color:var(--ink);cursor:pointer"><input type="checkbox" id="ai_photos" style="width:auto"> Analizar mis fotos como contexto visual</label>
         <button class="btn btn-g btn-full" id="ai_go" style="margin-top:11px">✦ Generar carrusel con IA</button>
         <button class="btn btn-s btn-full btn-mini" id="ai_scrape" style="margin-top:8px">⇩ Traer fotos + info del enlace</button>
-        <div id="ai_status" class="mini" style="margin-top:9px;text-align:center;min-height:15px"></div>
+        <button class="btn btn-s btn-full btn-mini ai-only" id="ai_learn" style="margin-top:8px;display:none">🎓 Aprender de mi Instagram (modelo real)</button>
+        <div id="ai_model" class="mini" style="margin-top:7px;text-align:center;min-height:14px;color:var(--gold)"></div>
+        <div id="ai_status" class="mini" style="margin-top:6px;text-align:center;min-height:15px"></div>
       </div>
     </div>
 
@@ -703,6 +705,8 @@ $('f_name').addEventListener('input',function(){$('chip').textContent=v('f_name'
 
 /* ══ IA (cerebro en vivo vía capability sample) + MEMORIA (db) ══ */
 var SAMPLE=null, DB=null, AICtx={examples:[],count:0};
+var BRAND={posts:[],updatedAt:0};
+try{BRAND=JSON.parse(localStorage.getItem('dc_brand')||'null')||BRAND}catch(e){}
 var BRAND_RULES=[
 'Eres el copywriter senior de Duran Carasso, inmobiliaria de lujo (Andorra, Sitges/Costa Dorada, Barcelona). Escribe EXACTAMENTE con su estilo de Instagram.',
 'VOZ DE MARCA: exclusiva, aspiracional, cálida y sobria. Elegante, nunca agresiva ni de venta dura. Frases cortas y con ritmo. Evocas una sensación (luz, calma, privacidad, hogar), no listas de portal inmobiliario.',
@@ -760,7 +764,7 @@ async function aiJson(prompt,opts){
     return await SAMPLE.json(prompt,o);
   }
   var c=pubCfg();
-  var body={prompt:prompt}; if(opts.imageUrls&&opts.imageUrls.length)body.images=opts.imageUrls.slice(0,4);
+  var body={prompt:prompt}; if(opts.imageUrls&&opts.imageUrls.length)body.images=opts.imageUrls.slice(0,8);
   var r=await fetch(pubBase()+'/ai',{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':c.secret},body:JSON.stringify(body),signal:opts.signal});
   var d=await r.json();
   if(d.error){var msg=(d.detail&&(d.detail.message||JSON.stringify(d.detail)))||d.error;var er=new Error(String(msg));er.code=(d.error==='no_ai_key')?'not_granted':'upstream_error';throw er;}
@@ -776,6 +780,50 @@ function urlToText(s){
     return txt?('Propiedad (datos extraídos del enlace '+u.hostname+'): '+txt):null;
   }catch(e){return null}
 }
+/* ── Modelo real: aprende de TU Instagram (Graph API lee tu propia cuenta) ── */
+function classifyType(t){
+  t=(t||'').toLowerCase();
+  if(/alquiler|rent|arrenda|temporada/.test(t))return 'alquiler';
+  if(/promoci[oó]n|obra nueva|nueva construcci|pisos? nuevos|de obra/.test(t))return 'promocion';
+  if(/villa|casa|chalet|masia|mas[ií]a|torre|finca/.test(t))return 'villa';
+  if(/[aá]tico|apartamento|piso|d[uú]plex|estudio|loft/.test(t))return 'apartamento';
+  if(/vida|lifestyle|experiencia|descubre|zona|entorno|rinc[oó]n|verano|invierno/.test(t))return 'lifestyle';
+  return 'general';
+}
+var TYPE_ES={villa:'villa/casa',apartamento:'piso/ático',promocion:'promoción',alquiler:'alquiler',lifestyle:'lifestyle/zona',general:'general'};
+function brandSave(){try{localStorage.setItem('dc_brand',JSON.stringify(BRAND))}catch(e){}}
+function brandBadge(){
+  var el=$('ai_model');if(!el)return;
+  el.textContent=BRAND.posts&&BRAND.posts.length?('Modelo IG · '+BRAND.posts.length+' posts reales aprendidos'):'';
+}
+// Devuelve los mejores ejemplos reales del tipo pedido (por engagement)
+function brandExamples(type,n){
+  var ps=(BRAND.posts||[]).filter(function(p){return p.caption&&p.caption.length>20});
+  if(!ps.length)return [];
+  var f=ps.filter(function(p){return p.type===type});
+  if(f.length<2)f=ps;
+  f=f.slice().sort(function(a,b){return (b.likes+b.comments*3)-(a.likes+a.comments*3)});
+  return f.slice(0,n||3);
+}
+async function learnFromIG(){
+  var c=pubCfg();
+  if(!c.url||!c.secret){toast('Conecta el publicador (⚙, en Calendario) y pon el token de Instagram');return}
+  aiBusy('ai_learn','Leyendo tu Instagram…');
+  try{
+    var r=await fetch(pubBase()+'/learn',{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':c.secret}});
+    var d=await r.json();
+    if(d.error){toast('IG: '+((d.detail&&(d.detail.message||d.detail.error&&d.detail.error.message))||d.error));}
+    else{
+      var b=await fetch(pubBase()+'/brand',{headers:{'x-app-secret':c.secret}});
+      var bd=await b.json();
+      BRAND={posts:bd.posts||[],updatedAt:bd.updatedAt||Date.now()};brandSave();brandBadge();
+      var tt=Object.keys(d.byType||{}).map(function(k){return (TYPE_ES[k]||k)+' '+d.byType[k]}).join(' · ');
+      toast('Aprendidos '+d.count+' posts reales ✦');
+      if(tt)$('ai_status').textContent='Tu feed: '+tt;
+    }
+  }catch(e){toast('Sin conexión con el lector (usa la versión alojada)');}
+  aiIdle('ai_learn','🎓 Aprender de mi Instagram (modelo real)');
+}
 async function generateAI(){
   if(!aiReady()){toast('Conecta el publicador (⚙) o abre la app dentro de Claude');return}
   var raw=$('ai_in').value.trim();
@@ -790,11 +838,30 @@ async function generateAI(){
   var t0=Date.now(), timer=setInterval(function(){$('ai_status').textContent='La IA está escribiendo tu carrusel… '+Math.round((Date.now()-t0)/1000)+'s';},1000);
   $('ai_status').textContent='La IA está escribiendo tu carrusel…';
   var ctl=new AbortController(); var killer=setTimeout(function(){ctl.abort()},95000);
-  var ctx=''; if(AICtx.examples.length)ctx='\n\nEJEMPLOS APROBADOS POR EL EQUIPO (imita este tono y longitud):\n'+AICtx.examples.slice(0,4).map(function(e){return '- '+e}).join('\n');
+  // 1) Clasifica qué tipo de carrusel pides -> coge el modelo exacto de tu feed
+  var type=classifyType(material||raw);
+  var ex=brandExamples(type,3);
+  var ctx='';
+  if(ex.length){
+    ctx='\n\nMODELO REAL DE INSTAGRAM DE DURAN CARASSO (posts publicados de tipo "'+(TYPE_ES[type]||type)+'", tus más exitosos). IMÍTALOS con precisión: misma estructura de caption, longitud de frases, tono, uso de emojis y estilo de hashtags. No los copies literal, replica su ADN:\n'+ex.map(function(p,i){return '['+(i+1)+'] ('+(p.likes||0)+'❤ '+(p.slides||1)+' slides)\n'+String(p.caption).slice(0,650)}).join('\n---\n');
+  } else if(AICtx.examples.length){
+    ctx='\n\nEJEMPLOS APROBADOS POR EL EQUIPO (imita este tono y longitud):\n'+AICtx.examples.slice(0,4).map(function(e){return '- '+e}).join('\n');
+  }
   var prompt=BRAND_RULES+ctx+'\n\nMATERIAL DE ENTRADA:\n'+material.slice(0,6000)+'\n\n'+OUTPUT_SPEC;
+  if(ex.length)$('ai_model').textContent='Modelo: '+(TYPE_ES[type]||type)+' · '+ex.length+' posts reales de referencia';
   var aopts={signal:ctl.signal};
   try{
-    if(photos.length){aopts.imageUrls=photos.slice(0,8).map(function(p){return p.src});prompt+='\n\nTe adjunto '+Math.min(photos.length,8)+' fotos reales del inmueble, numeradas 0'+(photos.length>1?'…'+(Math.min(photos.length,8)-1):'')+' en ese orden. Míralas y aplica la CURADURÍA descrita: elige la mejor foto y encuadre para cada slide y adapta el copy a lo que se ve.'}
+    var imgs=[], nContent=0;
+    if(photos.length){nContent=Math.min(photos.length,6);imgs=photos.slice(0,nContent).map(function(p){return p.src});}
+    // 2) Referencia VISUAL: imágenes reales de tu feed (mismo tipo) como modelo de composición/luz
+    var refs=[];
+    var c=pubCfg();
+    if(c.url&&c.secret&&BRAND.posts&&BRAND.posts.length){
+      try{var br=await fetch(pubBase()+'/brand?type='+encodeURIComponent(type)+'&img=2',{headers:{'x-app-secret':c.secret},signal:ctl.signal});var bj=await br.json();refs=(bj.refs||[]).slice(0,2);}catch(e){}
+    }
+    if(nContent){prompt+='\n\nTe adjunto '+nContent+' fotos reales del inmueble, numeradas 0'+(nContent>1?'…'+(nContent-1):'')+' en ese orden (son las ÚNICAS seleccionables en "photo"). Aplica la CURADURÍA: elige la mejor foto y encuadre por slide y adapta el copy a lo que se ve.';}
+    if(refs.length){imgs=imgs.concat(refs);prompt+='\n\nADEMÁS, las '+refs.length+' ÚLTIMAS imágenes son carruseles REALES de Duran Carasso (NO son del inmueble, NO las selecciones en "photo"): úsalas SOLO como referencia de estilo visual —composición, encuadre, luz, temperatura de color, aire— para que el resultado se parezca a lo que ya publica la marca.';}
+    if(imgs.length)aopts.imageUrls=imgs;
     var r=await aiJson(prompt,aopts);
     applyAI(r);$('ai_status').textContent='';
     toast('Carrusel generado con IA ✦'+note);
@@ -884,6 +951,8 @@ async function scrapeLink(){
 }
 $('ai_go').addEventListener('click',generateAI);
 $('ai_scrape').addEventListener('click',scrapeLink);
+$('ai_learn').addEventListener('click',learnFromIG);
+brandBadge();
 $('btn_htia').addEventListener('click',optimizeHashtags);
 $('btn_hookia').addEventListener('click',viralHook);
 $('btn_up').addEventListener('click',function(){saveApproved('up')});

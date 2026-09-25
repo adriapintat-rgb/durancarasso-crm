@@ -104,6 +104,62 @@ export default {
       } catch (e) { return json({ error: 'fetch_failed', detail: String(e) }, 502); }
     }
 
+    // Aprender de tu propio Instagram (Graph API lee TU cuenta): trae posts reales
+    // -> corpus de marca (caption + tipo + imagen + engagement). Se usa como modelo.
+    if (path === '/learn' && request.method === 'POST') {
+      const token = env.IG_TOKEN, ig = env.IG_USER_ID;
+      if (!token || !ig) return json({ error: 'missing IG_TOKEN or IG_USER_ID' }, 400);
+      try {
+        const fields = 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,children{media_url,media_type}';
+        let next = `${GRAPH}/${ig}/media?fields=${encodeURIComponent(fields)}&limit=50&access_token=${token}`;
+        const posts = [];
+        for (let page = 0; page < 3 && next && posts.length < 120; page++) {
+          const d = await (await fetch(next)).json();
+          if (d.error) return json({ error: 'ig_error', detail: d.error }, 502);
+          for (const m of (d.data || [])) {
+            const cap = (m.caption || '').trim();
+            let imgUrl = m.media_url || m.thumbnail_url || '';
+            if (m.children && m.children.data && m.children.data[0]) imgUrl = m.children.data[0].media_url || imgUrl;
+            posts.push({
+              id: m.id, caption: cap, type: classifyPost(cap), img: imgUrl,
+              permalink: m.permalink || '', likes: m.like_count || 0, comments: m.comments_count || 0,
+              ts: m.timestamp || '', slides: (m.children && m.children.data ? m.children.data.length : 1),
+            });
+          }
+          next = d.paging && d.paging.next ? d.paging.next : '';
+        }
+        await env.JOBS.put('brand:corpus', JSON.stringify({ posts, updatedAt: Date.now() }));
+        const byType = {}; posts.forEach((p) => { byType[p.type] = (byType[p.type] || 0) + 1; });
+        return json({ ok: true, count: posts.length, byType });
+      } catch (e) { return json({ error: 'learn_failed', detail: String(e) }, 502); }
+    }
+
+    // Devuelve el corpus de marca (opcional ?type= filtra). Adjunta imagen base64 de
+    // los top N como referencia visual para la generación.
+    if (path === '/brand' && request.method === 'GET') {
+      const store = await env.JOBS.get('brand:corpus', { type: 'json' });
+      if (!store || !store.posts) return json({ posts: [], updatedAt: 0 });
+      const type = (url.searchParams.get('type') || '').toLowerCase();
+      const withImg = Math.min(parseInt(url.searchParams.get('img') || '0', 10) || 0, 3);
+      let posts = store.posts.filter((p) => (p.caption || '').length > 20);
+      if (type) { const f = posts.filter((p) => p.type === type); if (f.length >= 2) posts = f; }
+      posts.sort((a, b) => (b.likes + b.comments * 3) - (a.likes + a.comments * 3));
+      posts = posts.slice(0, 8);
+      const refs = [];
+      for (let i = 0; i < posts.length && refs.length < withImg; i++) {
+        if (!posts[i].img) continue;
+        try {
+          const ir = await fetch(posts[i].img);
+          const ct = ir.headers.get('content-type') || 'image/jpeg';
+          if (!/image\//.test(ct)) continue;
+          const buf = await ir.arrayBuffer();
+          if (buf.byteLength > 6000000) continue;
+          refs.push('data:' + ct + ';base64,' + bytesToB64(buf));
+        } catch (e) {}
+      }
+      return json({ posts, refs, updatedAt: store.updatedAt });
+    }
+
     // Cerebro de IA: llama a la API de Anthropic (para la versión alojada, sin window.claude)
     if (path === '/ai' && request.method === 'POST') {
       if (!env.ANTHROPIC_KEY) return json({ error: 'no_ai_key' }, 500);
@@ -111,7 +167,7 @@ export default {
       const { prompt, images } = body;
       if (!prompt) return json({ error: 'no_prompt' }, 400);
       const content = [];
-      (images || []).slice(0, 4).forEach((d) => {
+      (images || []).slice(0, 8).forEach((d) => {
         const m = /^data:([^;]+);base64,(.*)$/.exec(d || '');
         if (m) content.push({ type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } });
       });
@@ -250,6 +306,17 @@ async function publish(job, env) {
   } catch (e) {
     return { ok: false, step: 'exception', error: String(e) };
   }
+}
+
+// Clasifica un post por su caption -> tipo de carrusel (para coger el modelo exacto)
+function classifyPost(caption) {
+  const t = (caption || '').toLowerCase();
+  if (/alquiler|rent|arrenda|temporada/.test(t)) return 'alquiler';
+  if (/promoci[oó]n|obra nueva|nueva construcci|pisos? nuevos|de obra/.test(t)) return 'promocion';
+  if (/villa|casa|chalet|masia|mas[ií]a|torre|finca/.test(t)) return 'villa';
+  if (/[aá]tico|apartamento|piso|d[uú]plex|estudio|loft/.test(t)) return 'apartamento';
+  if (/vida|lifestyle|experiencia|descubre|zona|entorno|rinc[oó]n|verano|invierno|mar|monta[nñ]a/.test(t)) return 'lifestyle';
+  return 'general';
 }
 
 async function fbPost(endpoint, params) {
