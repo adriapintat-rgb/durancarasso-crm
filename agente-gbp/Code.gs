@@ -471,7 +471,7 @@ function tablaKpis_(filas) {
   function flecha(antes, ahora, menosEsMejor) {
     if (antes == null || antes === ahora) return '';
     const mejor = menosEsMejor ? ahora < antes : ahora > antes;
-    return ' <span style="color:' + (mejor ? COL.verde : COL.rojo) + '">' + (ahora > antes ? '▲' : '▼') + '</span>';
+    return ' <span style="color:' + (mejor ? COL.verde : COL.rojo) + '">' + (mejor ? '▲' : '▼') + '</span>';
   }
   const td = 'padding:8px 6px;border-bottom:1px solid ' + COL.borde + ';font-size:13px';
   return '<table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid ' + COL.borde + ';border-radius:8px">' +
