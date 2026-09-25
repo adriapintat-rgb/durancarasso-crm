@@ -94,7 +94,7 @@ check(geminiLlamadas.some(b => /YA DESCARTÓ O HIZO/.test(b.contents[0].parts[0]
 check(/▲|▼/.test(mails.at(-1).htmlBody) || /Ficha completa/.test(mails.at(-1).htmlBody), 'compara con la semana anterior');
 
 geminiCaido = true; const n2 = mails.length; enviarInformeAhora();
-check(mails.length === n2 + 1 && /IA no disponible/.test(mails.at(-1).htmlBody), 'si Gemini falla, el informe llega igual (con las reglas)');
+check(mails.length === n2 + 1 && /La IA \(Gemini\) no respondió/.test(mails.at(-1).htmlBody), 'si Gemini falla, el informe llega igual (con las reglas)');
 geminiCaido = false;
 
 const lento = Date.now; let t = 0; Date.now = () => (t += 100000);

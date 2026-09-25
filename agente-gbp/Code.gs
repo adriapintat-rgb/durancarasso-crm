@@ -145,9 +145,10 @@ function checklist_(s, d) {
   if (d.resenas < 30) f.push('Mínimo 30 reseñas');
   if (d.rating < 4.5) f.push('Nota ≥ 4,5');
   if (/[|·\-–]\s*(inmobiliaria|agencia|immobiliària)/i.test(d.nombreFicha)) f.push('Nombre sin palabras clave (riesgo de suspensión)');
-  if (d.seoWeb && !d.seoWeb.schema) f.push('Schema en la web');
-  if (d.seoWeb && d.seoWeb.telefono === false) f.push('Mismo teléfono en ficha y web');
-  if (d.seoWeb && !d.seoWeb.metaDescription) f.push('Meta description');
+  const w = d.seoWeb && !d.seoWeb.error ? d.seoWeb : null;   // si la web no responde, no se juzga
+  if (w && !w.schema) f.push('Schema en la web');
+  if (w && w.telefono === false) f.push('Mismo teléfono en ficha y web');
+  if (w && !w.metaDescription) f.push('Meta description');
   return f;
 }
 
@@ -191,7 +192,7 @@ function places_(ruta, campos, body) {
 function auditarWeb_(url, telefono) {
   try {
     const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
-    if (res.getResponseCode() >= 400) return { error: 'La web responde ' + res.getResponseCode() };
+    if (res.getResponseCode() !== 200) return { error: 'La web responde ' + res.getResponseCode() };
     const h = res.getContentText();
     const tel = String(telefono || '').replace(/\D/g, '').replace(/^(34|376)(?=\d{6,9}$)/, '');
     return {
@@ -216,6 +217,9 @@ function pageSpeed_(url) {
 /** Revisión de la web común a todas las sedes (SEO técnico + buscadores con IA). */
 function auditarDominio_() {
   const out = [];
+  let vivo = false;
+  try { vivo = UrlFetchApp.fetch(CONFIG.WEB, { muteHttpExceptions: true, followRedirects: true }).getResponseCode() === 200; } catch (e) {}
+  if (!vivo) return ['No se pudo revisar la web (' + CONFIG.WEB + ' no responde)'];
   function get(p) {
     try { const r = UrlFetchApp.fetch(CONFIG.WEB + p, { muteHttpExceptions: true, followRedirects: true });
           return r.getResponseCode() === 200 ? r.getContentText() : null; } catch (e) { return null; }
@@ -302,7 +306,8 @@ function planIA_(s, d, dominio) {
 /** Si la IA falla, el informe llega igual con lo que detectan las reglas. */
 function planFallback_(s, d, motivo) {
   return {
-    titular: 'Ficha al ' + d.completa + '% · ' + d.resenas + ' reseñas · puesto ' + d.puesto + ' de ' + d.totalZona + ' (IA no disponible: ' + motivo + ')',
+    titular: 'Ficha al ' + d.completa + '% · ' + d.resenas + ' reseñas · puesto ' + d.puesto + ' de ' + d.totalZona + ' en la zona (sin IA esta semana)',
+    errorIA: String(motivo).slice(0, 160),
     estado: '', vsCompetencia: '', post: '', descripcion: '',
     acciones: d.falta.slice(0, 4).map(function (f) {
       return { prioridad: 'MEDIA', accion: 'Completar: ' + f, motivo: 'Detectado en la revisión automática', recomendada: '', cuando: 'Esta semana', contenido: '' };
@@ -367,12 +372,15 @@ function enviarInforme_(res, dominio) {
     PropertiesService.getScriptProperties().setProperty('ANT_' + s.code, JSON.stringify({ rating: d.rating, resenas: d.resenas, completa: d.completa, puesto: d.puesto }));
   });
 
+  const sinIA = SEDES.map(function (s) { return res[s.code] && res[s.code].plan && res[s.code].plan.errorIA; }).filter(Boolean)[0];
+  const avisoIA = sinIA ? '<div style="background:#fdecea;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:12px"><b>⚠️ La IA (Gemini) no respondió:</b> ' + esc_(sinIA) +
+    '<br>El informe se ha hecho solo con las reglas. Revisa que la clave permita "Generative Language API".</div>' : '';
   const web = dominio && dominio.length ? '<div style="background:#fff8e1;border-radius:8px;padding:12px 16px;margin-top:14px;font-size:13px"><b>🌐 Web (común a las 4 sedes)</b><br>· ' +
     dominio.map(esc_).join('<br>· ') + '</div>' : '';
   const html = marco_('Informe semanal · ' + hoy,
     '<div style="background:' + COL.fondo + ';border-radius:8px;padding:12px 16px;line-height:1.6">' + resumen + '</div>' +
     '<p style="font-size:13px;color:' + COL.gris + '">' + total + ' propuestas' + (urgentes ? ' · <b style="color:' + COL.rojo + '">' + urgentes + ' urgentes</b>' : '') +
-    '. Cada una tiene botones de 1 clic: ✅ Hecho · 🔄 Dame otra propuesta · ❌ No me sirve.</p>' + web + cuerpo);
+    '. Cada una tiene botones de 1 clic: ✅ Hecho · 🔄 Dame otra propuesta · ❌ No me sirve.</p>' + avisoIA + web + cuerpo);
   MailApp.sendEmail({ to: CONFIG.EMAIL_DESTINO, subject: (urgentes ? '🔴 ' + urgentes + ' urgentes · ' : '🟢 ') + 'Fichas de Google · ' + hoy + ' · ' + CONFIG.MARCA, htmlBody: html });
 }
 
