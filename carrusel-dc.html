@@ -756,15 +756,26 @@ function parseJsonLoose(t){
   var c=t.indexOf('['),d=t.lastIndexOf(']'); if(c>=0&&d>c){try{return JSON.parse(t.slice(c,d+1))}catch(e){}}
   var er=new Error('invalid_json');er.code='invalid_json';throw er;
 }
+// Reduce una imagen a máx N px (lado largo) + JPEG: la IA sólo necesita "verla"
+// para encuadrar/adaptar el copy. Recorta el coste de visión ~4-6x. El canvas final
+// sigue usando la foto original a resolución completa.
+function downscaleForAI(src,max){return new Promise(function(res){max=max||512;var im=new Image();try{im.crossOrigin='anonymous'}catch(e){}
+  im.onload=function(){var w=im.naturalWidth||im.width,h=im.naturalHeight||im.height;if(!w||!h)return res(src);
+    var sc=Math.min(1,max/Math.max(w,h)),cw=Math.max(1,Math.round(w*sc)),ch=Math.max(1,Math.round(h*sc));
+    var c=document.createElement('canvas');c.width=cw;c.height=ch;c.getContext('2d').drawImage(im,0,0,cw,ch);
+    try{res(c.toDataURL('image/jpeg',0.72))}catch(e){res(src)}};
+  im.onerror=function(){res(src)};im.src=src})}
+async function smallImages(urls){var out=[];for(var i=0;i<urls.length&&i<6;i++){try{out.push(await downscaleForAI(urls[i]))}catch(e){out.push(urls[i])}}return out}
 async function aiJson(prompt,opts){
   opts=opts||{};
+  var imgs=(opts.imageUrls&&opts.imageUrls.length)?await smallImages(opts.imageUrls):null;
   if(SAMPLE){
     var o={}; if(opts.signal)o.signal=opts.signal;
-    if(opts.imageUrls&&opts.imageUrls.length){var bl=[];for(var i=0;i<opts.imageUrls.length;i++){try{bl.push(await (await fetch(opts.imageUrls[i])).blob())}catch(e){}}if(bl.length)o.images=bl;}
+    if(imgs){var bl=[];for(var i=0;i<imgs.length;i++){try{bl.push(await (await fetch(imgs[i])).blob())}catch(e){}}if(bl.length)o.images=bl;}
     return await SAMPLE.json(prompt,o);
   }
   var c=pubCfg();
-  var body={prompt:prompt}; if(opts.imageUrls&&opts.imageUrls.length)body.images=opts.imageUrls.slice(0,8);
+  var body={prompt:prompt}; if(imgs)body.images=imgs;
   var r=await fetch(pubBase()+'/ai',{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':c.secret},body:JSON.stringify(body),signal:opts.signal});
   var d=await r.json();
   if(d.error){var msg=(d.detail&&(d.detail.message||JSON.stringify(d.detail)))||d.error;var er=new Error(String(msg));er.code=(d.error==='no_ai_key')?'not_granted':'upstream_error';throw er;}
@@ -852,12 +863,12 @@ async function generateAI(){
   var aopts={signal:ctl.signal};
   try{
     var imgs=[], nContent=0;
-    if(photos.length){nContent=Math.min(photos.length,6);imgs=photos.slice(0,nContent).map(function(p){return p.src});}
-    // 2) Referencia VISUAL: imágenes reales de tu feed (mismo tipo) como modelo de composición/luz
+    if(photos.length){nContent=Math.min(photos.length,5);imgs=photos.slice(0,nContent).map(function(p){return p.src});}
+    // 2) Referencia VISUAL: 1 imagen real de tu feed (mismo tipo) como modelo de composición/luz
     var refs=[];
     var c=pubCfg();
     if(c.url&&c.secret&&BRAND.posts&&BRAND.posts.length){
-      try{var br=await fetch(pubBase()+'/brand?type='+encodeURIComponent(type)+'&img=2',{headers:{'x-app-secret':c.secret},signal:ctl.signal});var bj=await br.json();refs=(bj.refs||[]).slice(0,2);}catch(e){}
+      try{var br=await fetch(pubBase()+'/brand?type='+encodeURIComponent(type)+'&img=1',{headers:{'x-app-secret':c.secret},signal:ctl.signal});var bj=await br.json();refs=(bj.refs||[]).slice(0,1);}catch(e){}
     }
     if(nContent){prompt+='\n\nTe adjunto '+nContent+' fotos reales del inmueble, numeradas 0'+(nContent>1?'…'+(nContent-1):'')+' en ese orden (son las ÚNICAS seleccionables en "photo"). Aplica la CURADURÍA: elige la mejor foto y encuadre por slide y adapta el copy a lo que se ve.';}
     if(refs.length){imgs=imgs.concat(refs);prompt+='\n\nADEMÁS, las '+refs.length+' ÚLTIMAS imágenes son carruseles REALES de Duran Carasso (NO son del inmueble, NO las selecciones en "photo"): úsalas SOLO como referencia de estilo visual —composición, encuadre, luz, temperatura de color, aire— para que el resultado se parezca a lo que ya publica la marca.';}

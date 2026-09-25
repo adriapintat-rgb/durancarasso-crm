@@ -19,5 +19,6 @@ id = "PON_AQUI_EL_ID_DE_JOBS"
 # (ANTHROPIC_KEY, IG_TOKEN, APP_SECRET) van por `wrangler secret put` (ver README).
 [vars]
 IG_USER_ID = "PON_AQUI_EL_ID_DE_TU_CUENTA_IG_BUSINESS"
-# Modelo de IA. Por defecto claude-opus-5. Para más rápido/barato: claude-haiku-4-5
-AI_MODEL = "claude-opus-5"
+# Modelo de IA. Equilibrio calidad/precio: claude-sonnet-5 ($2/$10 por 1M).
+# Ultra-barato: claude-haiku-4-5 ($1/$5). Máxima calidad: claude-opus-5 ($5/$25).
+AI_MODEL = "claude-sonnet-5"

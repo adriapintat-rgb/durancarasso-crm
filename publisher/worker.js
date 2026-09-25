@@ -173,7 +173,7 @@ export default {
       });
       content.push({ type: 'text', text: String(prompt).slice(0, 24000) });
       const payload = {
-        model: env.AI_MODEL || 'claude-opus-5',
+        model: env.AI_MODEL || 'claude-sonnet-5',
         max_tokens: 2000,
         output_config: { effort: 'low' },
         messages: [{ role: 'user', content }],
