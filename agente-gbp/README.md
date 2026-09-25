@@ -17,3 +17,4 @@ Mismo sistema que el **Reputation Agent**: un solo `Code.gs` en Apps Script, IA 
 - **Instalación:** [INSTALAR.md](INSTALAR.md).
 - **Kit de fichas para pegar a mano:** [KIT-FICHAS.md](KIT-FICHAS.md).
 - **Prueba local:** `node agente-gbp/test/probar.js`.
+- **Estado y traspaso:** [HANDOFF.md](HANDOFF.md).
