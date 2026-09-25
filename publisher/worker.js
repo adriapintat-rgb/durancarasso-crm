@@ -199,6 +199,11 @@ export default {
       } catch (e) { return json({ error: 'ai_failed', detail: String(e) }, 502); }
     }
 
+    // Autodiagnóstico: confirma secret correcto y qué claves faltan (sin gastar IA)
+    if (path === '/diag' && request.method === 'GET') {
+      return json({ ok: true, ai: !!env.ANTHROPIC_KEY, ig: !!(env.IG_TOKEN && env.IG_USER_ID), model: env.AI_MODEL || 'claude-sonnet-5' });
+    }
+
     if (path === '/jobs' && request.method === 'GET') {
       const list = await env.JOBS.list({ prefix: 'job:' });
       const jobs = [];

@@ -207,6 +207,13 @@ input[type=range]:focus{box-shadow:none}
     <div class="card ai-card" id="ai_card">
       <div class="card-h"><span class="n">✦</span><h2>Generar con IA</h2><span class="aux" id="ai_mem"></span></div>
       <div class="card-in">
+        <div id="conn_banner" style="display:none;background:#FCF4F2;border:1px solid #EDC9C1;border-radius:11px;padding:13px 15px;margin-bottom:12px">
+          <div id="conn_msg" style="font-size:13px;color:var(--navy);line-height:1.5">La IA necesita conectar el publicador para funcionar.</div>
+          <div class="row c2" style="margin-top:10px">
+            <button class="btn btn-p btn-mini" id="conn_go">⚙ Conectar publicador</button>
+            <button class="btn btn-s btn-mini" id="conn_test">Probar conexión</button>
+          </div>
+        </div>
         <div class="hint">Pega la <b>ficha</b>, un <b>link + su contenido</b> o tus <b>notas</b>. La IA escribe los 5 slides, la caption y los hashtags con el tono Duran Carasso — y aprende de cada post que apruebas.</div>
         <textarea id="ai_in" rows="4" placeholder="Ej.: Piso 320 m² en Les Tres Torres, 4 hab, 5 baños, terraza 40 m², a estrenar, cocina italiana, garaje…"></textarea>
         <label style="display:flex;align-items:center;gap:8px;margin:11px 0 0;font-size:12px;color:var(--ink);cursor:pointer"><input type="checkbox" id="ai_photos" style="width:auto"> Analizar mis fotos como contexto visual</label>
@@ -1075,9 +1082,39 @@ function loadMemory(){
 
 function refreshAIui(){
   var on=aiReady();
-  var card=$('ai_card'); if(card)card.style.display=on?'':'none';
+  var card=$('ai_card'); if(card)card.style.display=''; // siempre visible
+  var banner=$('conn_banner'); if(banner)banner.style.display=on?'none':'';
+  if(!on&&$('conn_msg'))$('conn_msg').textContent='La IA necesita el publicador conectado. Pulsa “Conectar publicador” (URL del Worker + APP_SECRET).';
   var n=document.querySelectorAll('.ai-only'); for(var i=0;i<n.length;i++)n[i].style.display=on?((n[i].id==='learn_row')?'grid':'block'):'none';
   if($('ai_go')){$('ai_go').disabled=!on; if(on&&$('ai_status').textContent==='Conectando IA…')$('ai_status').textContent='';}
+  if($('ai_scrape'))$('ai_scrape').disabled=!on;
+}
+function setConn(msg,kind){var b=$('conn_banner'),m=$('conn_msg');if(!b||!m)return;m.textContent=msg;var col={err:['#FCF4F2','#EDC9C1'],warn:['#FCFAF3','#E7D9A8'],ok:['#F1F8F3','#BEE3C9'],info:['#F7F8FA','#ECEBE6']}[kind]||['#F7F8FA','#ECEBE6'];b.style.display='';b.style.background=col[0];b.style.borderColor=col[1];}
+async function testConnection(silent){
+  var c=pubCfg();
+  if(!c.url){setConn('Falta conectar. Pulsa “Conectar publicador”.','err');return}
+  if(!silent)setConn('Comprobando conexión…','info');
+  try{var h=await fetch(pubBase()+'/health');if(!h.ok)throw 0;await h.json();}
+  catch(e){setConn('No llego al Worker. Revisa la URL (debe ser https y acabar en .workers.dev).','err');return}
+  try{
+    var d=await fetch(pubBase()+'/diag',{headers:{'x-app-secret':c.secret}});
+    if(d.status===401){setConn('APP_SECRET incorrecto. Vuelve a “Conectar publicador” y pon el secret correcto de Cloudflare.','err');return}
+    if(d.status===404){var b0=$('conn_banner');if(b0)b0.style.display='none';refreshAIui();if(!silent)toast('Conectado ✓');return}
+    var dj=await d.json();
+    if(!dj.ai){setConn('Conectado ✓ pero falta la clave de IA en Cloudflare: añade ANTHROPIC_KEY (Worker → Settings → Variables and Secrets) y Deploy.','warn');return}
+    var b=$('conn_banner');if(b)b.style.display='none';
+    refreshAIui();
+    if(!silent)toast('Conectado ✓ IA lista'+(dj.ig?' · Instagram listo':''));
+  }catch(e){setConn('No pude comprobar la conexión, reintenta.','err')}
+}
+function connectPublisher(){
+  var c=pubCfg();
+  var u=prompt('URL del Worker (https://…workers.dev):',c.url||'https://dc-publicador.adriapintat.workers.dev'); if(u===null)return;
+  var s=prompt('APP_SECRET (el que pusiste en Cloudflare):',c.secret||''); if(s===null)return;
+  setPubCfg({url:u.trim().replace(/\/$/,''),secret:s.trim()});
+  refreshAIui();
+  if(typeof loadJobs==='function')loadJobs();
+  testConnection();
 }
 (function initCaps(){
   if(window.claude&&claude.use){
@@ -1115,7 +1152,10 @@ async function scrapeLink(){
 $('ai_go').addEventListener('click',generateAI);
 $('ai_scrape').addEventListener('click',scrapeLink);
 $('ai_learn').addEventListener('click',learnFromIG);
+$('conn_go').addEventListener('click',connectPublisher);
+$('conn_test').addEventListener('click',function(){testConnection()});
 brandBadge();
+if(!SAMPLE&&pubCfg().url){setTimeout(function(){testConnection(true)},400)}
 $('btn_htia').addEventListener('click',optimizeHashtags);
 $('btn_hookia').addEventListener('click',viralHook);
 $('btn_variants').addEventListener('click',generateVariants);
@@ -1129,13 +1169,7 @@ function pubBase(){var c=pubCfg();return (c.url||'').replace(/\/$/,'')}
 function blobB64(b){return new Promise(function(res){var r=new FileReader();r.onload=function(){res(String(r.result).split(',')[1])};r.readAsDataURL(b)})}
 function jpegBlob(cv){return new Promise(function(res){cv.toBlob(function(b){res(b)},'image/jpeg',0.9)})}
 async function exportForPublish(){var cvs=$('pv').querySelectorAll('canvas'),out=[];for(var i=0;i<cvs.length;i++){var b=await jpegBlob(cvs[i]);out.push({b64:await blobB64(b),ct:'image/jpeg'})}return out}
-$('pub_cfg_btn').addEventListener('click',function(){
-  var c=pubCfg();
-  var u=prompt('URL del Worker (https://…workers.dev):',c.url||''); if(u===null)return;
-  var s=prompt('APP_SECRET:',c.secret||''); if(s===null)return;
-  setPubCfg({url:u.trim(),secret:s.trim()});toast('Publicador conectado');loadJobs();
-  if(typeof refreshAIui==='function')refreshAIui();
-});
+$('pub_cfg_btn').addEventListener('click',connectPublisher);
 async function doPublish(when){
   var c=pubCfg(); if(!c.url||!c.secret){toast('Pulsa ⚙ Conectar primero');return}
   var cvs=$('pv').querySelectorAll('canvas');
