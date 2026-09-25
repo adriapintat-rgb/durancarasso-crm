@@ -160,6 +160,10 @@ global.UrlFetchApp = { fetch: (u, o) => { if (u.endsWith('/v1/messages')) return
 n2 = sent.length; vigilarUrgente(evento('vigilarUrgente')); global.UrlFetchApp = { fetch: guarda };
 check(sent.slice(n2).some(m => /Cerdanya/.test(m.subject)), 'si la IA falla, la alerta de reseña negativa llega igual');
 
+const gs = ScriptApp.getService; ScriptApp.getService = () => ({ getUrl: () => null });
+const sinBotones = tarjetaPropuesta_(urg, false); ScriptApp.getService = gs;
+check(!/a=publicar/.test(sinBotones) && /GBP_Propuestas/.test(sinBotones), 'sin app web publicada el email funciona igual (sin botones)');
+
 console.log('\n7) Seguridad (llamadas desde la app web pública)');
 const nTrig = __triggers.length, nLotes = Object.keys(lotes).length;
 ejecutarSemanal({}); ejecutarSemanal({ triggerUid: 'inventado' }); avanzarSemanal({ triggerUid: 'inventado' }); vigilarUrgente();

@@ -76,9 +76,9 @@ function comprobaciones_() {
   }
 
   var url = webappUrl_();
-  if (/\/dev$/.test(url)) add('Botones del email (app web)', false, 'Usa la URL que termina en /exec: guárdala en Propiedades del script como WEBAPP_URL');
-  else add('Botones del email (app web)', !!url, url ? '' :
-    'Implementar → Nueva implementación → tipo "Aplicación web" → Ejecutar como: yo · Acceso: cualquier usuario → Implementar');
+  if (/\/dev$/.test(url)) add('Botones del email (opcional)', false, 'Usa la URL que termina en /exec: guárdala en Propiedades del script como WEBAPP_URL', true);
+  else add('Botones del email (opcional)', !!url, url ? '' :
+    'Sin botones, las propuestas se aprueban en la pestaña GBP_Propuestas. Para activarlos: Implementar → Nueva implementación → Aplicación web', true);
 
   var triggers = ScriptApp.getProjectTriggers().map(function (t) { return t.getHandlerFunction(); });
   add('Agente activado', triggers.indexOf('ejecutarSemanal') !== -1, 'Menú → 3 · Activar agente');

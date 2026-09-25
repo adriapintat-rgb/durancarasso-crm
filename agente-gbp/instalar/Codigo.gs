@@ -167,9 +167,9 @@ function comprobaciones_() {
   }
 
   var url = webappUrl_();
-  if (/\/dev$/.test(url)) add('Botones del email (app web)', false, 'Usa la URL que termina en /exec: guárdala en Propiedades del script como WEBAPP_URL');
-  else add('Botones del email (app web)', !!url, url ? '' :
-    'Implementar → Nueva implementación → tipo "Aplicación web" → Ejecutar como: yo · Acceso: cualquier usuario → Implementar');
+  if (/\/dev$/.test(url)) add('Botones del email (opcional)', false, 'Usa la URL que termina en /exec: guárdala en Propiedades del script como WEBAPP_URL', true);
+  else add('Botones del email (opcional)', !!url, url ? '' :
+    'Sin botones, las propuestas se aprueban en la pestaña GBP_Propuestas. Para activarlos: Implementar → Nueva implementación → Aplicación web', true);
 
   var triggers = ScriptApp.getProjectTriggers().map(function (t) { return t.getHandlerFunction(); });
   add('Agente activado', triggers.indexOf('ejecutarSemanal') !== -1, 'Menú → 3 · Activar agente');
@@ -1198,6 +1198,7 @@ function tarjetaPropuesta_(p, compacto) {
     html += '<div style="font-size:13px;white-space:pre-wrap;background:' + COL.bg + ';border-radius:8px;padding:10px;margin-top:8px">' +
       esc_(recorta_(p.propuesta, compacto ? 160 : 420)) + '</div>';
   }
+  if (!webappUrl_()) return html + '<div style="font-size:12px;color:' + COL.sub + ';margin-top:6px">Texto completo en la pestaña <b>GBP_Propuestas</b> de la hoja del agente (ID ' + esc_(p.id) + '). Los botones ✅ ✏️ ❌ se activan al publicar la app web.</div></div>';
   html += '<div style="margin-top:6px">';
   if (publicable) {
     html += btn_(nivel2_(s) ? '✅ Publicar' : '✅ Aprobar', enlace_(p.id, 'publicar'), '#ffffff', COL.green) +
