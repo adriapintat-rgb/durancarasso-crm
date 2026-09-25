@@ -187,7 +187,13 @@ export default {
         const d = await r.json();
         if (d.error) return json({ error: 'ai_error', detail: d.error }, 502);
         const text = (d.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
-        return json({ text });
+        const model = payload.model;
+        const PRICE = { 'claude-opus-5': [5, 25], 'claude-opus-5-5': [4, 20], 'claude-opus-4-8': [5, 25], 'claude-sonnet-5': [2, 10], 'claude-haiku-4-5': [1, 5], 'claude-fable-5-1': [10, 50] };
+        const u = d.usage || {};
+        const p = PRICE[model] || [5, 25];
+        const inTok = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+        const cost = (inTok / 1e6) * p[0] + ((u.output_tokens || 0) / 1e6) * p[1];
+        return json({ text, model, usage: u, cost });
       } catch (e) { return json({ error: 'ai_failed', detail: String(e) }, 502); }
     }
 

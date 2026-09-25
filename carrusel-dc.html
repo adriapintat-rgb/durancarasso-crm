@@ -704,7 +704,8 @@ document.addEventListener('click',function(e){
 $('f_name').addEventListener('input',function(){$('chip').textContent=v('f_name')||'Nueva propiedad'});
 
 /* ══ IA (cerebro en vivo vía capability sample) + MEMORIA (db) ══ */
-var SAMPLE=null, DB=null, AICtx={examples:[],count:0};
+var SAMPLE=null, DB=null, AICtx={examples:[],count:0}, LASTAI=null;
+function fmtCost(c){return c<0.01?('<0,01 €'):(c.toFixed(3).replace('.',',')+' €')}
 var BRAND={posts:[],updatedAt:0};
 try{BRAND=JSON.parse(localStorage.getItem('dc_brand')||'null')||BRAND}catch(e){}
 var BRAND_RULES=[
@@ -779,6 +780,7 @@ async function aiJson(prompt,opts){
   var r=await fetch(pubBase()+'/ai',{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':c.secret},body:JSON.stringify(body),signal:opts.signal});
   var d=await r.json();
   if(d.error){var msg=(d.detail&&(d.detail.message||JSON.stringify(d.detail)))||d.error;var er=new Error(String(msg));er.code=(d.error==='no_ai_key')?'not_granted':'upstream_error';throw er;}
+  if(typeof d.cost==='number')LASTAI={cost:d.cost,model:d.model||''};
   return parseJsonLoose(d.text);
 }
 function urlToText(s){
@@ -873,8 +875,10 @@ async function generateAI(){
     if(nContent){prompt+='\n\nTe adjunto '+nContent+' fotos reales del inmueble, numeradas 0'+(nContent>1?'…'+(nContent-1):'')+' en ese orden (son las ÚNICAS seleccionables en "photo"). Aplica la CURADURÍA: elige la mejor foto y encuadre por slide y adapta el copy a lo que se ve.';}
     if(refs.length){imgs=imgs.concat(refs);prompt+='\n\nADEMÁS, las '+refs.length+' ÚLTIMAS imágenes son carruseles REALES de Duran Carasso (NO son del inmueble, NO las selecciones en "photo"): úsalas SOLO como referencia de estilo visual —composición, encuadre, luz, temperatura de color, aire— para que el resultado se parezca a lo que ya publica la marca.';}
     if(imgs.length)aopts.imageUrls=imgs;
+    LASTAI=null;
     var r=await aiJson(prompt,aopts);
-    applyAI(r);$('ai_status').textContent='';
+    applyAI(r);
+    $('ai_status').textContent=LASTAI?('Coste de este post: '+fmtCost(LASTAI.cost)+(LASTAI.model?' · '+LASTAI.model.replace('claude-','').replace(/-/g,' '):'')):'';
     toast('Carrusel generado con IA ✦'+note);
     if(onlyUrl)setTimeout(function(){toast('Consejo: pega también el texto de la ficha para más detalle')},2000);
   }catch(e){
