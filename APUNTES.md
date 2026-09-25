@@ -30,6 +30,13 @@ En los tres casos devuelve: **5 slides + descripción (caption) + hashtags**.
 
 ---
 
+## 2b. Coste (rentabilidad)
+
+- **~0,02–0,03 € por carrusel** (modelo Sonnet 5) · ~0,013 € (Haiku) · máxima calidad con Opus bajo demanda.
+- La app **muestra el coste real** de cada post generado.
+- Se logró reduciendo las imágenes antes de enviarlas a la IA (la visión solo necesita "verlas") y usando el modelo por precio/calidad. El carrusel final se sigue renderizando en alta.
+- Cambiar modelo: Cloudflare → Worker → Variables → `AI_MODEL` = `claude-sonnet-5` (o `claude-haiku-4-5`).
+
 ## 3. Qué hace bien hoy
 
 - **Copy y hashtags** en tono Durán Carasso (lujo, sobrio, sin postureo).
@@ -37,6 +44,9 @@ En los tres casos devuelve: **5 slides + descripción (caption) + hashtags**.
 - **Curación de fotos con IA (visión)**: mira las fotos, elige las mejores por slide y ajusta el encuadre.
 - **Calendario**: preparas el carrusel, lo dejas en un día y queda listo para publicarse ese día.
 - **Aprende (afilar el cuchillo)**: cada post aprobado (👍) se guarda como modelo y mejora los siguientes.
+- **Modelo = tu Instagram real**: aprende de tu propia cuenta (Graph API) y coge de tu feed los ejemplos exactos del tipo que pides (texto + referencia visual).
+- **Análisis del feed** (pestaña 📊): tus posts reales → qué tipo rinde más, mejor día, ganchos ganadores, longitud y nº de slides ideales. 0 € de IA.
+- **Pulir con Opus (premium)**: generas barato y, si te gusta, un botón eleva el copy con el mejor modelo. Pagas calidad solo cuando la quieres.
 - **UI**: plano blanco, azul marino, oro sutil, logo Durán. Limpio, no robótico.
 
 ---

@@ -131,6 +131,24 @@ input[type=range]:focus{box-shadow:none}
 .tab{border:none;background:transparent;font-family:inherit;font-size:13px;font-weight:500;letter-spacing:.4px;color:var(--sub);padding:15px 2px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.12s}
 .tab:hover{color:var(--navy)}
 .tab.on{color:var(--navy);border-bottom-color:var(--gold)}
+.an-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:14px 0 4px}
+.an-tile{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:14px 15px}
+.an-tile .k{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--sub)}
+.an-tile .val{font-family:'Playfair Display',serif;font-size:26px;color:var(--navy);margin-top:3px;line-height:1}
+.an-sec{font-size:12px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--gold);margin:22px 0 11px}
+.an-bar{display:grid;grid-template-columns:96px 1fr auto;align-items:center;gap:10px;margin:7px 0;font-size:13px}
+.an-bar .lbl{color:var(--text);text-transform:capitalize}
+.an-track{background:var(--line2);border-radius:6px;height:14px;overflow:hidden}
+.an-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--navy));border-radius:6px}
+.an-bar .num{color:var(--sub);font-variant-numeric:tabular-nums;min-width:44px;text-align:right}
+.an-post{border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin:9px 0;background:var(--card)}
+.an-post .cap{color:var(--text);font-size:13px;line-height:1.5}
+.an-post .meta{color:var(--sub);font-size:11px;margin-top:6px;display:flex;gap:14px;align-items:center}
+.an-post .meta a{color:var(--accent);text-decoration:none}
+.an-reco{background:linear-gradient(180deg,#FCFAF3,#F7F8FA);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:11px;padding:15px 17px;margin-top:8px}
+.an-reco h4{margin:0 0 9px;font-family:'Playfair Display',serif;font-size:18px;color:var(--navy)}
+.an-reco li{color:var(--text);font-size:13px;line-height:1.7;margin-left:2px}
+.an-empty{text-align:center;padding:34px 18px;color:var(--sub)}
 
 /* ── TARJETA IA (caja fina destacada) ── */
 .ai-card{border:1px solid var(--line);border-radius:12px;background:#fff;padding:20px 20px 8px;margin-bottom:26px}
@@ -173,6 +191,7 @@ input[type=range]:focus{box-shadow:none}
 <div class="tabs">
   <button class="tab on" id="tab_create">✦ Crear</button>
   <button class="tab" id="tab_cal">🗓 Calendario</button>
+  <button class="tab" id="tab_an">📊 Análisis</button>
 </div>
 
 <div class="wrap" id="view_create">
@@ -299,6 +318,8 @@ input[type=range]:focus{box-shadow:none}
           <button class="copy" data-copy="full">Copiar todo</button>
           <textarea id="full" rows="5" placeholder="Caption + hashtags para Metricool / Instagram"></textarea>
         </div>
+        <button class="btn btn-s btn-full btn-mini ai-only" id="polish_btn" style="margin-top:11px;display:none;border-color:var(--gold);color:var(--gold)">✦ Pulir copy con Opus (premium)</button>
+        <div class="mini" id="polish_note" style="margin-top:6px;text-align:center;min-height:13px;color:var(--gold)"></div>
         <div class="row c2 ai-only" id="learn_row" style="margin-top:11px;display:none">
           <button class="btn btn-s btn-mini" id="btn_up" style="color:var(--green);border-color:#BEE3C9">👍 Guardar como aprobado</button>
           <button class="btn btn-s btn-mini" id="btn_down" style="color:var(--red);border-color:#EDC9C1">👎 Descartar</button>
@@ -325,6 +346,17 @@ input[type=range]:focus{box-shadow:none}
       <div class="cal-grid" id="cal_dows"></div>
       <div class="cal-grid" id="cal_grid" style="margin-top:6px"></div>
       <div id="cal_day" style="margin-top:16px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ VISTA ANÁLISIS ══ -->
+<div id="view_an" class="calwrap" hidden>
+  <div class="card">
+    <div class="card-h"><span class="n">📊</span><h2>Análisis de tu Instagram</h2><button class="btn btn-s btn-mini" id="an_refresh" style="padding:6px 11px">↻ Actualizar</button></div>
+    <div class="card-in">
+      <div class="hint">Convierte tus posts reales en decisiones: qué tipo de contenido rinde más, qué ganchos funcionan y la fórmula ganadora. Sin coste de IA.</div>
+      <div id="an_body"></div>
     </div>
   </div>
 </div>
@@ -776,7 +808,7 @@ async function aiJson(prompt,opts){
     return await SAMPLE.json(prompt,o);
   }
   var c=pubCfg();
-  var body={prompt:prompt}; if(imgs)body.images=imgs;
+  var body={prompt:prompt}; if(imgs)body.images=imgs; if(opts.model)body.model=opts.model;
   var r=await fetch(pubBase()+'/ai',{method:'POST',headers:{'Content-Type':'application/json','x-app-secret':c.secret},body:JSON.stringify(body),signal:opts.signal});
   var d=await r.json();
   if(d.error){var msg=(d.detail&&(d.detail.message||JSON.stringify(d.detail)))||d.error;var er=new Error(String(msg));er.code=(d.error==='no_ai_key')?'not_granted':'upstream_error';throw er;}
@@ -837,6 +869,84 @@ async function learnFromIG(){
   }catch(e){toast('Sin conexión con el lector (usa la versión alojada)');}
   aiIdle('ai_learn','🎓 Aprender de mi Instagram (modelo real)');
 }
+/* ── Pulido premium: eleva el copy con el mejor modelo, solo cuando tú quieres ── */
+async function polishCopy(){
+  if(!aiReady()){toast('Conecta el publicador (⚙) o abre dentro de Claude');return}
+  var has=slides.some(function(s){return s.title||s.body})||$('caption').value.trim();
+  if(!has){toast('Genera un borrador primero, luego púlelo');return}
+  aiBusy('polish_btn','Puliendo con Opus…');$('polish_note').textContent='';
+  var type=classifyType($('caption').value+' '+v('f_type')+' '+v('f_name'));
+  var ex=brandExamples(type,2);
+  var cur={name:v('f_name'),market:$('f_mkt').value,slides:slides.map(function(s){return {kicker:s.kicker,title:s.title,body:s.body,layout:s.layout}}),caption:$('caption').value,hashtags:tagList()};
+  var p=BRAND_RULES+(ex.length?'\n\nNIVEL A IGUALAR (posts reales de Duran Carasso):\n'+ex.map(function(e){return String(e.caption).slice(0,500)}).join('\n---\n'):'')+'\n\nEres el DIRECTOR CREATIVO. Eleva a máxima calidad el copy de este carrusel SIN inventar datos ni cambiar la estructura: afina cada titular (evocador, ≤9 palabras), cada línea del cuerpo (una idea, ritmo, cero relleno) y la caption (editorial: emoción → producto → diferencial → CTA suave + web). Mantén el idioma del mercado y máximo 3 emojis sobrios. Devuelve SOLO JSON {"slides":[{"kicker":"","title":"","body":"linea1\\nlinea2"}],"caption":"...","hashtags":["#.."]}, con 5 slides en el mismo orden.\n\nCOPY ACTUAL:\n'+JSON.stringify(cur);
+  var ctl=new AbortController(); var killer=setTimeout(function(){ctl.abort()},95000);
+  try{
+    LASTAI=null;
+    var r=await aiJson(p,{model:'claude-opus-5',signal:ctl.signal});
+    if(r){
+      if(Array.isArray(r.slides))for(var i=0;i<5&&i<r.slides.length;i++){var a=r.slides[i]||{};if(a.kicker!=null)slides[i].kicker=String(a.kicker);if(a.title!=null)slides[i].title=String(a.title);if(a.body!=null)slides[i].body=String(a.body)}
+      if(r.caption)$('caption').value=String(r.caption);
+      if(Array.isArray(r.hashtags)&&r.hashtags.length){curTags=r.hashtags.map(function(t){t=String(t).trim();return t[0]==='#'?t:'#'+t}).slice(0,30);off=[]}
+      renderSlides();renderTags();scheduleRender();save();
+      $('polish_note').textContent=LASTAI?('Pulido · '+fmtCost(LASTAI.cost)+' · opus 5'):'';
+      toast('Copy elevado con Opus ✦');
+    }
+  }catch(e){toast('No se pudo pulir, reintenta')}
+  clearTimeout(killer);
+  aiIdle('polish_btn','✦ Pulir copy con Opus (premium)');
+}
+
+/* ── Análisis del feed: tus posts reales → decisiones de marketing (0 € IA) ── */
+function anAvg(a){return a.length?a.reduce(function(x,y){return x+y},0)/a.length:0}
+function anEng(p){return (p.likes||0)+(p.comments||0)*3}
+var DOW=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+function renderAnalytics(){
+  var el=$('an_body');if(!el)return;
+  var ps=(BRAND.posts||[]).filter(function(p){return p.caption});
+  if(!ps.length){el.innerHTML='<div class="an-empty">Aún no hay datos de tu feed.<br><br>Ve a <b>Crear</b> → pulsa <b>🎓 Aprender de mi Instagram</b> para traer tus posts reales (necesita el token de Instagram en Cloudflare).</div>';return}
+  var likes=ps.map(function(p){return p.likes||0}),coms=ps.map(function(p){return p.comments||0});
+  var avgL=Math.round(anAvg(likes)),avgC=Math.round(anAvg(coms));
+  // por tipo
+  var T={};ps.forEach(function(p){var t=p.type||'general';(T[t]=T[t]||{n:0,l:0}).n++;T[t].l+=p.likes||0});
+  var rows=Object.keys(T).map(function(t){return {t:TYPE_ES[t]||t,n:T[t].n,avg:T[t].l/T[t].n}}).sort(function(a,b){return b.avg-a.avg});
+  var maxA=Math.max.apply(null,rows.map(function(r){return r.avg}).concat([1]));
+  // top posts + ganchos
+  var byE=ps.slice().sort(function(a,b){return anEng(b)-anEng(a)});
+  var top=byE.slice(0,5);
+  var q=Math.max(1,Math.round(byE.length/4)),topQ=byE.slice(0,q);
+  var topLen=Math.round(anAvg(topQ.map(function(p){return p.caption.length})));
+  var topSlides=Math.round(anAvg(topQ.map(function(p){return p.slides||1}))*10)/10;
+  // mejor día
+  var D={};ps.forEach(function(p){if(!p.ts)return;var d=new Date(p.ts);if(isNaN(d))return;var k=d.getDay();(D[k]=D[k]||{n:0,e:0}).n++;D[k].e+=anEng(p)});
+  var bestDay='';var bd=-1;Object.keys(D).forEach(function(k){var m=D[k].e/D[k].n;if(m>bd){bd=m;bestDay=DOW[k]}});
+  var meanAvg=anAvg(ps.map(function(p){return p.likes||0}));
+  var lift=rows[0]&&meanAvg?Math.round((rows[0].avg/meanAvg-1)*100):0;
+
+  var h='';
+  h+='<div class="an-stats">';
+  h+='<div class="an-tile"><div class="k">Posts</div><div class="val">'+ps.length+'</div></div>';
+  h+='<div class="an-tile"><div class="k">Me gusta / post</div><div class="val">'+avgL+'</div></div>';
+  h+='<div class="an-tile"><div class="k">Comentarios / post</div><div class="val">'+avgC+'</div></div>';
+  if(bestDay)h+='<div class="an-tile"><div class="k">Mejor día</div><div class="val">'+bestDay+'</div></div>';
+  h+='</div>';
+
+  h+='<div class="an-sec">Rendimiento por tipo (me gusta de media)</div>';
+  rows.forEach(function(r){var w=Math.round(r.avg/maxA*100);h+='<div class="an-bar"><span class="lbl">'+esc(r.t)+'</span><span class="an-track"><span class="an-fill" style="width:'+w+'%"></span></span><span class="num">'+Math.round(r.avg)+'</span></div>'});
+
+  h+='<div class="an-sec">Tus 5 posts con más tirón</div>';
+  top.forEach(function(p){var line=String(p.caption).split('\n').filter(Boolean)[0]||'';h+='<div class="an-post"><div class="cap">'+esc(line.slice(0,140))+'</div><div class="meta"><span>❤ '+(p.likes||0)+'</span><span>💬 '+(p.comments||0)+'</span><span>'+esc(TYPE_ES[p.type]||p.type||'')+'</span>'+(p.permalink?'<a href="'+esc(p.permalink)+'" target="_blank" rel="noopener">ver ↗</a>':'')+'</div></div>'});
+
+  h+='<div class="an-sec">Fórmula ganadora</div><div class="an-reco"><h4>Lo que te funciona</h4><ul>';
+  if(rows[0])h+='<li>Publica más <b>'+esc(rows[0].t)+'</b>'+(lift>0?' — rinde un <b>'+lift+'% más</b> que tu media':'')+'.</li>';
+  if(bestDay)h+='<li>Mejor día para publicar: <b>'+bestDay+'</b>.</li>';
+  h+='<li>Longitud ideal de caption: <b>~'+topLen+'</b> caracteres.</li>';
+  h+='<li>Nº de slides que rinde: <b>'+topSlides+'</b>.</li>';
+  var hk=top.map(function(p){return String(p.caption).split('\n').filter(Boolean)[0]}).filter(Boolean).slice(0,2);
+  if(hk.length)h+='<li>Ganchos ganadores: '+hk.map(function(x){return '“'+esc(x.slice(0,60))+'”'}).join(' · ')+'.</li>';
+  h+='</ul></div>';
+  el.innerHTML=h;
+}
+
 async function generateAI(){
   if(!aiReady()){toast('Conecta el publicador (⚙) o abre la app dentro de Claude');return}
   var raw=$('ai_in').value.trim();
@@ -1115,15 +1225,21 @@ $('cal_today').addEventListener('click',function(){var n=new Date();calY=n.getFu
 
 /* ── PESTAÑAS ── */
 function showTab(w){
-  $('view_create').hidden=(w==='cal');
+  $('view_create').hidden=(w!=='create');
   $('view_cal').hidden=(w!=='cal');
-  $('tab_create').classList.toggle('on',w!=='cal');
+  $('view_an').hidden=(w!=='an');
+  $('tab_create').classList.toggle('on',w==='create');
   $('tab_cal').classList.toggle('on',w==='cal');
+  $('tab_an').classList.toggle('on',w==='an');
   if(w==='cal'){if(!calSel)calSel=ymd(new Date());renderCalendar();renderCalDay();loadJobs()}
+  if(w==='an')renderAnalytics();
   window.scrollTo(0,0);
 }
 $('tab_create').addEventListener('click',function(){showTab('create')});
 $('tab_cal').addEventListener('click',function(){showTab('cal')});
+$('tab_an').addEventListener('click',function(){showTab('an')});
+$('an_refresh').addEventListener('click',function(){if(typeof learnFromIG==='function'&&pubCfg().url){learnFromIG().then(function(){renderAnalytics()})}else renderAnalytics()});
+$('polish_btn').addEventListener('click',polishCopy);
 
 loadJobs();
 

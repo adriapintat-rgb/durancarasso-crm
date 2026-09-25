@@ -172,8 +172,10 @@ export default {
         if (m) content.push({ type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } });
       });
       content.push({ type: 'text', text: String(prompt).slice(0, 24000) });
+      const ALLOW = ['claude-opus-5', 'claude-opus-5-5', 'claude-opus-4-8', 'claude-sonnet-5', 'claude-haiku-4-5'];
+      const chosen = ALLOW.indexOf(body.model) >= 0 ? body.model : (env.AI_MODEL || 'claude-sonnet-5');
       const payload = {
-        model: env.AI_MODEL || 'claude-sonnet-5',
+        model: chosen,
         max_tokens: 2000,
         output_config: { effort: 'low' },
         messages: [{ role: 'user', content }],
