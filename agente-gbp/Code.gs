@@ -19,7 +19,8 @@ const CONFIG = {
   EMAIL_DESTINO: 'adriap@durancarasso.com',
   GEMINI_API_KEY: 'PEGA_AQUI_TU_API_KEY',      // la misma del Reputation Agent (aistudio.google.com/apikey)
   GOOGLE_API_KEY: 'PEGA_AQUI_TU_CLAVE_GOOGLE', // Google Cloud → Credenciales (Places API New + PageSpeed)
-  GEMINI_MODEL: 'gemini-2.5-flash',
+  GEMINI_MODEL: 'gemini-3.7-flash',   // si está saturado prueba solo los de GEMINI_RESERVA
+  GEMINI_RESERVA: ['gemini-3.5-flash', 'gemini-flash-lite-latest'],
   MARCA: 'Durán Carasso',
   WEB: 'https://www.durancarasso.es',
   TONO: 'Premium, cercano y discreto. Sin exageraciones ni emojis. Nunca inventar inmuebles, precios ni cifras.',
@@ -249,12 +250,14 @@ function gemini_(prompt, o) {
   const body = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: o.temp || 0.6 } };
   if (o.json) body.generationConfig.responseMimeType = 'application/json';
   if (o.buscar) body.tools = [{ google_search: {} }];
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + CONFIG.GEMINI_MODEL + ':generateContent';
-  for (let intento = 0; intento < 2; intento++) {
+  const modelos = [CONFIG.GEMINI_MODEL].concat(CONFIG.GEMINI_RESERVA || []);
+  for (let intento = 0; intento < modelos.length; intento++) {
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelos[intento] + ':generateContent';
     const res = UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
       headers: { 'x-goog-api-key': CONFIG.GEMINI_API_KEY }, payload: JSON.stringify(body) });
     const code = res.getResponseCode();
-    if ((code === 429 || code >= 500) && intento === 0) { Utilities.sleep(8000); continue; }
+    // modelo saturado, retirado o sin cuota → siguiente modelo de reserva
+    if ((code === 404 || code === 429 || code >= 500) && intento < modelos.length - 1) { Utilities.sleep(3000); continue; }
     if (code >= 400) throw new Error('Gemini ' + code + ': ' + res.getContentText().slice(0, 200));
     const parts = ((((JSON.parse(res.getContentText()).candidates || [])[0] || {}).content || {}).parts) || [];
     const txt = parts.map(function (p) { return p.text || ''; }).join('').trim();
@@ -275,13 +278,17 @@ function buscarMarca_(s) {
 
 function planIA_(s, d, dominio) {
   const mem = memoria_(s.code);
+  // si la web no se pudo revisar (fallo puntual), la IA no debe proponer nada sobre ella
+  const web = (dominio || []).filter(function (x) { return x.indexOf('No se pudo revisar') !== 0; });
+  const datos = JSON.parse(JSON.stringify(d));
+  if (datos.seoWeb && datos.seoWeb.error) datos.seoWeb = 'no revisada esta semana (no opines sobre la web)';
   const prompt = 'Eres el responsable de SEO local y de las fichas de Google de ' + CONFIG.MARCA + ', inmobiliaria premium. ' +
     'Tono de los textos: ' + CONFIG.TONO + '\nServicios reales: ' + CONFIG.SERVICIOS + '.\n' +
     'Sede: ' + s.nombre + ' · zonas: ' + s.zonas + ' · dirección oficial: ' + s.direccion + ' · teléfono oficial: ' + s.telefono +
     ' · idioma de los textos: ' + s.idioma + ' · competidores de referencia: ' + s.competidores + '.\n' +
     'Fecha: ' + Utilities.formatDate(new Date(), 'Europe/Madrid', 'dd/MM/yyyy') + '.\n\n' +
-    'DATOS DE ESTA SEMANA:\n' + JSON.stringify(d) + '\n' +
-    (dominio && dominio.length ? 'PROBLEMAS DE LA WEB (comunes a todas las sedes, inclúyelos como acciones): ' + dominio.join('; ') + '\n' : '') +
+    'DATOS DE ESTA SEMANA:\n' + JSON.stringify(datos) + '\n' +
+    (web.length ? 'PROBLEMAS DE LA WEB (comunes a todas las sedes, inclúyelos como acciones): ' + web.join('; ') + '\n' : '') +
     (mem.length ? 'EL EQUIPO YA DESCARTÓ O HIZO ESTO (no lo repitas): ' + mem.join(' | ') + '\n' : '') +
     '\nObjetivo: que quien busque "' + CONFIG.MARCA + ' ' + s.nombre + '" encuentre una ficha completa, activa, coherente con la web ' +
     'y mejor que la competencia. Responde SOLO con JSON válido:\n' +
@@ -293,7 +300,8 @@ function planIA_(s, d, dominio) {
     '"contenido":"texto o código listo para copiar (mensaje de WhatsApp para pedir reseñas, meta description, JSON-LD…) o vacío"}],' +
     '"post":"publicación para la ficha de Google en ' + s.idioma + ', máx. 1.000 caracteres, SIN teléfonos, emails ni enlaces (Google los rechaza)",' +
     '"descripcion":"nueva descripción de la ficha en ' + s.idioma + ' (650-750 caracteres, sin teléfonos ni enlaces) o vacío si no hace falta"}\n' +
-    'Máximo 4 acciones, ordenadas por impacto. Si la dirección o el teléfono de la ficha no coinciden con los oficiales, o el nombre ' +
+    'titular, estado, vsCompetencia y acciones SIEMPRE en castellano (solo post y descripcion van en ' + s.idioma + '). ' +
+    'No metas el post ni la descripción dentro de acciones. Máximo 4 acciones, ordenadas por impacto. Si la dirección o el teléfono de la ficha no coinciden con los oficiales, o el nombre ' +
     'de la ficha lleva palabras clave ("| Inmobiliaria en…", riesgo de suspensión), ponlo como acción ALTA. No inventes datos.';
   try {
     const p = gemini_(prompt, { json: true });
