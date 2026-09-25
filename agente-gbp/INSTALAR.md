@@ -1,6 +1,7 @@
 # Instalar el Agente Google (5 min, mismo sistema que el Reputation Agent)
 
 1. **Pegar el código:** abre el proyecto de Apps Script, borra todo (Ctrl+A) y pega `Code.gs`.
+   - Las claves se guardan solas la primera vez: al pegar versiones nuevas ya no hace falta volver a ponerlas.
 2. **Poner las claves:** arriba, en `CONFIG`, sustituye:
    - `PEGA_AQUI_TU_API_KEY` por la clave de **Gemini** (la misma del Reputation Agent, o una nueva en aistudio.google.com/apikey).
    - `PEGA_AQUI_TU_CLAVE_GOOGLE` por la clave de **Google Cloud** (Places API New + PageSpeed).

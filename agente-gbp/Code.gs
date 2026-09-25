@@ -29,6 +29,15 @@ const CONFIG = {
   PAGESPEED: true,   // velocidad y SEO técnico de la web (añade ~20 s por sede)
 };
 
+// Las claves se recuerdan: al pegar una versión nueva con PEGA_AQUI… se usan las guardadas la última vez.
+(function () {
+  const p = PropertiesService.getScriptProperties();
+  ['GEMINI_API_KEY', 'GOOGLE_API_KEY'].forEach(function (k) {
+    if (/^PEGA_AQUI/.test(CONFIG[k])) CONFIG[k] = p.getProperty(k) || CONFIG[k];
+    else if (p.getProperty(k) !== CONFIG[k]) p.setProperty(k, CONFIG[k]);
+  });
+})();
+
 const SEDES = [
   { code: 'BCN', nombre: 'Barcelona', idioma: 'castellano',
     buscar: 'Durán Carasso Carrer de Muntaner 259 Barcelona', mercado: 'inmobiliaria de lujo Barcelona',
