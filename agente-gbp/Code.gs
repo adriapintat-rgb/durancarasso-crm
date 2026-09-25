@@ -26,7 +26,7 @@ const CONFIG = {
   TONO: 'Premium, cercano y discreto. Sin exageraciones ni emojis. Nunca inventar inmuebles, precios ni cifras.',
   SERVICIOS: 'compra y venta, alquiler, valoración gratuita, obra nueva (más de 20 promociones y 1.800 viviendas en 6 años), inversiones (más de 350 activos)',
   NOMBRE_HOJA: 'DuranCarasso_AgenteGoogle_Log',
-  PAGESPEED: true,   // velocidad y SEO técnico de la web (añade ~20 s por sede)
+  PAGESPEED: true,   // velocidad y SEO técnico de la web (una vez por informe, ~30 s)
 };
 
 // Las claves se recuerdan: al pegar una versión nueva con PEGA_AQUI… se usan las guardadas la última vez.
@@ -108,15 +108,27 @@ function ejecutar_(nuevo) {
   for (let i = 0; i < SEDES.length; i++) {
     const s = SEDES[i];
     if (filas[s.code]) continue;
-    if (Date.now() - t0 > 4 * 60 * 1000) return seguirLuego();
+    if (Date.now() - t0 > 3.5 * 60 * 1000) return seguirLuego();
     let r;
     try { r = analizarSede_(s); } catch (e) { r = { error: e.message }; }
     trabajo.appendRow([s.code, JSON.stringify(r)]);
     filas[s.code] = r;
   }
-  // 2) La IA decide para las 4 sedes a la vez (necesita margen de tiempo)
-  if (Date.now() - t0 > 3 * 60 * 1000) return seguirLuego();
-  enviarInforme_(filas, planIA_(filas, filas.dominio), filas.dominio);
+  // 2) La IA decide para las 4 sedes a la vez; cada llamada con su propio margen de tiempo
+  if (!filas.plan) {
+    if (Date.now() - t0 > 90 * 1000) return seguirLuego();
+    filas.plan = tareasIA_(filas, filas.dominio);
+    trabajo.appendRow(['plan', JSON.stringify(filas.plan)]);
+  }
+  if (!filas.textos) {
+    if (Date.now() - t0 > 90 * 1000) return seguirLuego();
+    filas.textos = textosIA_(filas);
+    trabajo.appendRow(['textos', JSON.stringify(filas.textos)]);
+  }
+  const plan = filas.plan;
+  plan.posts = filas.textos.posts || {}; plan.descripciones = filas.textos.descripciones || {};
+  if (filas.textos.error && !plan.errorIA) plan.errorIA = 'textos: ' + filas.textos.error;
+  enviarInforme_(filas, plan, filas.dominio);
   trabajo.clearContents();
 }
 
@@ -131,7 +143,6 @@ function analizarSede_(s) {
     fotos: (f.photos || []).length, horario: !!f.regularOpeningHours, maps: f.googleMapsUri || '',
     competencia: competencia_(s, f.id),
     seoWeb: auditarWeb_(web, f.nationalPhoneNumber),
-    pagespeed: CONFIG.PAGESPEED ? pageSpeed_(web) : null,
     anterior: JSON.parse(PropertiesService.getScriptProperties().getProperty('ANT_' + s.code) || 'null'),
   };
   const todos = d.competencia.concat([{ yo: true, resenas: d.resenas, rating: d.rating }]).sort(function (a, b) { return b.resenas - a.resenas; });
@@ -246,6 +257,9 @@ function auditarDominio_() {
     if (!/hreflang=["']fr/i.test(home)) out.push('Sin versión en francés (clave para Andorra y Cerdanya)');
     if (!/FAQPage/i.test(home)) out.push('Sin preguntas frecuentes con schema FAQPage');
   }
+  const ps = CONFIG.PAGESPEED ? pageSpeed_(CONFIG.WEB) : null;
+  if (ps && ps.velocidadMovil < 50) out.push('Web lenta en móvil: ' + ps.velocidadMovil + '/100 en PageSpeed (Google lo penaliza)');
+  if (ps && ps.seo < 90) out.push('SEO técnico mejorable: ' + ps.seo + '/100 en PageSpeed');
   return out;
 }
 
@@ -257,7 +271,9 @@ function gemini_(prompt, o) {
   if (o.json) body.generationConfig.responseMimeType = 'application/json';
   if (o.schema) body.generationConfig.responseSchema = o.schema;   // obliga a Gemini a devolver un JSON válido con esta forma
   const modelos = [CONFIG.GEMINI_MODEL, CONFIG.GEMINI_MODEL].concat(CONFIG.GEMINI_RESERVA || []);  // 2 intentos con el principal
+  const agotados = {};
   for (let intento = 0; intento < modelos.length; intento++) {
+    if (agotados[modelos[intento]]) continue;
     const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + modelos[intento] + ':generateContent';
     let res;
     try {
@@ -266,7 +282,8 @@ function gemini_(prompt, o) {
     } catch (e) { if (intento < modelos.length - 1) continue; throw new Error('Gemini no respondió a tiempo'); }
     const code = res.getResponseCode();
     // modelo saturado, retirado, sin cuota o sin respuesta → siguiente modelo de reserva
-    if ((code === 0 || code === 404 || code === 429 || code >= 500) && intento < modelos.length - 1) { Utilities.sleep(3000); continue; }
+    if (code === 404 || code === 429) agotados[modelos[intento]] = true;   // sin cuota hoy o retirado: no se reintenta
+    if ((code === 0 || code === 404 || code === 429 || code >= 500) && intento < modelos.length - 1) { if (code >= 500) Utilities.sleep(3000); continue; }
     if (code >= 400) throw new Error('Gemini ' + code + ': ' + res.getContentText().slice(0, 200));
     let parts;
     try { parts = ((((JSON.parse(res.getContentText()).candidates || [])[0] || {}).content || {}).parts) || []; }
@@ -280,9 +297,16 @@ function gemini_(prompt, o) {
   }
 }
 
-/** Una sola decisión para las 4 sedes: pocas tareas, sin repetir, con pasos concretos. Y aparte, los textos. */
-function planIA_(filas, dominio) {
-  const sedes = SEDES.filter(function (s) { return filas[s.code] && !filas[s.code].error; });
+function sedesConDatos_(filas) { return SEDES.filter(function (s) { return filas[s.code] && !filas[s.code].error; }); }
+function introIA_() {
+  return 'Eres el responsable de SEO local y de las fichas de Google de ' + CONFIG.MARCA + ', inmobiliaria premium con 4 sedes. ' +
+    'Tono: ' + CONFIG.TONO + '\nServicios reales: ' + CONFIG.SERVICIOS + '.\nFecha: ' + Utilities.formatDate(new Date(), 'Europe/Madrid', 'dd/MM/yyyy') +
+    ' (temporadas: Cerdanya y Andorra esquí dic-mar y verano; Sitges primavera-verano).\n';
+}
+
+/** Una sola decisión para las 4 sedes: pocas tareas, sin repetir, con pasos concretos. */
+function tareasIA_(filas, dominio) {
+  const sedes = sedesConDatos_(filas);
   if (!sedes.length) return planFallback_(filas, dominio, 'no hay datos de ninguna sede');
   const web = (dominio || []).filter(function (x) { return x.indexOf('No se pudo revisar') !== 0; });
   const datos = sedes.map(function (s) {
@@ -292,14 +316,8 @@ function planIA_(filas, dominio) {
   });
   const mem = memoria_();
   const S = 'STRING', txt = { type: S };
-  const intro = 'Eres el responsable de SEO local y de las fichas de Google de ' + CONFIG.MARCA + ', inmobiliaria premium con 4 sedes. ' +
-    'Tono: ' + CONFIG.TONO + '\nServicios reales: ' + CONFIG.SERVICIOS + '.\nFecha: ' + Utilities.formatDate(new Date(), 'Europe/Madrid', 'dd/MM/yyyy') +
-    ' (temporadas: Cerdanya y Andorra esquí dic-mar y verano; Sitges primavera-verano).\n';
-
-  // 1) Tareas de la semana
-  let plan;
   try {
-    plan = gemini_(intro +
+    const plan = gemini_(introIA_() +
       '\nDATOS DE ESTA SEMANA POR SEDE (competencia = inmobiliarias de la zona en Google Maps; anterior = semana pasada):\n' + JSON.stringify(datos) + '\n' +
       (web.length ? 'PROBLEMAS DE LA WEB (comunes a todas las sedes): ' + web.join('; ') + '\n' : '') +
       (mem.length ? 'EL EQUIPO YA HIZO O DESCARTÓ ESTO (no lo vuelvas a proponer): ' + mem.join(' | ') + '\n' : '') +
@@ -320,26 +338,30 @@ function planIA_(filas, dominio) {
       if (!t.sedes.length) t.sedes = codigos;
       return t;
     });
-  } catch (e) { plan = planFallback_(filas, dominio, e.message); }
+    return plan;
+  } catch (e) { return planFallback_(filas, dominio, e.message); }
+}
 
-  // 2) Textos listos para pegar (post de cada sede + descripción solo si toca)
-  plan.posts = {}; plan.descripciones = {};
+/** Textos listos para pegar: un post por sede + descripción solo si toca. */
+function textosIA_(filas) {
+  const sedes = sedesConDatos_(filas), S = 'STRING', out = { posts: {}, descripciones: {} };
+  if (!sedes.length) return out;
   try {
     const necesitan = sedes.filter(function (s) { return necesitaDescripcion_(s.code); });
     const campos = function (lista, que) { const o = {}; lista.forEach(function (s) { o[s.code] = { type: S, description: que + ' de ' + s.nombre + ', escrito en ' + s.idioma }; }); return o; };
     const schema = { type: 'OBJECT', required: ['posts'], properties: { posts: { type: 'OBJECT', properties: campos(sedes, 'publicación'), required: sedes.map(function (s) { return s.code; }) } } };
     if (necesitan.length) schema.properties.descripciones = { type: 'OBJECT', properties: campos(necesitan, 'descripción de la ficha'), required: necesitan.map(function (s) { return s.code; }) };
-    const t = gemini_(intro + '\nSedes: ' + JSON.stringify(sedes.map(function (s) { return { sede: s.code, nombre: s.nombre, idioma: s.idioma, zonas: s.zonas }; })) +
+    const t = gemini_(introIA_() + '\nSedes: ' + JSON.stringify(sedes.map(function (s) { return { sede: s.code, nombre: s.nombre, idioma: s.idioma, zonas: s.zonas }; })) +
       '\n\nEscribe en JSON: posts = una publicación para la ficha de Google de cada sede (en su idioma, máx. 900 caracteres, un tema útil y de temporada)' +
       (necesitan.length ? '; descripciones = nueva descripción de la ficha para ' + necesitan.map(function (s) { return s.nombre; }).join(', ') + ' (en su idioma, 650-750 caracteres)' : '') +
       '.\nSin teléfonos, emails ni enlaces (Google los rechaza). Ortografía correcta (en catalán con apóstrofos: l\'oficina, d\'Espanya). No inventes datos, precios ni inmuebles.',
       { json: true, schema: schema });
     sedes.forEach(function (s) {
-      if ((t.posts || {})[s.code]) plan.posts[s.code] = limpiarPost_(t.posts[s.code]);
-      if ((t.descripciones || {})[s.code] && necesitaDescripcion_(s.code)) plan.descripciones[s.code] = limpiarPost_(t.descripciones[s.code]).slice(0, 750);
+      if ((t.posts || {})[s.code]) out.posts[s.code] = limpiarPost_(t.posts[s.code]);
+      if ((t.descripciones || {})[s.code] && necesitaDescripcion_(s.code)) out.descripciones[s.code] = limpiarPost_(t.descripciones[s.code]).slice(0, 750);
     });
-  } catch (e) { if (!plan.errorIA) plan.errorIA = 'textos: ' + String(e.message).slice(0, 150); }
-  return plan;
+  } catch (e) { out.error = String(e.message).slice(0, 150); }
+  return out;
 }
 
 /** Si la IA falla, el informe llega igual con lo que detectan las reglas (agrupado, sin repetir por sede). */
@@ -424,13 +446,14 @@ function enviarInforme_(filas, plan, dominio) {
     const d = filas[s.code];
     if (!d || d.error) return;
     competencia += '<div style="font-weight:bold;color:' + COL.navy + ';margin:14px 0 2px">' + s.nombre + ' · puesto ' + d.puesto + ' de ' + d.totalZona + ' en reseñas</div>' + tablaCompetencia_(d);
-    hh.appendRow([new Date(), s.code, d.rating, d.resenas, d.completa, d.puesto, d.pagespeed ? d.pagespeed.seo : '', d.falta.join(' · ')]);
+    hh.appendRow([new Date(), s.code, d.rating, d.resenas, d.completa, d.puesto, '', d.falta.join(' · ')]);
     PropertiesService.getScriptProperties().setProperty('ANT_' + s.code, JSON.stringify({ rating: d.rating, resenas: d.resenas, completa: d.completa, puesto: d.puesto }));
   });
 
   const h2 = function (t) { return '<h2 style="color:' + COL.navy + ';font-size:18px;border-bottom:2px solid ' + COL.gold + ';padding-bottom:6px;margin:28px 0 8px">' + t + '</h2>'; };
   const avisoIA = plan.errorIA ? '<div style="background:#fdecea;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:12px"><b>⚠️ La IA (Gemini) no respondió:</b> ' + esc_(plan.errorIA) +
-    '<br>Esta semana las tareas salen solo de las reglas. Suele ser puntual: el próximo informe se reintenta solo.' +
+    (/^textos:/.test(plan.errorIA) ? '<br>Esta semana faltan los textos (posts y descripciones).' : '<br>Esta semana las tareas salen solo de las reglas.') +
+    (/429|quota/i.test(plan.errorIA) ? ' Motivo: se ha gastado la cuota gratuita diaria de Gemini (se renueva cada día).' : ' Suele ser puntual: el próximo informe se reintenta solo.') +
     (/API key|403|PERMISSION/i.test(plan.errorIA) ? ' Revisa la clave de Gemini en CONFIG.' : '') + '</div>' : '';
   const web = dominio && dominio.length ? '<p style="font-size:12px;color:' + COL.gris + ';margin-top:14px"><b>🌐 Web (común a las 4 sedes):</b> ' + dominio.map(esc_).join(' · ') + '</p>' : '';
   const html = marco_('Semana del ' + hoy,

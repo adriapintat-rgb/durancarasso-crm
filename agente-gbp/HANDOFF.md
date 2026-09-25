@@ -59,6 +59,8 @@ Las claves están **solo en Apps Script**, partidas en trozos (`'…' + '…'`) 
   - La clave de Google Cloud da 403 `API_KEY_SERVICE_BLOCKED` con Gemini. Usa la de AI Studio.
   - `gemini-2.5-flash` y `1.5-flash` ya no están disponibles.
   - Si un modelo está saturado (503), el código pasa al siguiente de la reserva.
+  - **Cuota gratuita: 20 peticiones al día por modelo.** Un informe gasta 2 y cada 🔄 gasta 1. Si un modelo se queda sin cuota (429), se pasa al siguiente sin reintentar. Probar muchas veces el mismo día agota la cuota.
+  - Cada llamada a la IA se hace en su propio turno de tiempo (fases `plan` y `textos` en la pestaña Trabajo) y PageSpeed se ejecuta una sola vez, así no se pasa de los 6 minutos.
 - **Claves:** el código las guarda en Propiedades del script. Al pegar una versión nueva con `PEGA_AQUI…` se siguen usando las guardadas.
 - **Si una ficha detectada no es la vuestra:** cambia `buscar` en `SEDES` y borra la propiedad `PLACE_XXX` en Configuración → Propiedades del script.
 - **Límite de Places:** devuelve como máximo 10 fotos y 5 reseñas. Por eso "10 fotos" significa "10 o más".

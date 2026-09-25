@@ -101,8 +101,9 @@ enviarInformeAhora();
 check(geminiLlamadas.some(b => /YA HIZO O DESCARTÓ/.test(b.contents[0].parts[0].text)), 'la semana siguiente la IA recibe lo descartado/hecho');
 check(/Ficha completa/.test(mails.at(-1).htmlBody) && propuestas().filter(r => r[4] === 'DESCRIPCION').length === 1, 'tabla de sedes y no repite la descripción en 4 semanas');
 
-geminiCaido = true; const n2 = mails.length; enviarInformeAhora();
+geminiCaido = true; const n2 = mails.length, antes429 = geminiLlamadas.length; enviarInformeAhora();
 check(mails.length === n2 + 1 && /La IA \(Gemini\) no respondió/.test(mails.at(-1).htmlBody), 'si Gemini falla, el informe llega igual (con las reglas)');
+check(geminiLlamadas.length - antes429 === 6, 'sin cuota (429): prueba cada modelo una vez, sin reintentar el mismo');
 geminiCaido = false;
 
 jsonRoto = 1; const n4 = mails.length; enviarInformeAhora();
